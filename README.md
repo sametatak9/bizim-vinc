@@ -19,8 +19,14 @@ Vinç kiralama ve saha operasyon komuta merkezi.
 - Demo personel verisi (`src/data/personnel.ts`)
 - Nav üzerinden `/personel` rotası aktif
 
+## FAZ 2 — Onay Merkezi ✅
+- Bekleyen / onaylanan / reddedilen filtreleri
+- Tür filtresi (yoklama, mesai, izin, makbuz, yakıt…)
+- Onayla / Reddet aksiyonları (demo state)
+- Demo veri (`src/data/approvals.ts`)
+- Nav üzerinden `/onay` rotası aktif
+
 ## Sonraki fazlar
-2. Onay Merkezi
 3. Filo
 4. Teklif → sözleşme → makbuz
 5. Admin + TV
