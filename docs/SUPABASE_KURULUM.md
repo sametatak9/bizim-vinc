@@ -1,33 +1,30 @@
-# Supabase tabloları — tek seferde kurulum
+# Supabase kurulum (2 dakika)
 
-Senin Supabase projenе Grok doğrudan bağlanamaz (service role key / connector yok).
-Bu yüzden tabloları **senin hesabında** bir kez çalıştırman gerekiyor.
+## Yol A — Minimal (önerilen, ilk kurulum)
 
-## En kolay yol (önerilen)
+1. https://supabase.com/dashboard → projeni aç
+2. Sol menü **SQL Editor** → **New query**
+3. GitHub dosyasını aç: `supabase/migrations/000_MINIMAL_CORE.sql`
+4. **Raw** → tümünü kopyala → SQL Editor’a yapıştır → **Run**
+5. Sonuçta `OK — personnel: 3` benzeri satır görmelisin
 
-1. GitHub’da şu dosyayı aç:
-   `supabase/migrations/000_ALL_IN_ONE_RUN_ONCE.sql`
-2. **Raw** → tüm metni kopyala
-3. [Supabase Dashboard](https://supabase.com/dashboard) → projen → **SQL Editor** → New query
-4. Yapıştır → **Run**
-
-Bu dosya 001 + 002 + 003 migration’ların birleşimidir.
-
-## Alternatif (CLI)
-
-```bash
-supabase link --project-ref SENIN_PROJECT_REF
-supabase db push
-```
-
-## Başarılı oldu mu?
-
-SQL Editor’da şunu çalıştır:
-
+Kontrol:
 ```sql
 select table_name from information_schema.tables
-where table_schema = 'public'
-order by 1;
+where table_schema = 'public' order by 1;
 ```
 
-`personnel`, `cranes`, `approval_requests` vb. görünmeli.
+Görmen gerekenler: `profiles`, `personnel`, `cranes`, `approval_requests`
+
+## Yol B — Tam şema (ileri seviye)
+
+`000_ALL_IN_ONE_RUN_ONCE.sql` veya 001→002→003 sırayla.
+
+## Env (Vercel / lokal)
+
+```
+VITE_SUPABASE_URL=https://XXXX.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+Project Settings → API sayfasından kopyala.
