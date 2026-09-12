@@ -1,26 +1,18 @@
 # Bizim Vinç ERP
 
-Vinç kiralama ve saha operasyonları için geliştirilen ERP başlangıç projesi.
+Vinç kiralama ve saha operasyon komuta merkezi.
 
-## Mevcut durum
+**Slogan:** En derinden, en yükseklere
 
-- Dashboard sekmesi hazır ve demo verileriyle çalışıyor.
-- Personel, onay, filo, finans, TV, admin ve ayarlar menüleri için ürün iskeleti bulunuyor.
-- Responsive web arayüzü hazır.
-- Supabase migration planları `supabase/migrations/` altında tutuluyor.
-- Gerçek auth, RLS ve canlı Supabase verisi sonraki aşamada bağlanacak.
+## FAZ 0
+Komuta dashboard: harita, KPI, makbuz / yakıt / masraf panelleri.
+Veri `migrations/` altındaki şema + seed’den gelir.
 
-## Çalıştırma
+Canlı önizleme Grok App Builder üzerinden çalışır. Şema bu dalda `migrations/` altında.
 
-```bash
-pnpm install
-pnpm --filter @workspace/bizim-vinc-erp run dev
-```
-
-Production build:
-
-```bash
-pnpm --filter @workspace/bizim-vinc-erp run build
-```
-
-Vercel yapılandırması, build çıktısını `artifacts/bizim-vinc-erp/dist/public` klasöründen yayınlayacak şekilde hazırlanmıştır.
+## Sonraki fazlar
+1. Personel + üyelik + dijital kart
+2. Onay Merkezi
+3. Filo
+4. Teklif → sözleşme → makbuz
+5. Admin + TV
