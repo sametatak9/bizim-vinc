@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Bizim Vinç ERP"
+description = "Türk vinç kiralama ve saha operasyonlarını yöneten, dashboard odaklı ERP uygulaması. İlk teslimde operasyon merkezi dashboardu, onay akışı görünümü ve filo özeti bulunur."
+version = "1.0.0"
+id = "artifacts/bizim-vinc-erp"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19840
+
+[services.development]
+run = "pnpm --filter @workspace/bizim-vinc-erp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bizim-vinc-erp", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bizim-vinc-erp/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19840"
+BASE_PATH = "/"
