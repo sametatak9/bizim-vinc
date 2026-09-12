@@ -145,8 +145,8 @@ function Home() {
         <section className="page-heading">
           <div>
             <div className="eyebrow">Operasyon merkezi · Demo verisi</div>
-            <h1>Günaydın, Esra.</h1>
-            <p>Bugünün saha hareketini ve ekip durumunu tek bakışta takip edin.</p>
+            <h1>Günaydın, Bizim Vinç.</h1>
+            <p>Yakında...</p>
           </div>
           <button className="date-control" data-testid="button-date-selector" onClick={() => showToast('Takvim görünümü yakında eklenecek.')} type="button">
             <CalendarDays size={16} strokeWidth={1.8} />
