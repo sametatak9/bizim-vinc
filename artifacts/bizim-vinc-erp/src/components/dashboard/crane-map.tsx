@@ -18,6 +18,12 @@ const DEMO_CRANES: CranePin[] = [
   { id: 'c4', code: 'V-087', name: 'Mobil Vinç', status: 'sahada', lat: 38.7995, lng: 26.9700, operator: 'Can Özkan', site: 'Aliağa' },
   { id: 'c5', code: 'V-155', name: 'Mobil Vinç', status: 'bakimda', lat: 41.0082, lng: 28.9784, operator: '—', site: 'Merkez depo' },
   { id: 'c6', code: 'V-210', name: 'Teleskopik', status: 'arizali', lat: 40.9900, lng: 29.0500, operator: '—', site: 'Kartal' },
+  { id: 'c7', code: 'V-221', name: 'Mobil Vinç', status: 'sahada', lat: 41.015, lng: 28.965, operator: 'Burak Şen', site: 'Beşiktaş' },
+  { id: 'c8', code: 'V-133', name: 'Sepetli', status: 'sahada', lat: 40.978, lng: 29.08, operator: 'Zeynep Arslan', site: 'Kadıköy' },
+  { id: 'c9', code: 'V-176', name: 'Teleskopik', status: 'musait', lat: 41.06, lng: 28.85, operator: 'Hakan Çelik', site: 'Başakşehir' },
+  { id: 'c10', code: 'V-198', name: 'Mobil Vinç', status: 'sahada', lat: 40.92, lng: 29.15, operator: 'Serkan Aydın', site: 'Maltepe' },
+  { id: 'c11', code: 'V-240', name: 'Mobil Vinç', status: 'bakimda', lat: 41.04, lng: 29.02, operator: '—', site: 'Sarıyer' },
+  { id: 'c12', code: 'V-101', name: 'Sepetli', status: 'sahada', lat: 40.88, lng: 29.22, operator: 'Ayşe Demir', site: 'Pendik' },
 ];
 
 const STATUS_COLOR: Record<CranePin['status'], string> = {
@@ -68,7 +74,7 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-export default function CraneMap({ height = 360 }: { height?: number }) {
+export default function CraneMap({ height = 440 }: { height?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
@@ -85,7 +91,7 @@ export default function CraneMap({ height = 360 }: { height?: number }) {
 
         const map = L.map(containerRef.current, {
           center: [40.95, 29.0],
-          zoom: 8,
+          zoom: 9,
           scrollWheelZoom: true,
         });
 
@@ -138,7 +144,7 @@ export default function CraneMap({ height = 360 }: { height?: number }) {
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Saha haritası</h2>
-          <p className="panel-subtitle">Canlı vinç konumları · OpenStreetMap</p>
+          <p className="panel-subtitle">Komuta haritası · 12 canlı nokta · OpenStreetMap</p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11 }}>
           {(Object.keys(STATUS_COLOR) as CranePin['status'][]).map((s) => (
