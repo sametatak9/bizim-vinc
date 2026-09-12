@@ -29,6 +29,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import PersonelPage from '@/pages/personel';
+import OnayPage from '@/pages/onay';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -109,7 +110,7 @@ function AppLayout({ children }: { children: ReactNode }) {
 
           <nav className={`nav-scroll${menuOpen ? ' open' : ''}`} aria-label="Ana menü">
             {navItems.map(({ label, icon: Icon, href }) => {
-              const ready = href === '/' || href === '/personel';
+              const ready = href === '/' || href === '/personel' || href === '/onay';
               if (ready) {
                 return (
                   <Link
@@ -464,7 +465,7 @@ function Router() {
         <Switch>
           <Route path="/" component={DashboardHome} />
           <Route path="/personel" component={PersonelPage} />
-          <Route path="/onay">{() => <ComingSoon title="Onay Merkezi" />}</Route>
+          <Route path="/onay" component={OnayPage} />
           <Route path="/filo">{() => <ComingSoon title="Filo" />}</Route>
           <Route path="/finans">{() => <ComingSoon title="Finans" />}</Route>
           <Route path="/tv">{() => <ComingSoon title="TV" />}</Route>
