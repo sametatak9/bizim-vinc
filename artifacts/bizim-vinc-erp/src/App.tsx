@@ -31,6 +31,8 @@ import NotFound from '@/pages/not-found';
 import PersonelPage from '@/pages/personel';
 import OnayPage from '@/pages/onay';
 import FiloPage from '@/pages/filo';
+import DigitalCardPage from '@/pages/digital-card';
+import OperatorPage from '@/pages/operator';
 import CraneMap from '@/components/dashboard/crane-map';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -46,6 +48,7 @@ const navItems: { label: string; icon: IconType; href: string }[] = [
   { label: 'Finans', icon: CircleDollarSign, href: '/finans' },
   { label: 'TV', icon: MonitorPlay, href: '/tv' },
   { label: 'Admin', icon: UserCog, href: '/admin' },
+  { label: 'Operatör', icon: UserRound, href: '/operator' },
   { label: 'Ayarlar', icon: Settings2, href: '/ayarlar' },
 ];
 
@@ -94,7 +97,12 @@ function AppLayout({ children }: { children: ReactNode }) {
 
           <nav className={`nav-scroll${menuOpen ? ' open' : ''}`} aria-label="Ana menü">
             {navItems.map(({ label, icon: Icon, href }) => {
-              const ready = href === '/' || href === '/personel' || href === '/onay' || href === '/filo';
+              const ready =
+                href === '/' ||
+                href === '/personel' ||
+                href === '/onay' ||
+                href === '/filo' ||
+                href === '/operator';
               if (ready) {
                 return (
                   <Link
@@ -254,77 +262,6 @@ function DashboardHome() {
   );
 }
 
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  foot,
-  testId,
-}: {
-  icon: IconType;
-  label: string;
-  value: string;
-  foot: ReactNode;
-  testId: string;
-}) {
-  return (
-    <article className="kpi-card" data-testid={`card-kpi-${testId}`}>
-      <div className="kpi-top">
-        <span>{label}</span>
-        <span className="kpi-icon">
-          <Icon size={16} strokeWidth={1.8} />
-        </span>
-      </div>
-      <div className="kpi-value" data-testid={`value-kpi-${testId}`}>
-        {value}
-      </div>
-      <div className="kpi-foot">{foot}</div>
-    </article>
-  );
-}
-
-function PanelHeader({
-  title,
-  subtitle,
-  action,
-  onAction,
-}: {
-  title: string;
-  subtitle: string;
-  action: string;
-  onAction: () => void;
-}) {
-  return (
-    <div className="panel-head">
-      <div>
-        <h2 className="panel-title">{title}</h2>
-        <p className="panel-subtitle">{subtitle}</p>
-      </div>
-      <button
-        className="panel-action"
-        data-testid={`button-panel-${title.replaceAll(' ', '-').toLocaleLowerCase('tr-TR')}`}
-        onClick={onAction}
-        type="button"
-      >
-        {action}
-        <ArrowUpRight size={13} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
-      </button>
-    </div>
-  );
-}
-
-function LegendItem({ color, label, value }: { color: string; label: string; value: string }) {
-  return (
-    <div className="legend-item">
-      <span className="legend-name">
-        <span className="legend-dot" style={{ background: color }} />
-        {label}
-      </span>
-      <span className="legend-value">{value}</span>
-    </div>
-  );
-}
-
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className="dashboard-main">
@@ -347,19 +284,25 @@ function ComingSoon({ title }: { title: string }) {
 function Router() {
   return (
     <RoutedErrorBoundary>
-      <AppLayout>
-        <Switch>
-          <Route path="/" component={DashboardHome} />
-          <Route path="/personel" component={PersonelPage} />
-          <Route path="/onay" component={OnayPage} />
-          <Route path="/filo" component={FiloPage} />
-          <Route path="/finans">{() => <ComingSoon title="Finans" />}</Route>
-          <Route path="/tv">{() => <ComingSoon title="TV" />}</Route>
-          <Route path="/admin">{() => <ComingSoon title="Admin" />}</Route>
-          <Route path="/ayarlar">{() => <ComingSoon title="Ayarlar" />}</Route>
-          <Route component={NotFound} />
-        </Switch>
-      </AppLayout>
+      <Switch>
+        <Route path="/kart/:token" component={DigitalCardPage} />
+        <Route>
+          <AppLayout>
+            <Switch>
+              <Route path="/" component={DashboardHome} />
+              <Route path="/personel" component={PersonelPage} />
+              <Route path="/onay" component={OnayPage} />
+              <Route path="/filo" component={FiloPage} />
+              <Route path="/operator" component={OperatorPage} />
+              <Route path="/finans">{() => <ComingSoon title="Finans" />}</Route>
+              <Route path="/tv">{() => <ComingSoon title="TV" />}</Route>
+              <Route path="/admin">{() => <ComingSoon title="Admin" />}</Route>
+              <Route path="/ayarlar">{() => <ComingSoon title="Ayarlar" />}</Route>
+              <Route component={NotFound} />
+            </Switch>
+          </AppLayout>
+        </Route>
+      </Switch>
     </RoutedErrorBoundary>
   );
 }
