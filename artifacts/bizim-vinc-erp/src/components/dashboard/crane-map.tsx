@@ -26,11 +26,18 @@ const DEMO_CRANES: CranePin[] = [
   { id: 'c12', code: 'V-101', name: 'Sepetli', status: 'sahada', lat: 40.88, lng: 29.22, operator: 'Ayşe Demir', site: 'Pendik' },
 ];
 
+const DEMO_OPERATORS = [
+  { id: 'o1', name: 'Mehmet Kaya', lat: 40.9935, lng: 29.1260, status: 'calisiyor' as const },
+  { id: 'o2', name: 'Ali Demir', lat: 40.3550, lng: 27.9800, status: 'calisiyor' as const },
+  { id: 'o3', name: 'Elif Yılmaz', lat: 41.0270, lng: 29.1710, status: 'musait' as const },
+  { id: 'o4', name: 'Can Özkan', lat: 38.8010, lng: 26.9720, status: 'calisiyor' as const },
+];
+
 const STATUS_COLOR: Record<CranePin['status'], string> = {
-  sahada: '#15803d',
-  musait: '#64748b',
-  bakimda: '#d97706',
-  arizali: '#dc2626',
+  sahada: '#22C55E',
+  musait: '#94A3B8',
+  bakimda: '#F59E0B',
+  arizali: '#EF4444',
 };
 
 const STATUS_LABEL: Record<CranePin['status'], string> = {
@@ -90,8 +97,8 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
         if (cancelled || !containerRef.current || mapRef.current) return;
 
         const map = L.map(containerRef.current, {
-          center: [40.95, 29.0],
-          zoom: 9,
+          center: [41.01, 29.0],
+          zoom: 10,
           scrollWheelZoom: true,
         });
 
@@ -121,6 +128,23 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
           marker.on('click', () => setSelected(crane));
         });
 
+        DEMO_OPERATORS.forEach((op) => {
+          const color = op.status === 'calisiyor' ? '#22C55E' : '#94A3B8';
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width:22px;height:22px;border-radius:50%;
+              background:${color};border:2px solid #fff;
+              box-shadow:0 2px 6px rgba(0,0,0,.3);
+            "></div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+          });
+          L.marker([op.lat, op.lng], { icon })
+            .addTo(map)
+            .bindPopup(`<strong>${op.name}</strong><br/>Operatör · ${op.status === 'calisiyor' ? 'Çalışıyor' : 'Müsait'}`);
+        });
+
         mapRef.current = map;
         setReady(true);
         setTimeout(() => map.invalidateSize(), 100);
@@ -144,7 +168,7 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Saha haritası</h2>
-          <p className="panel-subtitle">Komuta haritası · 12 canlı nokta · OpenStreetMap</p>
+          <p className="panel-subtitle">Komuta haritası · vinç + operatör · canlı</p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11 }}>
           {(Object.keys(STATUS_COLOR) as CranePin['status'][]).map((s) => (
@@ -163,10 +187,10 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
         </div>
       </div>
 
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', flex: 1 }}>
         <div
           ref={containerRef}
-          style={{ height, width: '100%', background: 'hsl(var(--muted))' }}
+          style={{ height, width: '100%', background: '#ECFDF5' }}
           data-testid="map-container"
         />
         {!ready && !error && (
@@ -176,9 +200,9 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
               inset: 0,
               display: 'grid',
               placeItems: 'center',
-              background: 'hsl(var(--muted) / 0.7)',
+              background: 'rgba(240,253,244,0.7)',
               fontSize: 13,
-              color: 'hsl(var(--muted-foreground))',
+              color: '#14532D',
             }}
           >
             Harita hazırlanıyor…
@@ -191,9 +215,9 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
               inset: 0,
               display: 'grid',
               placeItems: 'center',
-              background: 'hsl(var(--muted))',
+              background: '#F0FDF4',
               fontSize: 13,
-              color: 'hsl(var(--destructive))',
+              color: '#DC2626',
               padding: 20,
               textAlign: 'center',
             }}
@@ -207,7 +231,7 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
         <div
           style={{
             padding: '12px 20px 16px',
-            borderTop: '1px solid hsl(var(--border))',
+            borderTop: '1px solid #DCFCE7',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -216,8 +240,8 @@ export default function CraneMap({ height = 440 }: { height?: number }) {
           }}
         >
           <div>
-            <strong>{selected.code}</strong> · {selected.name}
-            <div style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+            <strong style={{ color: '#14532D' }}>{selected.code}</strong> · {selected.name}
+            <div style={{ fontSize: 12, color: '#6B7280' }}>
               {STATUS_LABEL[selected.status]} · {selected.operator} · {selected.site}
             </div>
           </div>
