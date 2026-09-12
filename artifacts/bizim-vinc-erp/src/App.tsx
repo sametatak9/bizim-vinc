@@ -30,6 +30,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import PersonelPage from '@/pages/personel';
 import OnayPage from '@/pages/onay';
+import CraneMap from '@/components/dashboard/crane-map';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -214,6 +215,10 @@ function DashboardHome() {
         </button>
       </section>
 
+      <div style={{ marginBottom: 22 }}>
+        <CraneMap height={380} />
+      </div>
+
       <section className="kpi-grid" aria-label="Günlük özet">
         <KpiCard icon={UsersRound} label="Toplam personel" value="48" foot={<><span className="trend">+2</span> bu ay</>} testId="personel" />
         <KpiCard icon={Activity} label="Şu an çalışan" value="31" foot={<><span className="trend">%64,5</span> aktiflik</>} testId="calisan" />
@@ -236,7 +241,7 @@ function DashboardHome() {
         </section>
 
         <section className="panel" data-testid="panel-approvals">
-          <PanelHeader title="Bekleyen onaylar" subtitle="İşlem bekleyen talepler" action="Onay merkezine git" onAction={() => showToast('Onay modülü yakında kullanıma açılacak.')} />
+          <PanelHeader title="Bekleyen onaylar" subtitle="İşlem bekleyen talepler" action="Onay merkezine git" onAction={() => showToast('Onay sayfasına menüden gidebilirsiniz.')} />
           <div className="approval-list">
             {approvals.map(({ icon: Icon, title, person, status, statusClass }, index) => (
               <button className="approval-item" data-testid={`button-approval-${index}`} key={title} onClick={() => showToast(`${title} detayları açılacak.`)} type="button">
@@ -325,7 +330,7 @@ function DashboardHome() {
         </section>
 
         <section className="panel" data-testid="panel-attendance">
-          <PanelHeader title="Bugünün devam durumu" subtitle="Vardiya başlangıcı · 08:00" action="Personel listesi" onAction={() => showToast('Personel modülü yakında kullanıma açılacak.')} />
+          <PanelHeader title="Bugünün devam durumu" subtitle="Vardiya başlangıcı · 08:00" action="Personel listesi" onAction={() => showToast('Personel menüsünden açabilirsiniz.')} />
           <div className="attendance-body">
             <div className="attendance-main">
               <div className="attendance-rate">
