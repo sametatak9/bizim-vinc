@@ -30,6 +30,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import PersonelPage from '@/pages/personel';
 import OnayPage from '@/pages/onay';
+import FiloPage from '@/pages/filo';
 import CraneMap from '@/components/dashboard/crane-map';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -48,31 +49,13 @@ const navItems: { label: string; icon: IconType; href: string }[] = [
   { label: 'Ayarlar', icon: Settings2, href: '/ayarlar' },
 ];
 
-const activities = [
-  { icon: ClipboardCheck, title: 'Saha görevlendirmesi onaylandı', detail: 'Mehmet Kaya · Vinç V-204', time: '08:42' },
-  { icon: UserRound, title: 'Yeni personel girişi yapıldı', detail: 'Zeynep Arslan · Operatör', time: '08:17' },
-  { icon: Wrench, title: 'Bakım kaydı tamamlandı', detail: 'Vinç V-118 · Periyodik bakım', time: '07:56' },
-  { icon: ShieldCheck, title: 'İSG belgesi yenilendi', detail: 'Ali Demir · 31.12.2025 tarihine kadar', time: '07:31' },
-];
-
-const approvals = [
-  { icon: FileText, title: 'Fazla mesai talebi', person: 'Mehmet Kaya · 3 saat', status: 'Bekliyor', statusClass: 'status-pending' },
-  { icon: Truck, title: 'Filo bakım talebi', person: 'Vinç V-302 · Hidrolik kontrol', status: 'Bekliyor', statusClass: 'status-pending' },
-  { icon: CircleAlert, title: 'Eksik evrak bildirimi', person: 'Burak Şen · SRC belgesi', status: 'İnceleniyor', statusClass: 'status-active' },
-];
-
-const assignments = [
-  { id: 'V-204', type: 'Mobil Vinç', operator: 'Mehmet Kaya', initials: 'MK', customer: 'Yapı Kredi Genel Müdürlük', site: 'Ataşehir, İstanbul', status: 'Sahada', statusClass: 'status-active' },
-  { id: 'V-118', type: 'Teleskopik Vinç', operator: 'Ali Demir', initials: 'AD', customer: 'Marmara Rüzgar Enerji', site: 'Bandırma, Balıkesir', status: 'Sahada', statusClass: 'status-active' },
-  { id: 'V-302', type: 'Sepetli Platform', operator: 'Elif Yılmaz', initials: 'EY', customer: 'Kuzey Yapı Proje', site: 'Çekmeköy, İstanbul', status: 'Yola çıkıyor', statusClass: 'status-pending' },
-  { id: 'V-087', type: 'Mobil Vinç', operator: 'Can Özkan', initials: 'CÖ', customer: 'Ege Liman İşletmeleri', site: 'Aliağa, İzmir', status: 'Sahada', statusClass: 'status-active' },
-];
-
 function BuildingMark() {
   return (
-    <svg aria-hidden="true" fill="none" height="22" viewBox="0 0 24 24" width="22">
-      <path d="M5 20V7.5L12 4l7 3.5V20M8.5 20v-3.5h7V20M9 9h.01M15 9h.01M9 12h.01M15 12h.01" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      <path d="M3 20h18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    <svg aria-hidden="true" viewBox="0 0 64 64" width="40" height="40" fill="none">
+      <path d="M32 56c8 0 14-2 14-2s-2-6-6-10c-2-2-4-3-8-3s-6 1-8 3c-4 4-6 10-6 10s6 2 14 2z" fill="#22C55E" />
+      <path d="M30 48V18M30 18h18M48 18v4M30 28h12" stroke="#16A34A" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M26 48h8M28 18l-4 6h12" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="48" cy="24" r="2.4" fill="#16A34A" />
     </svg>
   );
 }
@@ -101,17 +84,17 @@ function AppLayout({ children }: { children: ReactNode }) {
     <div className="dashboard-shell">
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand-mark" aria-label="Bizim Vinç logosu">
+          <div className="brand-mark brand-mark-logo" aria-label="Bizim Vinç logosu">
             <BuildingMark />
           </div>
           <div>
-            <div className="brand-name">Bizim Vinç</div>
+            <div className="brand-name">BİZİM VİNÇ</div>
             <div className="brand-tagline">En derinden, en yükseklere</div>
           </div>
 
           <nav className={`nav-scroll${menuOpen ? ' open' : ''}`} aria-label="Ana menü">
             {navItems.map(({ label, icon: Icon, href }) => {
-              const ready = href === '/' || href === '/personel' || href === '/onay';
+              const ready = href === '/' || href === '/personel' || href === '/onay' || href === '/filo';
               if (ready) {
                 return (
                   <Link
@@ -189,186 +172,84 @@ function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function DashboardHome() {
-  const [toast, setToast] = useState('');
-
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(''), 2800);
-  };
-
   return (
-    <div className="dashboard-main">
-      <section className="page-heading">
-        <div>
-          <div className="eyebrow">Operasyon merkezi · Demo verisi</div>
-          <h1>Günaydın, Bizim Vinç.</h1>
-          <p>Komuta paneli · Anlık saha durumu</p>
+    <div className="cmd-page">
+      <section className="cmd-kpis" aria-label="Günlük KPI">
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Bugünkü ciro</span><strong>186.450 ₺</strong></div>
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Kesilen makbuz</span><strong>14</strong></div>
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Biriken makbuz</span><strong className="warn">7</strong></div>
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Bugün yakıt</span><strong>12.840 ₺</strong></div>
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Bugün masraf</span><strong>4.320 ₺</strong></div>
+        <div className="cmd-kpi"><span className="cmd-kpi-label">Aktif vinç</span><strong>9 / 12</strong></div>
+      </section>
+
+      <div className="cmd-split">
+        <div className="cmd-map-col">
+          <CraneMap height={620} />
         </div>
-        <button
-          className="date-control"
-          data-testid="button-date-selector"
-          onClick={() => showToast('Takvim görünümü yakında eklenecek.')}
-          type="button"
-        >
-          <CalendarDays size={16} strokeWidth={1.8} />
-          Cumartesi, 12 Eylül 2026
-        </button>
-      </section>
 
-      <div style={{ marginBottom: 22 }}>
-        <CraneMap height={380} />
+        <aside className="cmd-side" aria-label="Operasyon kartları">
+          <article className="cmd-card">
+            <header><h3>Kesilen makbuzlar</h3><span className="cmd-badge ok">14</span></header>
+            <ul className="cmd-list">
+              <li><strong>MK-2026-0148</strong><span>Yapı Kredi · 42.000 ₺</span></li>
+              <li><strong>MK-2026-0147</strong><span>Kuzey Yapı · 18.500 ₺</span></li>
+              <li><strong>MK-2026-0146</strong><span>Ege Liman · 27.200 ₺</span></li>
+              <li><strong>MK-2026-0145</strong><span>Marmara Rüzgar · 31.000 ₺</span></li>
+            </ul>
+          </article>
+
+          <article className="cmd-card">
+            <header><h3>Biriken makbuzlar</h3><span className="cmd-badge warn">7</span></header>
+            <ul className="cmd-list">
+              <li><strong>Bekleyen · V-204</strong><span>Ataşehir · 3 gün</span></li>
+              <li><strong>Bekleyen · V-118</strong><span>Bandırma · 1 gün</span></li>
+              <li><strong>Bekleyen · V-087</strong><span>Aliağa · 5 gün</span></li>
+              <li><strong>Bekleyen · V-221</strong><span>Beşiktaş · 2 gün</span></li>
+            </ul>
+          </article>
+
+          <article className="cmd-card">
+            <header><h3>Bugün yakıt fişleri</h3></header>
+            <ul className="cmd-list">
+              <li><strong>V-204 · Shell Ataşehir</strong><span>2.450 ₺ · Mehmet Kaya</span></li>
+              <li><strong>V-087 · Opet Aliağa</strong><span>3.120 ₺ · Can Özkan</span></li>
+              <li><strong>V-133 · BP Kadıköy</strong><span>1.890 ₺ · Zeynep Arslan</span></li>
+              <li><strong>V-198 · Total Maltepe</strong><span>2.180 ₺ · Serkan Aydın</span></li>
+            </ul>
+          </article>
+
+          <article className="cmd-card">
+            <header><h3>Bugün masraf fişleri</h3></header>
+            <ul className="cmd-list">
+              <li><strong>Hidrolik hortum</strong><span>V-155 · 1.250 ₺</span></li>
+              <li><strong>Yağ değişimi</strong><span>V-210 · 980 ₺</span></li>
+              <li><strong>Otoyol geçiş</strong><span>V-204 · 245 ₺</span></li>
+              <li><strong>Otopark</strong><span>V-302 · 180 ₺</span></li>
+            </ul>
+          </article>
+
+          <article className="cmd-card">
+            <header><h3>Vinç hareket geçmişi</h3></header>
+            <ul className="cmd-list">
+              <li><strong>V-204 → Ataşehir</strong><span>07:40 · sahaya çıkış</span></li>
+              <li><strong>V-118 → Bandırma</strong><span>06:55 · saha aktif</span></li>
+              <li><strong>V-302 depo</strong><span>09:10 · müsait</span></li>
+              <li><strong>V-155 bakım</strong><span>08:20 · merkeze giriş</span></li>
+            </ul>
+          </article>
+
+          <article className="cmd-card">
+            <header><h3>Operatör hareket geçmişi</h3></header>
+            <ul className="cmd-list">
+              <li><strong>Mehmet Kaya</strong><span>İşe geldim · 07:55 · onaylandı</span></li>
+              <li><strong>Ali Demir</strong><span>Yoklama · 08:05 · Bandırma</span></li>
+              <li><strong>Elif Yılmaz</strong><span>Havuzda · müsait</span></li>
+              <li><strong>Can Özkan</strong><span>Mesai talebi · 3 saat · bekliyor</span></li>
+            </ul>
+          </article>
+        </aside>
       </div>
-
-      <section className="kpi-grid" aria-label="Günlük özet">
-        <KpiCard icon={UsersRound} label="Toplam personel" value="48" foot={<><span className="trend">+2</span> bu ay</>} testId="personel" />
-        <KpiCard icon={Activity} label="Şu an çalışan" value="31" foot={<><span className="trend">%64,5</span> aktiflik</>} testId="calisan" />
-        <KpiCard icon={Truck} label="Aktif vinç" value="24" foot={<><span className="trend">19 sahada</span> bugün</>} testId="vinc" />
-        <KpiCard icon={ClipboardCheck} label="Bekleyen onay" value="07" foot={<><span className="trend warn">3 acil</span> işlem var</>} testId="onay" />
-      </section>
-
-      <div className="content-grid">
-        <section className="panel" data-testid="panel-recent-activity">
-          <PanelHeader title="Son hareketler" subtitle="Operasyon ekibinin son güncellemeleri" action="Tümünü gör" onAction={() => showToast('Son hareketlerin tamamı yakında listelenecek.')} />
-          <div className="activity-list">
-            {activities.map(({ icon: Icon, title, detail, time }, index) => (
-              <div className="activity-item" data-testid={`activity-item-${index}`} key={title}>
-                <div className="activity-icon"><Icon size={15} strokeWidth={1.8} /></div>
-                <div><strong>{title}</strong><p>{detail}</p></div>
-                <span className="activity-time">{time}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel" data-testid="panel-approvals">
-          <PanelHeader title="Bekleyen onaylar" subtitle="İşlem bekleyen talepler" action="Onay merkezine git" onAction={() => showToast('Onay sayfasına menüden gidebilirsiniz.')} />
-          <div className="approval-list">
-            {approvals.map(({ icon: Icon, title, person, status, statusClass }, index) => (
-              <button className="approval-item" data-testid={`button-approval-${index}`} key={title} onClick={() => showToast(`${title} detayları açılacak.`)} type="button">
-                <div className="approval-kind"><Icon size={16} strokeWidth={1.8} /></div>
-                <div className="approval-info"><strong>{title}</strong><span>{person}</span></div>
-                <span className={`status-pill ${statusClass}`}>{status}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <section className="panel wide-panel" data-testid="panel-assignments">
-        <PanelHeader title="Aktif saha görevlendirmeleri" subtitle="Bugün sahada olan ekipler ve ekipmanlar" action="Planlama görünümü" onAction={() => showToast('Planlama görünümü yakında açılacak.')} />
-        <table className="assignment-table">
-          <thead>
-            <tr>
-              <th>Vinç</th>
-              <th>Operatör</th>
-              <th>Müşteri / saha</th>
-              <th>Durum</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {assignments.map((assignment) => (
-              <tr data-testid={`row-assignment-${assignment.id}`} key={assignment.id}>
-                <td>
-                  <div className="crane-cell">
-                    <span className="crane-number">{assignment.id}</span>
-                    <span>
-                      <span className="crane-name">{assignment.id}</span>
-                      <span className="crane-type">{assignment.type}</span>
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <div className="operator">
-                    <span className="mini-avatar">{assignment.initials}</span>
-                    {assignment.operator}
-                  </div>
-                </td>
-                <td>
-                  <div className="site-cell">
-                    <strong>{assignment.customer}</strong>
-                    <span>{assignment.site}</span>
-                  </div>
-                </td>
-                <td>
-                  <span className={`status-pill ${assignment.statusClass}`}>{assignment.status}</span>
-                </td>
-                <td>
-                  <button
-                    aria-label={`${assignment.id} detayını aç`}
-                    className="icon-button"
-                    data-testid={`button-assignment-detail-${assignment.id}`}
-                    onClick={() => showToast(`${assignment.id} görevlendirme detayı açılacak.`)}
-                    type="button"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <div className="bottom-grid">
-        <section className="panel" data-testid="panel-fleet">
-          <PanelHeader title="Filo durumu" subtitle="24 aktif vinç · Anlık görünüm" action="Filo detayları" onAction={() => showToast('Filo modülü yakında kullanıma açılacak.')} />
-          <div className="fleet-body">
-            <div className="fleet-ring" aria-label="Filo toplamı 24">
-              <div className="fleet-total">
-                <strong>24</strong>
-                <span>toplam vinç</span>
-              </div>
-            </div>
-            <div className="legend">
-              <LegendItem color="hsl(157 47% 36%)" label="Sahada" value="19" />
-              <LegendItem color="hsl(36 77% 56%)" label="Bakımda" value="3" />
-              <LegendItem color="hsl(4 68% 50%)" label="Arızalı" value="1" />
-              <LegendItem color="hsl(163 11% 77%)" label="Müsait" value="1" />
-            </div>
-          </div>
-        </section>
-
-        <section className="panel" data-testid="panel-attendance">
-          <PanelHeader title="Bugünün devam durumu" subtitle="Vardiya başlangıcı · 08:00" action="Personel listesi" onAction={() => showToast('Personel menüsünden açabilirsiniz.')} />
-          <div className="attendance-body">
-            <div className="attendance-main">
-              <div className="attendance-rate">
-                86<span>% katılım</span>
-              </div>
-              <div className="attendance-copy">
-                41 kişi zamanında
-                <br />
-                vardiya başlangıcı yaptı
-              </div>
-            </div>
-            <div className="progress-track">
-              <div className="progress-fill" />
-            </div>
-            <div className="attendance-stats">
-              <div className="attendance-stat">
-                <strong>41</strong>
-                <span>Geldi</span>
-              </div>
-              <div className="attendance-stat">
-                <strong>4</strong>
-                <span>İzinli</span>
-              </div>
-              <div className="attendance-stat">
-                <strong>3</strong>
-                <span>Eksik</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {toast && (
-        <div className="toast" data-testid="status-toast">
-          <CheckCircle2 size={16} />
-          {toast}
-        </div>
-      )}
     </div>
   );
 }
@@ -471,7 +352,7 @@ function Router() {
           <Route path="/" component={DashboardHome} />
           <Route path="/personel" component={PersonelPage} />
           <Route path="/onay" component={OnayPage} />
-          <Route path="/filo">{() => <ComingSoon title="Filo" />}</Route>
+          <Route path="/filo" component={FiloPage} />
           <Route path="/finans">{() => <ComingSoon title="Finans" />}</Route>
           <Route path="/tv">{() => <ComingSoon title="TV" />}</Route>
           <Route path="/admin">{() => <ComingSoon title="Admin" />}</Route>
