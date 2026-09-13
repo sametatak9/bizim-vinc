@@ -19,6 +19,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
   const [status, setStatus] = useState<PersonStatus>('aktif');
   const [poolStatus, setPoolStatus] = useState<PoolStatus>('musait');
   const [title, setTitle] = useState('');
+  const [salary, setSalary] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [documentsOk, setDocumentsOk] = useState(true);
   const [certExpiring, setCertExpiring] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -32,6 +35,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setStatus(person.status);
       setPoolStatus(person.poolStatus);
       setTitle(person.title);
+      setSalary(person.salary === undefined ? '' : String(person.salary));
+      setStartDate(person.startDate || '');
+      setEndDate(person.endDate || '');
       setDocumentsOk(person.documentsOk);
       setCertExpiring(person.certExpiring);
     } else {
@@ -42,6 +48,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setStatus('aktif');
       setPoolStatus('musait');
       setTitle('Mobil Vinç Operatörü');
+      setSalary('');
+      setStartDate('');
+      setEndDate('');
       setDocumentsOk(true);
       setCertExpiring(false);
     }
@@ -61,8 +70,16 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !employeeNo.trim()) {
-      showToast('Lütfen Ad Soyad ve Sicil No alanlarını doldurun.');
+    if (!fullName.trim() || !employeeNo.trim() || !salary || !startDate) {
+      showToast('Ad Soyad, Sicil No, Maaş ve İşe Giriş Tarihi zorunludur.');
+      return;
+    }
+    if (status === 'pasif' && !endDate) {
+      showToast('Pasif personel için İşten Çıkış Tarihi zorunludur.');
+      return;
+    }
+    if (status !== 'pasif' && endDate) {
+      showToast('Aktif personel için İşten Çıkış Tarihi boş bırakılmalıdır.');
       return;
     }
 
@@ -75,6 +92,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         status,
         poolStatus,
         title,
+        salary: Number(salary),
+        startDate,
+        endDate: status === 'pasif' ? endDate : undefined,
         documentsOk,
         certExpiring,
       });
@@ -95,6 +115,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         status,
         poolStatus,
         title,
+        salary: Number(salary),
+        startDate,
+        endDate: status === 'pasif' ? endDate : undefined,
         initials,
         documentsOk,
         certExpiring,
@@ -187,7 +210,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-bold text-emerald-950 mb-1">Personel Türü</label>
               <select
@@ -201,28 +224,22 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-emerald-950 mb-1">Durum</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as PersonStatus)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                <option value="aktif">Aktif</option>
-                <option value="izinli">İzinli</option>
-                <option value="pasif">Pasif</option>
-              </select>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">Personel Durumu</label>
+              <button type="button" onClick={() => setStatus(status === 'pasif' ? 'aktif' : 'pasif')} className={`w-full px-3 py-2 rounded-lg text-sm font-bold border transition ${status === 'pasif' ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-emerald-50 text-emerald-700 border-emerald-300'}`}>
+                {status === 'pasif' ? 'Pasif' : 'Aktif'}
+              </button>
             </div>
             <div>
-              <label className="block text-xs font-bold text-emerald-950 mb-1">Havuz Durumu</label>
-              <select
-                value={poolStatus}
-                onChange={(e) => setPoolStatus(e.target.value as PoolStatus)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                <option value="gorevli">Görevli</option>
-                <option value="musait">Müsait</option>
-                <option value="havuzda">Havuzda</option>
-              </select>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">Aylık Maaş (₺) *</label>
+              <input type="number" min="0" step="0.01" value={salary} onChange={(e) => setSalary(e.target.value)} required placeholder="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">İşe Giriş Tarihi *</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">İşten Çıkış Tarihi {status === 'pasif' ? '*' : ''}</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required={status === 'pasif'} disabled={status !== 'pasif'} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:bg-slate-100" />
             </div>
           </div>
 
