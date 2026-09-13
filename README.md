@@ -4,44 +4,45 @@ Vinç kiralama ve saha operasyon komuta merkezi.
 
 **Slogan:** En derinden, en yükseklere
 
-## FAZ 0 — Komuta Dashboard ✅
-- Üst yatay menü
-- KPI kartları
-- Son hareketler, bekleyen onaylar
-- Aktif saha görevlendirmeleri tablosu
-- Filo durumu + devam durumu panelleri
-- Demo verisi ile çalışır
+**Canlı:** https://bizim-vinc.vercel.app/  
+**Repo:** https://github.com/sametatak9/bizim-vinc  
+**Supabase:** `jimywfjufmrpgnjynhkx`
 
-## FAZ 1 — Personel + Dijital Kart ✅
-- Personel listesi (arama + tür + durum filtresi)
-- KPI özeti (toplam, görevli, eksik evrak, dijital kart)
-- Satır tıklanınca dijital kart önizleme modalı
-- Demo personel verisi (`src/data/personnel.ts`)
-- Nav üzerinden `/personel` rotası aktif
+## Modüller
 
-## FAZ 2 — Onay Merkezi ✅
-- Bekleyen / onaylanan / reddedilen filtreleri
-- Tür filtresi (yoklama, mesai, izin, makbuz, yakıt…)
-- Onayla / Reddet aksiyonları (demo state)
-- Demo veri (`src/data/approvals.ts`)
-- Nav üzerinden `/onay` rotası aktif
-
-## Sonraki fazlar
-3. Filo
-4. Teklif → sözleşme → makbuz
-5. Admin + TV
+| Rota | Açıklama |
+|------|----------|
+| `/` | Komuta dashboard (KPI, harita, hareketler) |
+| `/personel` | Personel + havuz |
+| `/puantaj` | Yoklama / puantaj |
+| `/onay` | Onay merkezi |
+| `/filo` | Vinç filosu |
+| `/operator` | Operatör aksiyonları |
+| `/kart/:token` | Dijital kart (minimal, herkese açık alan) |
+| `/finans` | Finans |
+| `/cari` | Cari / müşteri |
+| `/makbuz` | İş makbuzu / fatura hattı |
+| `/admin` | Yönetim |
+| `/tv` | TV kiosk |
 
 ## Çalıştırma
 
 ```bash
 pnpm install
-pnpm --filter @workspace/bizim-vinc-erp run dev
+pnpm dev
 ```
 
-## Database
-Migration dosyaları: `supabase/migrations/`
+## Veritabanı
 
-Sırayla Supabase SQL Editor’da çalıştırın:
-1. `20260912_001_bizim_vinc_init.sql`
-2. `20260912_002_ops_contracts_quotes.sql`
-3. `20260912_003_claude_enhancements.sql`
+**Canonical migrations:** `/migrations` (`0002` … `0011`).  
+Ayrıntı: [`docs/DATABASE.md`](docs/DATABASE.md).
+
+Production güvenlik script’i (zorunlu):
+
+`migrations/0011_production_security_and_ops.sql` → Supabase SQL Editor’da bir kez çalıştırın.
+
+## Güvenlik notları
+
+- Client yalnızca **anon key** kullanır; service role yok.
+- TC kimlik: `src/lib/tcHash.ts` ile hash; düz metin gönderilmez.
+- RLS: aktif staff / founder-admin; `anon` tablo yetkileri revoke.

@@ -16,6 +16,8 @@ import {
   CheckSquare,
   Users,
   TrendingUp,
+  Tv,
+  MonitorPlay,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -46,6 +48,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   return (
     <main className="space-y-6 animate-in fade-in duration-150" id="dashboard-page">
+      {/* Canlı TV — üst menüden taşındı */}
+      <section className="bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm" aria-label="Canlı TV">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+              <MonitorPlay size={22} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-emerald-950">Canlı TV / Saha Kiosk</h2>
+              <p className="text-xs text-slate-500">Filo durumu, onaylar ve operasyon özeti — TV / büyük ekran için</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('/tv')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            <Tv size={16} />
+            Canlı TV Aç
+          </button>
+        </div>
+      </section>
+
       {/* Action Shortcut Bar */}
       <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -102,7 +127,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 6 Top KPIs in crisp light cards */}
+      {/* 6 Top KPIs */}
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" aria-label="Operasyonel Özet">
         <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-xs" id="kpi-revenue">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">Bugünkü Ciro</span>
@@ -147,9 +172,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Main Split Layout: Left Map, Right Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Interactive Crane Map */}
         <section className="lg:col-span-8 flex flex-col">
           <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
             <header className="p-4 border-b border-emerald-100 flex items-center justify-between gap-3 bg-emerald-50/40">
@@ -165,7 +188,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   Marmara & Ege Şantiye Noktaları, Araç Durumları ve Operatör Konumları
                 </div>
               </div>
-
               <button
                 onClick={handleAddNewCrane}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
@@ -173,17 +195,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 <Plus size={14} /> Yeni Vinç
               </button>
             </header>
-
-            {/* Map component */}
             <div className="flex-1 min-h-[500px]">
               <CraneMap cranes={cranes} onSelectCrane={handleOpenCrane} />
             </div>
           </div>
         </section>
 
-        {/* Right Column: Financial & Operational Side Stream */}
         <aside className="lg:col-span-4 space-y-4">
-          {/* Kesilen Makbuzlar */}
           <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden">
             <header className="p-3.5 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
@@ -204,9 +222,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                    <span>
-                      {r.craneCode} · {r.site}
-                    </span>
+                    <span>{r.craneCode} · {r.site}</span>
                     <span className="font-mono text-[10px]">{r.receiptNo}</span>
                   </div>
                 </li>
@@ -214,7 +230,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
-          {/* Biriken Makbuzlar (Uyarı) */}
           <div className="bg-white border border-emerald-200 rounded-2xl shadow-xs overflow-hidden">
             <header className="p-3.5 border-b border-emerald-200 flex items-center justify-between bg-emerald-50/60">
               <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
@@ -235,42 +250,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                    <span>
-                      {r.craneCode} · {r.site}
-                    </span>
-                    <span className="text-emerald-700 font-medium">
-                      {r.daysPending} gündür kesilmedi
-                    </span>
+                    <span>{r.craneCode} · {r.site}</span>
+                    <span className="text-emerald-700 font-medium">{r.daysPending} gündür kesilmedi</span>
                   </div>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Yakıt Fişleri */}
           <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden">
             <header className="p-3.5 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                 <Fuel size={16} className="text-emerald-700" />
                 <h3>Yakıt Fişleri</h3>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                Güncel
-              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Güncel</span>
             </header>
             <ul className="divide-y divide-emerald-50 text-xs">
               {fuelExpenses.map((e) => (
                 <li key={e.id} className="p-3 hover:bg-emerald-50/30 transition">
                   <div className="flex items-center justify-between">
                     <strong className="text-slate-900">{e.stationOrSupplier}</strong>
-                    <span className="font-mono font-bold text-slate-900">
-                      {e.amount.toLocaleString('tr-TR')} ₺
-                    </span>
+                    <span className="font-mono font-bold text-slate-900">{e.amount.toLocaleString('tr-TR')} ₺</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                    <span>
-                      {e.craneCode} · {e.personName}
-                    </span>
+                    <span>{e.craneCode} · {e.personName}</span>
                     <span>{e.detail}</span>
                   </div>
                 </li>
@@ -278,16 +282,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             </ul>
           </div>
 
-          {/* Vinç ve Operatör Hareket Geçmişi */}
           <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden">
             <header className="p-3.5 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                 <Clock size={16} className="text-emerald-700" />
                 <h3>Vinç & Operatör Hareketleri</h3>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                Canlı Akış
-              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Canlı Akış</span>
             </header>
             <ul className="divide-y divide-emerald-50 text-xs">
               {cranes
@@ -296,16 +297,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 .map((c) => (
                   <li key={c.id} className="p-3 hover:bg-emerald-50/30 transition">
                     <div className="flex items-center justify-between">
-                      <strong className="text-emerald-950 font-bold">
-                        {c.code} — {c.operator}
-                      </strong>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-semibold">
-                        GÖREVDE
-                      </span>
+                      <strong className="text-emerald-950 font-bold">{c.code} — {c.operator}</strong>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-semibold">GÖREVDE</span>
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-1">
-                      {c.site} ({c.type})
-                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1">{c.site} ({c.type})</div>
                   </li>
                 ))}
             </ul>
@@ -313,7 +308,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </aside>
       </div>
 
-      {/* Crane Edit/View Modal */}
       <CraneModal
         crane={selectedCrane}
         isOpen={isCraneModalOpen}

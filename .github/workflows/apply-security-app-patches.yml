@@ -1,0 +1,51 @@
+name: apply-security-app-patches
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/apply-security-app-patches.yml'
+      - 'src/lib/tcHash.ts'
+      - 'src/pages/DigitalCardPage.tsx'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: grok-ui-db-20260913
+      - name: Sync artifacts + patch store TC hash
+        run: |
+          set -e
+          mkdir -p artifacts/bizim-vinc-erp/src/lib artifacts/bizim-vinc-erp/src/pages
+          cp -f src/lib/tcHash.ts artifacts/bizim-vinc-erp/src/lib/tcHash.ts
+          cp -f src/pages/DigitalCardPage.tsx artifacts/bizim-vinc-erp/src/pages/DigitalCardPage.tsx
+          python3 << 'PY'
+          from pathlib import Path
+          for store_path in ["src/lib/store.tsx", "artifacts/bizim-vinc-erp/src/lib/store.tsx"]:
+              p = Path(store_path)
+              if not p.exists():
+                  continue
+              t = p.read_text()
+              if "hashTcIdentity" in t:
+                  print(store_path, "already patched")
+                  continue
+              old_imp = "import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';"
+              if old_imp in t:
+                  t = t.replace(old_imp, old_imp + "\nimport { hashTcIdentity } from './tcHash';", 1)
+              marker = "  const requestMembership = async ("
+              idx = t.find(marker)
+              if idx < 0:
+                  p.write_text(t); continue
+              brace = t.find("{", idx)
+              inject = "\n    // KVKK: never send plaintext TC\n    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;\n"
+              t = t[: brace + 1] + inject + t[brace + 1 :]
+              p.write_text(t)
+              print("patched", store_path)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "fix(security): TC hash in membership + sync digital card to artifacts"
+          git push origin HEAD:grok-ui-db-20260913

@@ -7,7 +7,6 @@ import {
   Smartphone,
   LayoutDashboard,
   DollarSign,
-  Tv,
   Database,
   Menu,
   X,
@@ -69,14 +68,13 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Operatör Paneli', path: '/operator', icon: Smartphone },
     { label: 'Finans', path: '/finans', icon: DollarSign },
     { label: 'Yönetim', path: '/admin', icon: Shield },
-    { label: 'Canlı TV', path: '/tv', icon: Tv },
   ];
   const visibleNavItems = currentUser.role === 'operator'
     ? navItems.filter((item) => item.path === '/operator')
     : navItems;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 text-slate-800 shadow-xs">
+    <header className="sticky top-0 z-50 bg-white border-b-2 border-emerald-200 text-slate-800 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Brand with green tower crane + Slogan */}
         <div
@@ -85,7 +83,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 shadow-xs">
             <svg viewBox="0 0 64 64" width="28" height="28" fill="none">
-              {/* Crane base */}
               <path
                 d="M20 54h24M24 54l4-8h8l4 8M28 46h8"
                 stroke="#15803D"
@@ -93,41 +90,35 @@ export const Header: React.FC<HeaderProps> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Vertical Mast / Tower */}
               <path
                 d="M32 46V12M28 16h8M28 24h8M28 32h8M28 40h8"
                 stroke="#15803D"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               />
-              {/* Cross bracing in mast */}
               <path
                 d="M28 16l8 8M36 16l-8 8M28 24l8 8M36 24l-8 8M28 32l8 8M36 32l-8 8"
                 stroke="#22C55E"
                 strokeWidth="1.6"
               />
-              {/* Horizontal Jib & Counter Jib */}
               <path
                 d="M12 14h42M12 14v4M48 14v10"
                 stroke="#15803D"
                 strokeWidth="3"
                 strokeLinecap="round"
               />
-              {/* Tie ropes / cables */}
               <path
                 d="M32 6l-20 8M32 6l16 8M32 6l22 8"
                 stroke="#22C55E"
                 strokeWidth="1.8"
                 strokeLinecap="round"
               />
-              {/* Crane Hook */}
               <path
                 d="M48 24v12M48 36c-2 0-3.5 1.5-3.5 3.5 0 2 1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5"
                 stroke="#15803D"
                 strokeWidth="2"
                 strokeLinecap="round"
               />
-              {/* Operator Cab */}
               <rect x="33" y="15" width="5" height="6" rx="1" fill="#DCFCE7" stroke="#15803D" strokeWidth="1.5" />
             </svg>
           </div>
@@ -144,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation - Desktop (Clean, Light, Horizontal) */}
+        {/* Navigation - Desktop */}
         <nav className="hidden 2xl:flex items-center gap-1" aria-label="Ana menü">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
@@ -171,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
 
-        {/* Navigation - Medium & Large Desktops (Top priority items + Dropdown) */}
+        {/* Navigation - Medium */}
         <nav className="hidden md:flex 2xl:hidden items-center gap-1" aria-label="Kompakt menü">
           {visibleNavItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
@@ -196,7 +187,6 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             );
           })}
-          {/* Diğer Dropdown */}
           <div className="relative">
             <button
               onClick={() => setMoreMenuOpen(!moreMenuOpen)}
@@ -240,9 +230,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </nav>
 
-        {/* Actions / Right Controls */}
+        {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Notifications Popover */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -256,8 +245,6 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
-
-            {/* Notification Dropdown */}
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white border border-emerald-100 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between pb-2 border-b border-emerald-100 mb-2">
@@ -269,7 +256,6 @@ export const Header: React.FC<HeaderProps> = ({
                     Kapat
                   </button>
                 </div>
-
                 <div className="max-h-64 overflow-y-auto space-y-2">
                   {notifications.length === 0 ? (
                     <div className="text-center py-4 text-xs text-slate-400">Henüz bildirim yok.</div>
@@ -299,7 +285,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Supabase Status Pill */}
           <button
             onClick={onOpenSupabaseModal}
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
@@ -318,7 +303,6 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </button>
 
-          {/* Current User & Role Pill -> Opens AuthModal */}
           <button
             onClick={onOpenAuthModal}
             className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-950 border border-emerald-200 transition"
@@ -334,7 +318,6 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
           </button>
 
-          {/* Mobile Hamburger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 rounded-xl bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200"
@@ -345,10 +328,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-emerald-100 px-4 py-4 space-y-2 shadow-lg">
-          {/* Quick Database & User buttons */}
           <div className="grid grid-cols-2 gap-2 pb-2 border-b border-emerald-100">
             <button
               onClick={() => {
