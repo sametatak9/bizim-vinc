@@ -101,25 +101,43 @@ ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- Anonim / Yetkili okuma ve yazma politikaları (ERP kullanımına izin)
+DROP POLICY IF EXISTS "Allow public read access on personnel" ON public.personnel;
+DROP POLICY IF EXISTS "Allow public insert access on personnel" ON public.personnel;
+DROP POLICY IF EXISTS "Allow public update access on personnel" ON public.personnel;
+DROP POLICY IF EXISTS "Allow public delete access on personnel" ON public.personnel;
 CREATE POLICY "Allow public read access on personnel" ON public.personnel FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access on personnel" ON public.personnel FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access on personnel" ON public.personnel FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete access on personnel" ON public.personnel FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on cranes" ON public.cranes;
+DROP POLICY IF EXISTS "Allow public insert access on cranes" ON public.cranes;
+DROP POLICY IF EXISTS "Allow public update access on cranes" ON public.cranes;
+DROP POLICY IF EXISTS "Allow public delete access on cranes" ON public.cranes;
 CREATE POLICY "Allow public read access on cranes" ON public.cranes FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access on cranes" ON public.cranes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access on cranes" ON public.cranes FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete access on cranes" ON public.cranes FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on approvals" ON public.approvals;
+DROP POLICY IF EXISTS "Allow public insert access on approvals" ON public.approvals;
+DROP POLICY IF EXISTS "Allow public update access on approvals" ON public.approvals;
+DROP POLICY IF EXISTS "Allow public delete access on approvals" ON public.approvals;
 CREATE POLICY "Allow public read access on approvals" ON public.approvals FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access on approvals" ON public.approvals FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access on approvals" ON public.approvals FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete access on approvals" ON public.approvals FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on receipts" ON public.receipts;
+DROP POLICY IF EXISTS "Allow public insert access on receipts" ON public.receipts;
+DROP POLICY IF EXISTS "Allow public update access on receipts" ON public.receipts;
 CREATE POLICY "Allow public read access on receipts" ON public.receipts FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access on receipts" ON public.receipts FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access on receipts" ON public.receipts FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Allow public insert access on expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Allow public update access on expenses" ON public.expenses;
 CREATE POLICY "Allow public read access on expenses" ON public.expenses FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access on expenses" ON public.expenses FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access on expenses" ON public.expenses FOR UPDATE USING (true);

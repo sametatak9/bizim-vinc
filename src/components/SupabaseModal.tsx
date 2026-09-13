@@ -8,7 +8,7 @@ interface SupabaseModalProps {
   onClose: () => void;
 }
 
-const SQL_MIGRATION_SNIPPET = `-- BİZİM VİNÇ ERP - SUPABASE SQL SCHEMA
+const SQL_MIGRATION_SNIPPET = `-- BİZİM VİNÇ ERP - SUPABASE SQL SCHEMA (Tam Kurulum)
 CREATE TABLE IF NOT EXISTS public.personnel (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     employee_no TEXT UNIQUE NOT NULL,
@@ -75,7 +75,14 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     person_name TEXT,
     station_or_supplier TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
-);`;
+);
+
+-- RLS İzinleri (ERP'nin veri yazabilmesi için)
+ALTER TABLE public.personnel DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cranes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.approvals DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;`;
 
 export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose }) => {
   const { isSupabaseOnline, showToast } = useERP();
