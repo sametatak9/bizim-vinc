@@ -560,6 +560,19 @@ export interface PayrollItem {
   createdAt?: string;
 }
 
+export interface PayrollPayment {
+  id: string;
+  payrollItemId: string;
+  payrollRunId: string;
+  personnelId: string;
+  amount: number;
+  paymentMethod: 'banka' | 'nakit';
+  paymentDate: string;
+  note?: string;
+  paidBy?: string;
+  createdAt: string;
+}
+
 export interface Expense {
   id: string;
   category: 'yakit' | 'masraf';

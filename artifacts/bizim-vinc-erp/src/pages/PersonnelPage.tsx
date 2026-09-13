@@ -46,6 +46,8 @@ export const PersonnelPage: React.FC = () => {
     leaves,
     approvals,
     jobReceipts,
+    payrollPayments,
+    addPayrollPayment,
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<'list' | 'card' | 'attendance' | 'payroll' | 'payments'>('list');
@@ -66,6 +68,7 @@ export const PersonnelPage: React.FC = () => {
 
   const [isCalculating, setIsCalculating] = useState(false);
   const [cardPersonId, setCardPersonId] = useState('');
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
 
   const filtered = personnel.filter((p) => {
     const matchesSearch =
@@ -659,12 +662,13 @@ export const PersonnelPage: React.FC = () => {
                     <th className="p-3 text-right">Avans Kesintisi</th>
                     <th className="p-3 text-right">Net Ödenecek</th>
                     <th className="p-3 text-center">Banka / IBAN</th>
+                    <th className="p-3 text-right">Parçalı Ödeme / Bakiye</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-emerald-50">
                   {currentRunItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                      <td colSpan={9} className="p-8 text-center text-slate-400">
                         Bu ay için henüz maaş hesaplaması yapılmadı. Yukarıdaki butondan &quot;Maaşları Otomatik Hesapla&quot; butonuna tıklayınız.
                       </td>
                     </tr>
@@ -688,6 +692,9 @@ export const PersonnelPage: React.FC = () => {
                         </td>
                         <td className="p-3 text-center font-mono text-[10px] text-slate-500">
                           {item.iban || 'Nakit Ödeme'}
+                        </td>
+                        <td className="p-3 text-right">
+                          {(() => { const paid = payrollPayments.filter((payment) => payment.payrollItemId === item.id).reduce((sum, payment) => sum + payment.amount, 0); const remaining = Math.max(0, item.netSalary - paid); return <div className="space-y-1"><div className="text-[10px] text-slate-500">Ödenen ₺{paid.toLocaleString('tr-TR')} · Kalan <strong>₺{remaining.toLocaleString('tr-TR')}</strong></div>{remaining > 0 && <div className="flex gap-1"><input type="number" min="0.01" max={remaining} step="0.01" value={paymentAmounts[item.id] || ''} onChange={(e) => setPaymentAmounts((prev) => ({ ...prev, [item.id]: e.target.value }))} placeholder="Tutar" className="w-20 px-1.5 py-1 border border-emerald-200 rounded text-[10px]" /><button onClick={async () => { await addPayrollPayment(item.id, Number(paymentAmounts[item.id])); setPaymentAmounts((prev) => ({ ...prev, [item.id]: '' })); }} className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Öde</button></div>}</div>; })()}
                         </td>
                       </tr>
                     ))

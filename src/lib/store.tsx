@@ -32,6 +32,7 @@ import {
   PayrollRun,
   PayrollItem,
   PayrollStatus,
+  PayrollPayment,
   PersonnelDocument,
   PersonnelDocumentType,
   PersonnelType,
@@ -113,6 +114,8 @@ interface ERPContextType {
   calculatePayroll: (month: string) => Promise<PayrollRun>;
   approvePayrollRun: (runId: string) => Promise<void>;
   payPayrollRun: (runId: string, paymentMethod?: 'banka' | 'nakit') => Promise<void>;
+  payrollPayments: PayrollPayment[];
+  addPayrollPayment: (payrollItemId: string, amount: number, paymentMethod?: 'banka' | 'nakit', note?: string) => Promise<void>;
 
   // Filo (Vinçler)
   cranes: Crane[];
@@ -254,6 +257,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadStored('bv_personnel_documents', [])
   );
   const [personnelTypes, setPersonnelTypes] = useState<PersonnelType[]>(() => loadStored('bv_personnel_types', []));
+  const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>(() => loadStored('bv_payroll_payments', []));
   const [cranes, setCranes] = useState<Crane[]>(() =>
     loadStored('bv_cranes', [])
   );
@@ -482,6 +486,12 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const mappedTypes: PersonnelType[] = (typeData || []).map((d: any) => ({ id: d.id, name: d.name, isActive: Boolean(d.is_active) }));
       setPersonnelTypes(mappedTypes);
       saveStored('bv_personnel_types', mappedTypes);
+
+      const { data: payrollPaymentData, error: payrollPaymentError } = await sb.from('payroll_payments').select('id, payroll_item_id, payroll_run_id, personnel_id, amount, payment_method, payment_date, note, paid_by, created_at').order('created_at', { ascending: false });
+      if (payrollPaymentError) throw payrollPaymentError;
+      const mappedPayrollPayments: PayrollPayment[] = (payrollPaymentData || []).map((d: any) => ({ id: d.id, payrollItemId: d.payroll_item_id, payrollRunId: d.payroll_run_id, personnelId: d.personnel_id, amount: Number(d.amount), paymentMethod: d.payment_method, paymentDate: d.payment_date, note: d.note, paidBy: d.paid_by, createdAt: d.created_at }));
+      setPayrollPayments(mappedPayrollPayments);
+      saveStored('bv_payroll_payments', mappedPayrollPayments);
 
       // 2. Vinçler
       const { data: cData, error: cranesError } = await sb.from('cranes').select('*');
@@ -2397,6 +2407,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`✓ Maaşlar Ödendi (₺${run.totalNetSalary.toLocaleString('tr-TR')})`);
   };
 
+  const addPayrollPayment = async (payrollItemId: string, amount: number, paymentMethod: 'banka' | 'nakit' = 'banka', note?: string) => {
+    if (!['founder', 'admin', 'muhasebe', 'yonetici'].includes(currentUser.role)) throw new Error('Maaş ödemesi için yetkiniz yok.');
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Ödeme tutarı sıfırdan büyük olmalıdır.');
+    const item = payrollItems.find((row) => row.id === payrollItemId);
+    if (!item) throw new Error('Bordro kalemi bulunamadı.');
+    const paid = payrollPayments.filter((payment) => payment.payrollItemId === payrollItemId).reduce((sum, payment) => sum + payment.amount, 0);
+    const remaining = item.netSalary - paid;
+    if (amount > remaining + 0.005) throw new Error(`Ödeme tutarı kalan bakiyeyi aşamaz. Kalan: ₺${remaining.toLocaleString('tr-TR')}`);
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { data, error } = await sb.from('payroll_payments').insert({ payroll_item_id: payrollItemId, payroll_run_id: item.payrollRunId || item.runId, personnel_id: item.personId || item.personnelId, amount, payment_method: paymentMethod, note, paid_by: currentUser.id }).select('id, payroll_item_id, payroll_run_id, personnel_id, amount, payment_method, payment_date, note, paid_by, created_at').single();
+    if (error) throw error;
+    const payment: PayrollPayment = { id: data.id, payrollItemId: data.payroll_item_id, payrollRunId: data.payroll_run_id, personnelId: data.personnel_id, amount: Number(data.amount), paymentMethod: data.payment_method, paymentDate: data.payment_date, note: data.note, paidBy: data.paid_by, createdAt: data.created_at };
+    setPayrollPayments((prev) => { const next = [payment, ...prev]; saveStored('bv_payroll_payments', next); return next; });
+    logAction('MAAS_PARCALI_ODEME', 'Maaş', payrollItemId, `₺${amount.toFixed(2)} ${paymentMethod} ödeme kaydedildi.`);
+    showToast(`✓ ₺${amount.toLocaleString('tr-TR')} parçalı maaş ödemesi kaydedildi.`);
+  };
+
   // Veritabanı Yeniden Bağlantı
   const retryDbConnection = async () => {
     setDbError(null);
@@ -2532,6 +2560,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markPaymentPaid,
         payrollRuns,
         payrollItems,
+        payrollPayments,
+        addPayrollPayment,
         calculatePayroll,
         approvePayrollRun,
         payPayrollRun,
