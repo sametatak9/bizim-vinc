@@ -22,6 +22,7 @@ export interface UserProfile {
   department?: string;
   title?: string;
   personnelId?: string; // linked to Person
+  avatarUrl?: string;
   status: 'aktif' | 'pasif';
   lastSignIn?: string;
   createdAt: string;

@@ -20,6 +20,7 @@ import {
   Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { isEmployeeSelfServiceRole } from '../types';
+import { ProfilePanel } from './ProfilePanel';
 
 interface HeaderProps {
   currentPath: string;
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -76,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
     : navItems;
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b-2 border-emerald-200 text-slate-800 shadow-md">
+    <header className="sticky top-0 z-50 bg-slate-950 border-b-2 border-amber-500/70 text-slate-100 shadow-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Brand with green tower crane + Slogan */}
         <div
@@ -125,13 +127,13 @@ export const Header: React.FC<HeaderProps> = ({
             </svg>
           </div>
           <div>
-            <div className="text-base font-black tracking-tight text-emerald-950 flex items-center gap-1.5 leading-none">
+            <div className="text-base font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
               <span>BİZİM VİNÇ</span>
               <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono font-bold rounded-md">
                 ERP
               </span>
             </div>
-            <div className="text-[11px] text-emerald-700 font-medium tracking-tight mt-0.5 hidden sm:block">
+            <div className="text-[11px] text-slate-400 font-medium tracking-tight mt-0.5 hidden sm:block">
               En derinden, en yükseklere
             </div>
           </div>
@@ -306,7 +308,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={onOpenAuthModal}
+            onClick={() => setProfileOpen(true)}
             className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-950 border border-emerald-200 transition"
             title="Hesap ve Rol Değiştir"
           >
@@ -388,6 +390,7 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </div>
       )}
+      {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} />}
     </header>
   );
 };

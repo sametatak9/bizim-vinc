@@ -26,6 +26,7 @@ import {
   Building2,
   Check,
   X,
+  Download,
 } from 'lucide-react';
 
 export const PersonnelPage: React.FC = () => {
@@ -141,6 +142,13 @@ export const PersonnelPage: React.FC = () => {
   ].sort((a, b) => b.date.localeCompare(a.date)) : [];
 
   const printPersonnelCard = () => window.print();
+  const exportPersonnelExcel = () => {
+    const rows = filtered.map((p) => [p.employeeNo, p.fullName, p.title, p.phone, p.status, p.salary ?? 0, p.startDate || '', p.endDate || '']);
+    const content = ['Sicil\tAd Soyad\tGörev\tTelefon\tDurum\tMaaş\tİşe Giriş\tÇıkış', ...rows.map((r) => r.join('\t'))].join('\n');
+    const blob = new Blob([`\ufeff${content}`], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `bizim-vinc-personel-${new Date().toISOString().slice(0,10)}.xls`; a.click(); URL.revokeObjectURL(url);
+  };
+  const printPersonnelReport = () => { setActiveTab('list'); setTimeout(() => window.print(), 0); };
 
   return (
     <main className="space-y-6 animate-in fade-in duration-150" id="personnel-page">
@@ -286,6 +294,8 @@ export const PersonnelPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+              <button type="button" onClick={exportPersonnelExcel} className="px-3 py-2 rounded-xl bg-slate-900 text-amber-300 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"><Download size={13} /> Excel</button>
+              <button type="button" onClick={printPersonnelReport} className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"><Printer size={13} /> PDF / Yazdır</button>
             </div>
           </div>
 
@@ -343,7 +353,7 @@ export const PersonnelPage: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                      {(person.salary || 45000).toLocaleString('tr-TR')} ₺
+                      {(person.salary || 0).toLocaleString('tr-TR')} ₺
                     </td>
 
                     <td className="py-3 px-4">
