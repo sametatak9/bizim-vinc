@@ -19,6 +19,7 @@ import {
   Building2,
   Receipt as ReceiptIcon,
 } from 'lucide-react';
+import { isEmployeeSelfServiceRole } from '../types';
 
 interface HeaderProps {
   currentPath: string;
@@ -65,11 +66,11 @@ export const Header: React.FC<HeaderProps> = ({
       badge: stats.pendingApprovalsCount > 0 ? stats.pendingApprovalsCount : undefined,
     },
     { label: 'Filo', path: '/filo', icon: Truck },
-    { label: 'Operatör Paneli', path: '/operator', icon: Smartphone },
+    { label: 'Personel Talepleri', path: '/operator', icon: Smartphone },
     { label: 'Finans', path: '/finans', icon: DollarSign },
     { label: 'Yönetim', path: '/admin', icon: Shield },
   ];
-  const visibleNavItems = currentUser.role === 'operator'
+  const visibleNavItems = isEmployeeSelfServiceRole(currentUser.role)
     ? navItems.filter((item) => item.path === '/operator')
     : navItems;
 

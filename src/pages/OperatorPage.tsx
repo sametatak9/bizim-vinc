@@ -209,7 +209,7 @@ export const OperatorPage: React.FC = () => {
           </div>
           <h1 className="text-lg font-bold text-emerald-950">Personel kartın bağlı değil</h1>
           <p className="text-sm text-emerald-800/80 leading-relaxed">
-            Operatör paneli için hesabınızın bir personel kaydına bağlanması gerekir. Yönetici veya kurucu,
+            Personel talepleri için hesabınızın bir personel kaydına bağlanması gerekir. Yönetici veya kurucu,
             Admin → üyelik / personel eşleştirmesinden sizi bağlamalı.
           </p>
           <p className="text-xs text-slate-500">
