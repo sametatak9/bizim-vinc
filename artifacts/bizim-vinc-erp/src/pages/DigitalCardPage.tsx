@@ -18,6 +18,7 @@ export const DigitalCardPage: React.FC<DigitalCardPageProps> = ({ token, onNavig
       p.employeeNo.toLowerCase() === token.toLowerCase() ||
       p.id === token
   );
+  // NEVER fall back to personnel[0]
 
   const cardUrl = typeof window !== 'undefined' ? window.location.href : '';
 
