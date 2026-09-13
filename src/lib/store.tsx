@@ -1556,6 +1556,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Yoklama remote kaydedilemedi.');
+    const { error: attendanceError } = await sb.from('attendance_records').upsert({
+      id: newRecord.id,
+      person_id: personId,
+      person_name: personName,
+      date,
+      check_in_time: newRecord.checkInTime,
+      check_out_time: newRecord.checkOutTime,
+      status,
+      note,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'person_id,date' });
+    if (attendanceError) throw attendanceError;
+
     setAttendance((prev) => {
       const filtered = prev.filter((a) => !(a.personId === personId && a.date === date));
       const next = [newRecord, ...filtered];
@@ -1659,6 +1674,14 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
+
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Mesai remote kaydedilemedi.');
+    const { error: overtimeError } = await sb.from('overtimes').insert({
+      id, person_id: personId, person_name: personName, date, start_time: startTime, end_time: endTime,
+      total_hours: hours, overtime_type: type, description, status: 'pending',
+    });
+    if (overtimeError) throw overtimeError;
 
     setOvertimes((prev) => {
       const next = [newOvertime, ...prev];
