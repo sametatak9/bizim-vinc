@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm --prefix artifacts/bizim-vinc-erp install --legacy-peer-deps",
+  "installCommand": "npm --prefix artifacts/bizim-vinc-erp install --legacy-peer-deps --ignore-scripts",
   "buildCommand": "npm --prefix artifacts/bizim-vinc-erp run build",
   "outputDirectory": "artifacts/bizim-vinc-erp/dist/public",
   "framework": null,
