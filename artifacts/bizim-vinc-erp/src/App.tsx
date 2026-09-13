@@ -13,7 +13,9 @@ import { DigitalCardPage } from './pages/DigitalCardPage';
 import { FinancePage } from './pages/FinancePage';
 import { AdminPage } from './pages/AdminPage';
 import { TvBoardPage } from './pages/TvBoardPage';
-import { CheckCircle2 } from 'lucide-react';
+import { InvoiceReceiptPage } from './pages/InvoiceReceiptPage';
+import { CariPage } from './pages/CariPage';
+import { CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
 
 function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -21,7 +23,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage } = useERP();
+  const { toastMessage, dbError, refreshFromDb } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -54,11 +56,11 @@ function AppContent() {
   // Route: /tv (Full-screen kiosk mode)
   if (currentPath === '/tv') {
     return (
-      <div className="bg-neutral-950 min-h-screen text-neutral-100">
+      <div className="bg-slate-900 min-h-screen text-slate-100">
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => navigate('/')}
-            className="px-3.5 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-200 rounded-xl text-xs font-semibold backdrop-blur-sm transition border border-neutral-700 shadow-lg"
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold backdrop-blur-xs transition border border-slate-600 shadow-lg"
           >
             ← ERP Paneline Dön
           </button>
@@ -69,7 +71,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-amber-500 selection:text-neutral-950">
+    <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
       {/* Topbar navigation */}
       <Header
         currentPath={currentPath}
@@ -78,9 +80,40 @@ function AppContent() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
+      {/* Database Error Banner (Requirement: No silent fallback to localStorage for DB errors; must show net error/retry) */}
+      {dbError && (
+        <div className="bg-rose-50 border-b border-rose-200 text-rose-900 px-4 py-2.5 shadow-2xs">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-rose-600 shrink-0" size={16} />
+              <span>
+                <strong>Veritabanı Uyarısı:</strong> {dbError}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => refreshFromDb()}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition"
+              >
+                <RefreshCw size={12} />
+                <span>Yeniden Dene</span>
+              </button>
+              <button
+                onClick={() => setIsSupabaseModalOpen(true)}
+                className="underline hover:text-rose-950 font-semibold"
+              >
+                Bağlantı Ayarları
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Views */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {currentPath === '/' && <DashboardPage onNavigate={navigate} />}
+        {(currentPath === '/faturalar' || currentPath === '/makbuz-fatura') && <InvoiceReceiptPage />}
+        {(currentPath === '/cariler' || currentPath === '/cari') && <CariPage />}
         {currentPath === '/personel' && <PersonnelPage />}
         {currentPath === '/puantaj' && <PuantajPage />}
         {currentPath === '/onay' && <ApprovalPage />}
@@ -105,8 +138,8 @@ function AppContent() {
       {/* Global Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-5 duration-200">
-          <div className="bg-neutral-900 border border-amber-500/40 text-neutral-100 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
-            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+          <div className="bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>
         </div>

@@ -76,6 +76,8 @@ export type ApprovalKind =
   | 'mesai'
   | 'avans'
   | 'makbuz'
+  | 'makbuz_onay'
+  | 'uyelik_onay'
   | 'izin'
   | 'yakit'
   | 'genel'
@@ -257,6 +259,217 @@ export interface Receipt {
   daysPending?: number;
   createdAt: string;
   updatedAt?: string;
+}
+
+// -------------------------------------------------------------
+// CARİ (CUSTOMERS) & ŞANTİYELER
+// -------------------------------------------------------------
+export interface Customer {
+  id: string;
+  title: string; // Ünvan
+  vknTckn?: string; // VKN / TCKN
+  authorizedPerson?: string; // Yetkili kişi
+  phone: string;
+  email?: string;
+  address?: string;
+  taxOffice?: string;
+  balance: number; // Cari Bakiye (Pozitif: Alacaklıyız, Negatif: Borçluyuz)
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Site {
+  id: string;
+  name: string;
+  customerId?: string;
+  customerName?: string;
+  location?: string;
+  contactPerson?: string;
+  phone?: string;
+  status: 'aktif' | 'tamamlandi' | 'askida';
+  createdAt: string;
+}
+
+// -------------------------------------------------------------
+// MAKBUZ (JOB RECEIPT) & FATURA (INVOICE) HATTI
+// -------------------------------------------------------------
+export type JobReceiptStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+
+export interface JobReceiptLine {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface JobReceipt {
+  id: string;
+  receiptNo: string; // e.g. MB-2026-0042
+  customerId: string;
+  customerName: string;
+  siteId?: string;
+  siteName?: string;
+  craneCode: string;
+  operatorId?: string;
+  operatorName: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string; // HH:mm
+  workingHours?: number;
+  description?: string;
+  lines?: JobReceiptLine[];
+  amount: number;
+  status: JobReceiptStatus;
+  invoiced: boolean;
+  invoiceId?: string;
+  invoiceNo?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'partial' | 'cancelled';
+
+export interface Invoice {
+  id: string;
+  invoiceNo: string; // e.g. FT-2026-0015
+  customerId: string;
+  customerName: string;
+  receiptIds: string[]; // Bağlı makbuz ID'leri
+  issueDate: string;
+  dueDate: string;
+  subtotal: number;
+  taxRate: number; // e.g. 20
+  taxAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  status: InvoiceStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// -------------------------------------------------------------
+// TAHSİLATLAR (COLLECTIONS) & ÖDEMELER (PAYMENTS)
+// -------------------------------------------------------------
+export interface Collection {
+  id: string;
+  customerId: string;
+  customerName: string;
+  invoiceId?: string;
+  invoiceNo?: string;
+  amount: number;
+  dueDate?: string;
+  date: string;
+  paymentMethod: 'havale' | 'nakit' | 'cek' | 'kredi_karti';
+  status: 'bekliyor' | 'tahsil_edildi' | 'iptal';
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  recipientType: 'personel' | 'tedarikci' | 'diger';
+  recipientId?: string;
+  recipientName: string;
+  category: 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'diger';
+  amount: number;
+  dueDate: string;
+  paidDate?: string;
+  paymentDate?: string;
+  paymentMethod?: 'havale' | 'nakit' | 'kredi_karti';
+  status: 'bekliyor' | 'odendi' | 'iptal';
+  payrollItemId?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+// -------------------------------------------------------------
+// ÜYELİK & PERSONEL EŞLEŞTİRME
+// -------------------------------------------------------------
+export type MembershipStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Membership {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userFullName: string;
+  requestedRole: AppRole;
+  personnelId?: string;
+  matchedPersonnelName?: string;
+  tcHashOrNo?: string;
+  status: MembershipStatus;
+  approvalRequestId?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// -------------------------------------------------------------
+// MAAŞ HESAPLAMA & BORDRO (PAYROLL)
+// -------------------------------------------------------------
+export type PayrollStatus = 'draft' | 'approved' | 'paid';
+
+export interface PayrollRun {
+  id: string;
+  month: string; // YYYY-MM
+  totalPersons?: number;
+  personCount?: number;
+  totalGross?: number;
+  totalBaseSalary?: number;
+  totalNet?: number;
+  totalNetSalary?: number;
+  totalOvertimePay: number;
+  totalAdvancesDeducted?: number;
+  status: PayrollStatus;
+  calculatedAt?: string;
+  createdAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  paidAt?: string;
+  paymentDate?: string;
+  paymentMethod?: 'banka' | 'nakit';
+  paidBy?: string;
+}
+
+export interface PayrollItem {
+  id: string;
+  runId?: string;
+  payrollRunId?: string;
+  month?: string;
+  personId?: string;
+  personnelId?: string;
+  personName?: string;
+  personnelName?: string;
+  employeeNo?: string;
+  roleKind?: string;
+  title?: string;
+  iban?: string;
+  baseSalary: number;
+  workDays?: number;
+  normalDays?: number;
+  normalHours?: number;
+  overtimeHours: number;
+  overtimePay: number;
+  bonus?: number;
+  advancesDeduction: number;
+  otherDeductions?: number;
+  netSalary: number;
+  status: PayrollStatus;
+  paymentMethod?: 'banka' | 'nakit';
+  paidAt?: string;
+  notes?: string;
+  createdAt?: string;
 }
 
 export interface Expense {

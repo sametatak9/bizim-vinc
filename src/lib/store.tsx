@@ -18,6 +18,18 @@ import {
   PuantajPeriodLock,
   AuditLog,
   NotificationItem,
+  Customer,
+  Site,
+  JobReceipt,
+  JobReceiptStatus,
+  Invoice,
+  InvoiceStatus,
+  Collection,
+  Payment,
+  Membership,
+  PayrollRun,
+  PayrollItem,
+  PayrollStatus,
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 
@@ -38,6 +50,45 @@ interface ERPContextType {
   addPerson: (person: Omit<Person, 'id'>) => Promise<void>;
   updatePerson: (id: string, updates: Partial<Person>) => Promise<void>;
   deletePerson: (id: string, soft?: boolean) => Promise<void>;
+
+  // Üyelik & Eşleştirme
+  memberships: Membership[];
+  requestMembership: (tcNoOrHash: string, requestedRole: AppRole, personnelId?: string) => Promise<{ success: boolean; message: string }>;
+  approveMembership: (id: string) => Promise<void>;
+  rejectMembership: (id: string, reason: string) => Promise<void>;
+
+  // Cari (Customers) & Şantiye (Sites)
+  customers: Customer[];
+  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => Promise<void>;
+  updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
+  sites: Site[];
+  addSite: (site: Omit<Site, 'id' | 'createdAt'>) => Promise<void>;
+
+  // Makbuz -> Fatura Hattı
+  jobReceipts: JobReceipt[];
+  addJobReceipt: (receipt: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>) => Promise<JobReceipt>;
+  updateJobReceipt: (id: string, updates: Partial<JobReceipt>) => Promise<void>;
+  approveJobReceipt: (id: string) => Promise<void>;
+  rejectJobReceipt: (id: string, reason: string) => Promise<void>;
+  invoices: Invoice[];
+  createInvoiceFromReceipts: (receiptIds: string[], dueDate: string, notes?: string) => Promise<Invoice>;
+  updateInvoiceStatus: (id: string, status: InvoiceStatus) => Promise<void>;
+
+  // Tahsilat & Ödeme
+  collections: Collection[];
+  addCollection: (col: Omit<Collection, 'id' | 'createdAt'>) => Promise<void>;
+  markCollectionReceived: (id: string) => Promise<void>;
+  payments: Payment[];
+  addPayment: (pay: Omit<Payment, 'id' | 'createdAt'>) => Promise<void>;
+  markPaymentPaid: (id: string) => Promise<void>;
+
+  // Maaş & Bordro
+  payrollRuns: PayrollRun[];
+  payrollItems: PayrollItem[];
+  calculatePayroll: (month: string) => Promise<PayrollRun>;
+  approvePayrollRun: (runId: string) => Promise<void>;
+  payPayrollRun: (runId: string, paymentMethod?: 'banka' | 'nakit') => Promise<void>;
 
   // Filo (Vinçler)
   cranes: Crane[];
@@ -78,7 +129,7 @@ interface ERPContextType {
   togglePeriodLock: (month: string, lock: boolean, notes?: string) => Promise<void>;
   updatePuantajRecord: (id: string, updates: Partial<PuantajRecord>) => Promise<void>;
 
-  // Finans
+  // Finans Eski & Masraflar
   receipts: Receipt[];
   addReceipt: (receipt: Omit<Receipt, 'id' | 'createdAt'>) => Promise<void>;
   updateReceipt: (id: string, updates: Partial<Receipt>) => Promise<void>;
@@ -114,18 +165,24 @@ interface ERPContextType {
     todayFuel: number;
     cutReceiptsCount: number;
     pendingReceiptsCount: number;
+    unInvoicedReceiptsCount: number;
+    unInvoicedReceiptsTotal: number;
+    pendingCollectionsTotal: number;
+    pendingPaymentsTotal: number;
     monthlyOvertimeHours: number;
   };
 
   currentOperator: Person;
   setCurrentOperatorId: (id: string) => void;
 
-  // UI Geri Bildirim
+  // UI & DB Durumu
   toastMessage: string | null;
   showToast: (msg: string) => void;
   isSyncing: boolean;
   dbConnected: boolean;
   isSupabaseOnline: boolean;
+  dbError: string | null;
+  retryDbConnection: () => Promise<void>;
   refreshFromDb: () => Promise<void>;
 }
 
@@ -420,6 +477,249 @@ const INITIAL_EXPENSES: Expense[] = [
   },
 ];
 
+const INITIAL_CUSTOMERS: Customer[] = [
+  {
+    id: 'cust-1',
+    title: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    vknTckn: '4920194812',
+    authorizedPerson: 'Mustafa Yıldırım',
+    phone: '+90 212 555 10 20',
+    email: 'muhasebe@kalyon.com',
+    address: 'Ümraniye Finans Merkezi Şantiyesi, İstanbul',
+    taxOffice: 'Kozyatağı V.D.',
+    balance: 185000,
+    createdAt: '2026-08-01T09:00:00Z',
+  },
+  {
+    id: 'cust-2',
+    title: 'Limak İnşaat A.Ş.',
+    vknTckn: '6080219482',
+    authorizedPerson: 'Serdar Kaya',
+    phone: '+90 216 444 30 40',
+    email: 'finans@limak.com.tr',
+    address: 'Sabiha Gökçen Metro Uzatma Şantiyesi, Pendik',
+    taxOffice: 'Kadıköy V.D.',
+    balance: 92000,
+    createdAt: '2026-08-10T10:30:00Z',
+  },
+  {
+    id: 'cust-3',
+    title: 'Tekfen İnşaat ve Tesisat A.Ş.',
+    vknTckn: '8360182741',
+    authorizedPerson: 'Engin Vural',
+    phone: '+90 212 359 00 00',
+    email: 'saha@tekfen.com.tr',
+    address: 'Tuzla Tersane Genişletme Projesi, İstanbul',
+    taxOffice: 'Tuzla V.D.',
+    balance: 45000,
+    createdAt: '2026-08-20T11:00:00Z',
+  },
+];
+
+const INITIAL_SITES: Site[] = [
+  {
+    id: 'site-1',
+    name: 'Finans Merkezi Kule 3',
+    customerId: 'cust-1',
+    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    location: 'Ataşehir / İstanbul',
+    contactPerson: 'Cemil Şantiye Şefi',
+    phone: '+90 532 999 11 22',
+    status: 'aktif',
+    createdAt: '2026-08-01T09:00:00Z',
+  },
+  {
+    id: 'site-2',
+    name: 'Pendik Metro İstasyon Kazısı',
+    customerId: 'cust-2',
+    customerName: 'Limak İnşaat A.Ş.',
+    location: 'Pendik / İstanbul',
+    contactPerson: 'Hakan Şef',
+    phone: '+90 533 888 22 33',
+    status: 'aktif',
+    createdAt: '2026-08-10T10:30:00Z',
+  },
+  {
+    id: 'site-3',
+    name: 'Tuzla Tersane Rıhtım 2',
+    customerId: 'cust-3',
+    customerName: 'Tekfen İnşaat ve Tesisat A.Ş.',
+    location: 'Tuzla / İstanbul',
+    contactPerson: 'Levent Mühendis',
+    phone: '+90 535 777 33 44',
+    status: 'aktif',
+    createdAt: '2026-08-20T11:00:00Z',
+  },
+];
+
+const INITIAL_JOB_RECEIPTS: JobReceipt[] = [
+  {
+    id: 'jrec-1',
+    receiptNo: 'MB-2026-0001',
+    customerId: 'cust-1',
+    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    siteId: 'site-1',
+    siteName: 'Finans Merkezi Kule 3',
+    craneCode: 'V-204',
+    operatorId: 'p-1',
+    operatorName: 'Mehmet Kaya',
+    date: '2026-09-11',
+    startTime: '08:00',
+    endTime: '18:00',
+    workingHours: 10,
+    description: '35 tonluk prefabrik kolon montajı ve çelik kiriş yerleşimi',
+    amount: 38000,
+    status: 'approved',
+    invoiced: false,
+    approvedBy: 'Ahmet Yılmaz',
+    approvedAt: '2026-09-11T19:00:00Z',
+    createdAt: '2026-09-11T18:15:00Z',
+  },
+  {
+    id: 'jrec-2',
+    receiptNo: 'MB-2026-0002',
+    customerId: 'cust-2',
+    customerName: 'Limak İnşaat A.Ş.',
+    siteId: 'site-2',
+    siteName: 'Pendik Metro İstasyon Kazısı',
+    craneCode: 'V-118',
+    operatorId: 'p-2',
+    operatorName: 'Ali Demir',
+    date: '2026-09-12',
+    startTime: '09:00',
+    endTime: '17:00',
+    workingHours: 8,
+    description: 'TBM tünel segmenti indirme ve ağır pompa montajı',
+    amount: 32000,
+    status: 'approved',
+    invoiced: false,
+    approvedBy: 'Ahmet Yılmaz',
+    approvedAt: '2026-09-12T18:00:00Z',
+    createdAt: '2026-09-12T17:30:00Z',
+  },
+  {
+    id: 'jrec-3',
+    receiptNo: 'MB-2026-0003',
+    customerId: 'cust-3',
+    customerName: 'Tekfen İnşaat ve Tesisat A.Ş.',
+    siteId: 'site-3',
+    siteName: 'Tuzla Tersane Rıhtım 2',
+    craneCode: 'V-302',
+    operatorId: 'p-3',
+    operatorName: 'Hasan Yılmaz',
+    date: '2026-09-13',
+    startTime: '08:30',
+    endTime: '16:30',
+    workingHours: 8,
+    description: 'Gemi sacı ve jeneratör bloğu yükleme operasyonu',
+    amount: 24000,
+    status: 'pending_approval',
+    invoiced: false,
+    createdAt: '2026-09-13T06:45:00Z',
+  },
+  {
+    id: 'jrec-4',
+    receiptNo: 'MB-2026-0004',
+    customerId: 'cust-1',
+    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    siteId: 'site-1',
+    siteName: 'Finans Merkezi Kule 3',
+    craneCode: 'V-204',
+    operatorId: 'p-1',
+    operatorName: 'Mehmet Kaya',
+    date: '2026-09-08',
+    startTime: '08:00',
+    endTime: '20:00',
+    workingHours: 12,
+    description: 'Kule vinç bom uzatması ve çelik halat gerdirme mesaisi',
+    amount: 46000,
+    status: 'invoiced',
+    invoiced: true,
+    invoiceId: 'inv-1',
+    invoiceNo: 'FT-2026-0001',
+    approvedBy: 'Ahmet Yılmaz',
+    approvedAt: '2026-09-08T21:00:00Z',
+    createdAt: '2026-09-08T20:30:00Z',
+  },
+];
+
+const INITIAL_INVOICES: Invoice[] = [
+  {
+    id: 'inv-1',
+    invoiceNo: 'FT-2026-0001',
+    customerId: 'cust-1',
+    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    receiptIds: ['jrec-4'],
+    issueDate: '2026-09-09',
+    dueDate: '2026-09-24',
+    subtotal: 46000,
+    taxRate: 20,
+    taxAmount: 9200,
+    totalAmount: 55200,
+    paidAmount: 0,
+    status: 'issued',
+    notes: 'Kule 3 montaj hizmet bedeli faturası',
+    createdAt: '2026-09-09T10:00:00Z',
+  },
+];
+
+const INITIAL_COLLECTIONS: Collection[] = [
+  {
+    id: 'col-1',
+    customerId: 'cust-1',
+    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
+    invoiceId: 'inv-1',
+    invoiceNo: 'FT-2026-0001',
+    amount: 55200,
+    dueDate: '2026-09-24',
+    date: '2026-09-24',
+    paymentMethod: 'havale',
+    status: 'bekliyor',
+    notes: 'Vadesi 24 Eylül olan fatura tahsilatı',
+    createdAt: '2026-09-09T10:05:00Z',
+  },
+];
+
+const INITIAL_PAYMENTS: Payment[] = [
+  {
+    id: 'pay-1',
+    recipientType: 'tedarikci',
+    recipientName: 'Opet Petrolcülük A.Ş.',
+    category: 'yakit',
+    amount: 28500,
+    dueDate: '2026-09-20',
+    paymentMethod: 'havale',
+    status: 'bekliyor',
+    notes: 'Aylık filo mazot cari faturası',
+    createdAt: '2026-09-10T11:00:00Z',
+  },
+  {
+    id: 'pay-2',
+    recipientType: 'tedarikci',
+    recipientName: 'Borusan Cat Servis',
+    category: 'bakim',
+    amount: 14000,
+    dueDate: '2026-09-18',
+    paymentMethod: 'havale',
+    status: 'bekliyor',
+    notes: 'V-118 500 saat periyodik hidrolik bakımı',
+    createdAt: '2026-09-11T15:00:00Z',
+  },
+];
+
+const INITIAL_MEMBERSHIPS: Membership[] = [
+  {
+    id: 'mem-1',
+    userId: 'usr-new-01',
+    userEmail: 'kemal.usta@gmail.com',
+    userFullName: 'Kemal Usta',
+    requestedRole: 'operator',
+    tcHashOrNo: '45678901234',
+    status: 'pending',
+    createdAt: '2026-09-12T14:30:00Z',
+  },
+];
+
 // LocalStorage Yardımcısı
 function loadStored<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -467,6 +767,36 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [expenses, setExpenses] = useState<Expense[]>(() =>
     loadStored('bv_expenses', INITIAL_EXPENSES)
   );
+
+  // 2.1 Cari, Şantiye, Makbuz & Fatura Hattı
+  const [customers, setCustomers] = useState<Customer[]>(() =>
+    loadStored('bv_customers', INITIAL_CUSTOMERS)
+  );
+  const [sites, setSites] = useState<Site[]>(() =>
+    loadStored('bv_sites', INITIAL_SITES)
+  );
+  const [jobReceipts, setJobReceipts] = useState<JobReceipt[]>(() =>
+    loadStored('bv_job_receipts', INITIAL_JOB_RECEIPTS)
+  );
+  const [invoices, setInvoices] = useState<Invoice[]>(() =>
+    loadStored('bv_invoices', INITIAL_INVOICES)
+  );
+  const [collections, setCollections] = useState<Collection[]>(() =>
+    loadStored('bv_collections', INITIAL_COLLECTIONS)
+  );
+  const [payments, setPayments] = useState<Payment[]>(() =>
+    loadStored('bv_payments', INITIAL_PAYMENTS)
+  );
+  const [memberships, setMemberships] = useState<Membership[]>(() =>
+    loadStored('bv_memberships', INITIAL_MEMBERSHIPS)
+  );
+  const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>(() =>
+    loadStored('bv_payroll_runs', [])
+  );
+  const [payrollItems, setPayrollItems] = useState<PayrollItem[]>(() =>
+    loadStored('bv_payroll_items', [])
+  );
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // 3. Puantaj, Yoklama, İzin, Mesai, Avans
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() =>
@@ -1636,6 +1966,747 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Gider kaydı güncellendi.');
   };
 
+  // ==========================================
+  // CARI (MÜŞTERİ) & ŞANTİYE YÖNETİMİ
+  // ==========================================
+  const addCustomer = async (custData: Omit<Customer, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newCust: Customer = {
+      ...custData,
+      id,
+      balance: custData.balance || 0,
+      createdAt: new Date().toISOString(),
+    };
+    setCustomers((prev) => {
+      const next = [newCust, ...prev];
+      saveStored('bv_customers', next);
+      return next;
+    });
+    logAction('CARI_EKLENDI', 'Cari', id, `${newCust.title} carisi sisteme eklendi.`);
+    showToast(`✓ Cari Kart Oluşturuldu: ${newCust.title}`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb.from('customers').insert([
+          {
+            id: newCust.id,
+            title: newCust.title,
+            vkn_tckn: newCust.vknTckn,
+            tax_office: newCust.taxOffice,
+            authorized_person: newCust.authorizedPerson,
+            phone: newCust.phone,
+            email: newCust.email,
+            address: newCust.address,
+            balance: newCust.balance,
+            notes: newCust.notes,
+          },
+        ]);
+      } catch (err: any) {
+        console.warn('Supabase customer insert notice:', err.message);
+      }
+    }
+  };
+
+  const updateCustomer = async (id: string, updates: Partial<Customer>) => {
+    setCustomers((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c));
+      saveStored('bv_customers', next);
+      return next;
+    });
+    showToast('Cari bilgileri güncellendi.');
+  };
+
+  const deleteCustomer = async (id: string) => {
+    setCustomers((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      saveStored('bv_customers', next);
+      return next;
+    });
+    showToast('Cari silindi.');
+  };
+
+  const addSite = async (siteData: Omit<Site, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newSite: Site = {
+      ...siteData,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    setSites((prev) => {
+      const next = [newSite, ...prev];
+      saveStored('bv_sites', next);
+      return next;
+    });
+    showToast(`✓ Şantiye Tanımlandı: ${newSite.name}`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb.from('sites').insert([
+          {
+            id: newSite.id,
+            customer_id: newSite.customerId,
+            name: newSite.name,
+            location: newSite.location,
+            contact_person: newSite.contactPerson,
+            phone: newSite.phone,
+            status: newSite.status,
+          },
+        ]);
+      } catch (err: any) {
+        console.warn('Supabase site insert notice:', err.message);
+      }
+    }
+  };
+
+  // ==========================================
+  // MAKBUZ (İŞ MAKBUZLARI) -> FATURA HATTI
+  // ==========================================
+  const addJobReceipt = async (receiptData: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>): Promise<JobReceipt> => {
+    const id = generateUuid();
+    const seq = String(jobReceipts.length + 1).padStart(4, '0');
+    const receiptNo = `MB-2026-${seq}`;
+
+    const newRec: JobReceipt = {
+      ...receiptData,
+      id,
+      receiptNo,
+      status: 'pending_approval',
+      invoiced: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setJobReceipts((prev) => {
+      const next = [newRec, ...prev];
+      saveStored('bv_job_receipts', next);
+      return next;
+    });
+
+    // Otomatik onay talebi düşür
+    await addApproval({
+      kind: 'makbuz_onay',
+      status: 'pending',
+      title: `İş Makbuzu Onayı: ${receiptNo} (${newRec.customerName})`,
+      personName: newRec.operatorName,
+      amount: newRec.amount,
+      note: `${newRec.workingHours} Saat | ${newRec.craneCode} | ${newRec.description}`,
+      requestedDate: newRec.date,
+    });
+
+    logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz operatörce düzenlendi.`);
+    showToast(`✓ Makbuz Kesildi (${receiptNo}) - Yönetici Onayına Sunuldu`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb.from('job_receipts').insert([
+          {
+            id: newRec.id,
+            receipt_no: newRec.receiptNo,
+            customer_id: newRec.customerId,
+            site_id: newRec.siteId,
+            crane_code: newRec.craneCode,
+            operator_id: newRec.operatorId,
+            date: newRec.date,
+            start_time: newRec.startTime,
+            end_time: newRec.endTime,
+            working_hours: newRec.workingHours,
+            description: newRec.description,
+            amount: newRec.amount,
+            status: newRec.status,
+            invoiced: false,
+          },
+        ]);
+      } catch (err: any) {
+        console.warn('Supabase job receipt insert error:', err.message);
+      }
+    }
+
+    return newRec;
+  };
+
+  const updateJobReceipt = async (id: string, updates: Partial<JobReceipt>) => {
+    setJobReceipts((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r));
+      saveStored('bv_job_receipts', next);
+      return next;
+    });
+  };
+
+  const approveJobReceipt = async (id: string) => {
+    const rec = jobReceipts.find((r) => r.id === id);
+    if (!rec) return;
+
+    setJobReceipts((prev) => {
+      const next = prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'approved' as JobReceiptStatus,
+              approvedBy: currentUser.fullName,
+              approvedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : r
+      );
+      saveStored('bv_job_receipts', next);
+      return next;
+    });
+
+    logAction('MAKBUZ_ONAYLANDI', 'Makbuz', id, `${rec.receiptNo} makbuzu onaylandı, faturalandırmaya hazır.`);
+    showToast(`✓ Makbuz Onaylandı (${rec.receiptNo})`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb
+          .from('job_receipts')
+          .update({
+            status: 'approved',
+            approved_by: currentUser.fullName,
+            approved_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+      } catch (e) {
+        console.warn('Supabase approve job receipt sync error:', e);
+      }
+    }
+  };
+
+  const rejectJobReceipt = async (id: string, reason: string) => {
+    setJobReceipts((prev) => {
+      const next = prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'rejected' as JobReceiptStatus,
+              rejectedBy: currentUser.fullName,
+              rejectedAt: new Date().toISOString(),
+              rejectionReason: reason,
+              updatedAt: new Date().toISOString(),
+            }
+          : r
+      );
+      saveStored('bv_job_receipts', next);
+      return next;
+    });
+    showToast('Makbuz reddedildi.');
+  };
+
+  // Faturalandırma Motoru (Makbuz -> Fatura Dönüşümü)
+  const createInvoiceFromReceipts = async (
+    receiptIds: string[],
+    dueDate: string,
+    notes?: string
+  ): Promise<Invoice> => {
+    const selectedReceipts = jobReceipts.filter((r) => receiptIds.includes(r.id));
+    if (selectedReceipts.length === 0) {
+      throw new Error('Faturalandırılacak makbuz bulunamadı.');
+    }
+
+    const firstCustomer = selectedReceipts[0];
+    const customerId = firstCustomer.customerId;
+    const customerName = firstCustomer.customerName;
+
+    const subtotal = selectedReceipts.reduce((sum, r) => sum + r.amount, 0);
+    const taxRate = 20;
+    const taxAmount = Math.round(subtotal * 0.2);
+    const totalAmount = subtotal + taxAmount;
+
+    const invoiceId = generateUuid();
+    const seq = String(invoices.length + 1).padStart(4, '0');
+    const invoiceNo = `FT-2026-${seq}`;
+
+    const newInvoice: Invoice = {
+      id: invoiceId,
+      invoiceNo,
+      customerId,
+      customerName,
+      receiptIds,
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate,
+      subtotal,
+      taxRate,
+      taxAmount,
+      totalAmount,
+      paidAmount: 0,
+      status: 'issued',
+      notes,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Faturaları Güncelle
+    setInvoices((prev) => {
+      const next = [newInvoice, ...prev];
+      saveStored('bv_invoices', next);
+      return next;
+    });
+
+    // 2. İlgili Makbuzları Güncelle (Artık Faturalandı)
+    setJobReceipts((prev) => {
+      const next = prev.map((r) =>
+        receiptIds.includes(r.id)
+          ? {
+              ...r,
+              invoiced: true,
+              invoiceId,
+              invoiceNo,
+              status: 'invoiced' as JobReceiptStatus,
+              updatedAt: new Date().toISOString(),
+            }
+          : r
+      );
+      saveStored('bv_job_receipts', next);
+      return next;
+    });
+
+    // 3. Cari Bakiyesini Güncelle (Müşteri Borçlandı)
+    setCustomers((prev) => {
+      const next = prev.map((c) =>
+        c.id === customerId
+          ? { ...c, balance: (c.balance || 0) + totalAmount, updatedAt: new Date().toISOString() }
+          : c
+      );
+      saveStored('bv_customers', next);
+      return next;
+    });
+
+    // 4. Otomatik Tahsilat Kaydı Aç (Bekliyor Durumunda)
+    const collectionId = generateUuid();
+    const newCollection: Collection = {
+      id: collectionId,
+      customerId,
+      customerName,
+      invoiceId,
+      invoiceNo,
+      amount: totalAmount,
+      dueDate,
+      date: dueDate,
+      paymentMethod: 'havale',
+      status: 'bekliyor',
+      notes: `${invoiceNo} nolu faturanın tahsilatı`,
+      createdAt: new Date().toISOString(),
+    };
+    setCollections((prev) => {
+      const next = [newCollection, ...prev];
+      saveStored('bv_collections', next);
+      return next;
+    });
+
+    logAction('FATURA_KESILDI', 'Fatura', invoiceId, `${invoiceNo} nolu ${totalAmount.toLocaleString('tr-TR')} ₺ fatura düzenlendi.`);
+    showToast(`✓ Fatura Kesildi: ${invoiceNo} (Toplam: ₺${totalAmount.toLocaleString('tr-TR')})`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb.from('invoices').insert([
+          {
+            id: newInvoice.id,
+            invoice_no: newInvoice.invoiceNo,
+            customer_id: newInvoice.customerId,
+            receipt_ids: newInvoice.receiptIds,
+            issue_date: newInvoice.issueDate,
+            due_date: newInvoice.dueDate,
+            subtotal: newInvoice.subtotal,
+            tax_rate: newInvoice.taxRate,
+            tax_amount: newInvoice.taxAmount,
+            total_amount: newInvoice.totalAmount,
+            paid_amount: 0,
+            status: 'issued',
+            notes: newInvoice.notes,
+          },
+        ]);
+      } catch (err: any) {
+        console.warn('Supabase invoice insert sync notice:', err.message);
+      }
+    }
+
+    return newInvoice;
+  };
+
+  const updateInvoiceStatus = async (id: string, status: InvoiceStatus) => {
+    setInvoices((prev) => {
+      const next = prev.map((inv) => (inv.id === id ? { ...inv, status, updatedAt: new Date().toISOString() } : inv));
+      saveStored('bv_invoices', next);
+      return next;
+    });
+    showToast('Fatura durumu güncellendi.');
+  };
+
+  // ==========================================
+  // TAHSİLAT & ÖDEME YÖNETİMİ
+  // ==========================================
+  const addCollection = async (colData: Omit<Collection, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newCol: Collection = {
+      ...colData,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    setCollections((prev) => {
+      const next = [newCol, ...prev];
+      saveStored('bv_collections', next);
+      return next;
+    });
+
+    if (newCol.status === 'tahsil_edildi') {
+      // Cari bakiyesini düşür
+      setCustomers((prev) => {
+        const next = prev.map((c) =>
+          c.id === newCol.customerId ? { ...c, balance: Math.max(0, (c.balance || 0) - newCol.amount) } : c
+        );
+        saveStored('bv_customers', next);
+        return next;
+      });
+    }
+
+    showToast(`✓ Tahsilat Kaydedildi: ₺${newCol.amount.toLocaleString('tr-TR')}`);
+  };
+
+  const markCollectionReceived = async (id: string) => {
+    const col = collections.find((c) => c.id === id);
+    if (!col) return;
+
+    setCollections((prev) => {
+      const next = prev.map((c) =>
+        c.id === id ? { ...c, status: 'tahsil_edildi' as const, date: new Date().toISOString().split('T')[0] } : c
+      );
+      saveStored('bv_collections', next);
+      return next;
+    });
+
+    // Müşteri cari bakiyesinden düş
+    setCustomers((prev) => {
+      const next = prev.map((c) =>
+        c.id === col.customerId ? { ...c, balance: Math.max(0, (c.balance || 0) - col.amount) } : c
+      );
+      saveStored('bv_customers', next);
+      return next;
+    });
+
+    // Faturadaki paidAmount'u güncelle
+    if (col.invoiceId) {
+      setInvoices((prev) => {
+        const next = prev.map((inv) => {
+          if (inv.id === col.invoiceId) {
+            const newPaid = (inv.paidAmount || 0) + col.amount;
+            return {
+              ...inv,
+              paidAmount: newPaid,
+              status: newPaid >= inv.totalAmount ? ('paid' as InvoiceStatus) : ('partially_paid' as InvoiceStatus),
+            };
+          }
+          return inv;
+        });
+        saveStored('bv_invoices', next);
+        return next;
+      });
+    }
+
+    logAction('TAHSİLAT_ALINDI', 'Finans', id, `${col.customerName} cari hesabından ₺${col.amount.toLocaleString('tr-TR')} tahsil edildi.`);
+    showToast(`✓ ₺${col.amount.toLocaleString('tr-TR')} Tahsilat Hesaba Geçti`);
+  };
+
+  const addPayment = async (payData: Omit<Payment, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newPay: Payment = {
+      ...payData,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    setPayments((prev) => {
+      const next = [newPay, ...prev];
+      saveStored('bv_payments', next);
+      return next;
+    });
+    showToast(`✓ Ödeme Emri Oluşturuldu: ₺${newPay.amount.toLocaleString('tr-TR')}`);
+  };
+
+  const markPaymentPaid = async (id: string) => {
+    const pay = payments.find((p) => p.id === id);
+    if (!pay) return;
+
+    setPayments((prev) => {
+      const next = prev.map((p) =>
+        p.id === id ? { ...p, status: 'odendi' as const, paymentDate: new Date().toISOString().split('T')[0] } : p
+      );
+      saveStored('bv_payments', next);
+      return next;
+    });
+    logAction('ODEME_YAPILDI', 'Finans', id, `${pay.recipientName} alıcısına ₺${pay.amount.toLocaleString('tr-TR')} ödendi.`);
+    showToast(`✓ Ödeme Tamamlandı: ₺${pay.amount.toLocaleString('tr-TR')}`);
+  };
+
+  // ==========================================
+  // ÜYELİK & RLS PERSONEL EŞLEŞTİRME
+  // ==========================================
+  const requestMembership = async (
+    tcNoOrHash: string,
+    requestedRole: AppRole,
+    personnelId?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const id = generateUuid();
+
+    // Personel TC eşleştirmesi ara
+    let matchedPerson = personnel.find((p) => p.tcNo === tcNoOrHash || p.id === personnelId);
+
+    const newMem: Membership = {
+      id,
+      userId: currentUser.id,
+      userEmail: currentUser.email,
+      userFullName: currentUser.fullName,
+      requestedRole,
+      tcHashOrNo: tcNoOrHash,
+      personnelId: matchedPerson?.id,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    setMemberships((prev) => {
+      const next = [newMem, ...prev];
+      saveStored('bv_memberships', next);
+      return next;
+    });
+
+    await addApproval({
+      kind: 'uyelik_onay',
+      status: 'pending',
+      title: `Yeni Personel / Rol Onayı: ${currentUser.fullName} (${requestedRole.toUpperCase()})`,
+      personName: currentUser.fullName,
+      note: `TC No / Hash: ${tcNoOrHash} | Eşleşen Personel: ${matchedPerson ? matchedPerson.fullName : 'Yeni Eşleştirme Gerekli'}`,
+    });
+
+    logAction('UYELIK_TALEBI', 'Auth', id, `${currentUser.fullName} rol onayı ve personel eşleştirmesi istedi.`);
+    return {
+      success: true,
+      message: 'Üyelik ve personel eşleştirme talebiniz yönetici onayına sunuldu. Onaylandığında yetkileriniz aktif olacaktır.',
+    };
+  };
+
+  const approveMembership = async (id: string) => {
+    const mem = memberships.find((m) => m.id === id);
+    if (!mem) return;
+
+    setMemberships((prev) => {
+      const next = prev.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              status: 'approved' as const,
+              approvedBy: currentUser.fullName,
+              approvedAt: new Date().toISOString(),
+            }
+          : m
+      );
+      saveStored('bv_memberships', next);
+      return next;
+    });
+
+    // Kullanıcı profilini güncelle
+    setUserProfiles((prev) => {
+      const next = prev.map((u) =>
+        u.id === mem.userId
+          ? {
+              ...u,
+              role: mem.requestedRole,
+              personnelId: mem.personnelId || u.personnelId,
+            }
+          : u
+      );
+      saveStored('bv_user_profiles', next);
+      return next;
+    });
+
+    if (currentUser.id === mem.userId) {
+      setActiveRole(mem.requestedRole);
+      setCurrentUser((prev) => ({
+        ...prev,
+        role: mem.requestedRole,
+        personnelId: mem.personnelId || prev.personnelId,
+      }));
+    }
+
+    logAction('UYELIK_ONAYLANDI', 'Auth', id, `${mem.userFullName} kullanıcısının ${mem.requestedRole} yetkisi onaylandı.`);
+    showToast(`✓ Üyelik ve Yetki Onaylandı: ${mem.userFullName}`);
+  };
+
+  const rejectMembership = async (id: string, reason: string) => {
+    setMemberships((prev) => {
+      const next = prev.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              status: 'rejected' as const,
+              rejectionReason: reason,
+            }
+          : m
+      );
+      saveStored('bv_memberships', next);
+      return next;
+    });
+    showToast('Üyelik talebi reddedildi.');
+  };
+
+  // ==========================================
+  // PERSONEL MAAŞ & BORDRO HESAPLAMA MOTORU
+  // ==========================================
+  const calculatePayroll = async (month: string): Promise<PayrollRun> => {
+    const runId = generateUuid();
+    const activeStaff = personnel.filter((p) => p.status === 'aktif');
+
+    let totalBase = 0;
+    let totalOvertimePay = 0;
+    let totalAdvancesDeducted = 0;
+    let totalNet = 0;
+
+    const items: PayrollItem[] = activeStaff.map((p) => {
+      const baseSalary = p.salary || 35000;
+      const hourlyBase = baseSalary / 225; // 225 saat standart aylık iş kanunu esası
+
+      // İlgili ayın onaylı mesaileri
+      const approvedOT = overtimes
+        .filter((o) => o.personId === p.id && o.status === 'approved' && o.date.startsWith(month))
+        .reduce((sum, o) => sum + o.totalHours, 0);
+
+      const overtimePay = Math.round(hourlyBase * 1.5 * approvedOT);
+
+      // İlgili ayın onaylı avansları
+      const advanceDeduction = advances
+        .filter((a) => a.personId === p.id && (a.status === 'approved' || a.status === 'paid') && a.requestDate.startsWith(month))
+        .reduce((sum, a) => sum + a.amount, 0);
+
+      const netSalary = Math.max(0, baseSalary + overtimePay - advanceDeduction);
+
+      totalBase += baseSalary;
+      totalOvertimePay += overtimePay;
+      totalAdvancesDeducted += advanceDeduction;
+      totalNet += netSalary;
+
+      return {
+        id: generateUuid(),
+        payrollRunId: runId,
+        personId: p.id,
+        personName: p.fullName,
+        employeeNo: p.employeeNo,
+        roleKind: p.kind,
+        baseSalary,
+        normalDays: 26,
+        overtimeHours: approvedOT,
+        overtimePay,
+        advancesDeduction: advanceDeduction,
+        netSalary,
+        status: 'draft',
+      };
+    });
+
+    const newRun: PayrollRun = {
+      id: runId,
+      month,
+      totalBaseSalary: totalBase,
+      totalOvertimePay,
+      totalAdvancesDeducted,
+      totalNetSalary: totalNet,
+      personCount: activeStaff.length,
+      status: 'draft',
+      createdAt: new Date().toISOString(),
+    };
+
+    setPayrollRuns((prev) => {
+      const filtered = prev.filter((r) => r.month !== month);
+      const next = [newRun, ...filtered];
+      saveStored('bv_payroll_runs', next);
+      return next;
+    });
+
+    setPayrollItems((prev) => {
+      const filtered = prev.filter((i) => i.payrollRunId !== runId);
+      const next = [...items, ...filtered];
+      saveStored('bv_payroll_items', next);
+      return next;
+    });
+
+    logAction('MAAS_HESAPLANDI', 'Maaş', runId, `${month} dönemi maaş ve bordro hesaplandı (${activeStaff.length} personel).`);
+    showToast(`✓ ${month} Dönemi Bordrosu Hesaplandı (Toplam: ₺${totalNet.toLocaleString('tr-TR')})`);
+
+    return newRun;
+  };
+
+  const approvePayrollRun = async (runId: string) => {
+    setPayrollRuns((prev) => {
+      const next = prev.map((r) =>
+        r.id === runId
+          ? {
+              ...r,
+              status: 'approved' as PayrollStatus,
+              approvedBy: currentUser.fullName,
+              approvedAt: new Date().toISOString(),
+            }
+          : r
+      );
+      saveStored('bv_payroll_runs', next);
+      return next;
+    });
+
+    setPayrollItems((prev) => {
+      const next = prev.map((i) => (i.payrollRunId === runId ? { ...i, status: 'approved' as const } : i));
+      saveStored('bv_payroll_items', next);
+      return next;
+    });
+
+    logAction('MAAS_BORDROSU_ONAYLANDI', 'Maaş', runId, 'Maaş bordrosu kesinleştirildi ve ödemeye açıldı.');
+    showToast('✓ Maaş bordrosu yönetici tarafından onaylandı.');
+  };
+
+  const payPayrollRun = async (runId: string, paymentMethod: 'banka' | 'nakit' = 'banka') => {
+    const run = payrollRuns.find((r) => r.id === runId);
+    if (!run) return;
+
+    setPayrollRuns((prev) => {
+      const next = prev.map((r) =>
+        r.id === runId
+          ? {
+              ...r,
+              status: 'paid' as PayrollStatus,
+              paymentDate: new Date().toISOString().split('T')[0],
+              paymentMethod,
+            }
+          : r
+      );
+      saveStored('bv_payroll_runs', next);
+      return next;
+    });
+
+    setPayrollItems((prev) => {
+      const next = prev.map((i) => (i.payrollRunId === runId ? { ...i, status: 'paid' as const } : i));
+      saveStored('bv_payroll_items', next);
+      return next;
+    });
+
+    // Otomatik muhasebe ödemesi kaydet
+    await addPayment({
+      recipientType: 'personel',
+      recipientName: `Tüm Personel (${run.personCount} Kişi)`,
+      category: 'maas',
+      amount: run.totalNetSalary,
+      dueDate: new Date().toISOString().split('T')[0],
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMethod: paymentMethod === 'banka' ? 'havale' : 'nakit',
+      status: 'odendi',
+      notes: `${run.month} dönemi personel maaş ödemesi toplu transferi`,
+    });
+
+    logAction('MAASLAR_ODENDI', 'Maaş', runId, `${run.month} dönemi ₺${run.totalNetSalary.toLocaleString('tr-TR')} tutarındaki maaşlar ödendi.`);
+    showToast(`✓ Maaşlar Ödendi (₺${run.totalNetSalary.toLocaleString('tr-TR')})`);
+  };
+
+  // Veritabanı Yeniden Bağlantı
+  const retryDbConnection = async () => {
+    setDbError(null);
+    showToast('Supabase bağlantısı tekrar deneniyor...');
+    await refreshFromDb();
+  };
+
   // Harita Telemetrisi
   const telemetry: TelemetryPoint[] = useMemo(() => {
     return cranes.map((c) => ({
@@ -1677,6 +2748,18 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter((a) => a.kind === 'mesai' && a.status === 'approved')
       .reduce((s, a) => s + (a.hours || 0), 0);
 
+    const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' && !r.invoiced);
+    const unInvoicedCount = unInvoicedReceipts.length;
+    const unInvoicedTotal = unInvoicedReceipts.reduce((sum, r) => sum + r.amount, 0);
+
+    const pendingCollections = collections
+      .filter((c) => c.status === 'bekliyor')
+      .reduce((sum, c) => sum + c.amount, 0);
+
+    const pendingPayments = payments
+      .filter((p) => p.status === 'bekliyor')
+      .reduce((sum, p) => sum + p.amount, 0);
+
     return {
       totalPersonnel: personnel.length,
       activePersonnel: activePers,
@@ -1693,9 +2776,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       todayFuel: fuel,
       cutReceiptsCount: cutCount,
       pendingReceiptsCount: pendCount,
+      unInvoicedReceiptsCount: unInvoicedCount,
+      unInvoicedReceiptsTotal: unInvoicedTotal,
+      pendingCollectionsTotal: pendingCollections,
+      pendingPaymentsTotal: pendingPayments,
       monthlyOvertimeHours: otHours,
     };
-  }, [personnel, cranes, approvals, receipts, expenses]);
+  }, [personnel, cranes, approvals, receipts, expenses, jobReceipts, collections, payments]);
 
   return (
     <ERPContext.Provider
@@ -1713,6 +2800,35 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addPerson,
         updatePerson,
         deletePerson,
+        memberships,
+        requestMembership,
+        approveMembership,
+        rejectMembership,
+        customers,
+        addCustomer,
+        updateCustomer,
+        deleteCustomer,
+        sites,
+        addSite,
+        jobReceipts,
+        addJobReceipt,
+        updateJobReceipt,
+        approveJobReceipt,
+        rejectJobReceipt,
+        invoices,
+        createInvoiceFromReceipts,
+        updateInvoiceStatus,
+        collections,
+        addCollection,
+        markCollectionReceived,
+        payments,
+        addPayment,
+        markPaymentPaid,
+        payrollRuns,
+        payrollItems,
+        calculatePayroll,
+        approvePayrollRun,
+        payPayrollRun,
         cranes,
         addCrane,
         updateCrane,
@@ -1759,6 +2875,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSyncing,
         dbConnected,
         isSupabaseOnline: dbConnected,
+        dbError,
+        retryDbConnection,
         refreshFromDb,
       }}
     >
