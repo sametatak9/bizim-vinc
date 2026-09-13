@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm --dir artifacts/bizim-vinc-erp install --no-frozen-lockfile && pnpm --dir artifacts/bizim-vinc-erp run build",
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "cd artifacts/bizim-vinc-erp && npm install --legacy-peer-deps && npx vite build",
+  "installCommand": "echo skip-root-install",
   "outputDirectory": "artifacts/bizim-vinc-erp/dist/public",
   "framework": null,
   "rewrites": [
