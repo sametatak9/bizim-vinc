@@ -42,6 +42,7 @@ export const OperatorPage: React.FC = () => {
     showToast,
   } = useERP();
 
+  // P0-A: sadece gerçek bağ — asla personnel[0]
   const myPerson = useMemo(() => {
     if (currentUser.personnelId) {
       const byProfile = personnel.find((p) => p.id === currentUser.personnelId);
@@ -133,7 +134,13 @@ export const OperatorPage: React.FC = () => {
     if (!myPerson) return;
     await runSafe(async () => {
       await createOvertimeRequest(
-        myPerson.id, overtimeDate, overtimeStart, overtimeEnd, overtimeHours, overtimeType, overtimeDesc
+        myPerson.id,
+        overtimeDate,
+        overtimeStart,
+        overtimeEnd,
+        overtimeHours,
+        overtimeType,
+        overtimeDesc
       );
       setActiveModal('none');
       setOvertimeDesc('');
@@ -202,8 +209,8 @@ export const OperatorPage: React.FC = () => {
           </div>
           <h1 className="text-lg font-bold text-emerald-950">Personel kartın bağlı değil</h1>
           <p className="text-sm text-emerald-800/80 leading-relaxed">
-            Operatör paneli için hesabınızın bir personel kaydına bağlanması gerekir. Yönetici,
-            Admin üzerinden sizi personel kaydına bağlamalı.
+            Personel talepleri için hesabınızın bir personel kaydına bağlanması gerekir. Yönetici veya kurucu,
+            Admin → üyelik / personel eşleştirmesinden sizi bağlamalı.
           </p>
           <p className="text-xs text-slate-500">
             Oturum: {currentUser.fullName} · {currentUser.email} · rol: {currentUser.role}
@@ -226,10 +233,15 @@ export const OperatorPage: React.FC = () => {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-emerald-950 truncate">{myPerson.fullName}</h1>
-              <p className="text-xs text-emerald-800/80 truncate">{myPerson.title} · Sicil {myPerson.employeeNo}</p>
+              <p className="text-xs text-emerald-800/80 truncate">
+                {myPerson.title} · Sicil {myPerson.employeeNo}
+              </p>
             </div>
           </div>
-          <a href={`/kart/${myPerson.cardSlug || myPerson.employeeNo.toLowerCase()}`} className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl bg-emerald-50 text-emerald-800 text-sm font-semibold border border-emerald-100">
+          <a
+            href={`/kart/${myPerson.cardSlug || myPerson.employeeNo.toLowerCase()}`}
+            className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl bg-emerald-50 text-emerald-800 text-sm font-semibold border border-emerald-100"
+          >
             Dijital kart
           </a>
         </div>
@@ -268,21 +280,28 @@ export const OperatorPage: React.FC = () => {
 
       <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
         <h2 className="text-sm font-bold text-emerald-950 mb-3 flex items-center gap-2">
-          <AlertCircle size={16} className="text-emerald-600" /> Bekleyen taleplerim
+          <AlertCircle size={16} className="text-emerald-600" />
+          Bekleyen taleplerim
         </h2>
         {myApprovals.length === 0 ? (
-          <p className="text-xs text-slate-500">Henüz talep yok.</p>
+          <p className="text-xs text-slate-500">Henüz talep yok. Avans, izin veya mesai gönderdiğinizde burada görünür.</p>
         ) : (
           <ul className="space-y-2">
             {myApprovals.slice(0, 12).map((a) => (
               <li key={a.id} className="flex items-start justify-between gap-2 p-3 rounded-xl bg-emerald-50/80 border border-emerald-100">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-emerald-950 truncate">{a.title}</p>
-                  <p className="text-[11px] text-emerald-800/70">{a.kind}</p>
+                  <p className="text-[11px] text-emerald-800/70">{a.kind} · {a.requestedDate || a.createdAt?.slice(0, 10)}</p>
                 </div>
-                <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${
-                  a.status === 'pending' ? 'bg-amber-100 text-amber-800' : a.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                }`}>
+                <span
+                  className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${
+                    a.status === 'pending'
+                      ? 'bg-amber-100 text-amber-800'
+                      : a.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
+                  }`}
+                >
                   {a.status === 'pending' ? 'BEKLİYOR' : a.status === 'approved' ? 'ONAY' : 'RED'}
                 </span>
               </li>
@@ -294,7 +313,7 @@ export const OperatorPage: React.FC = () => {
       {activeModal !== 'none' && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
           <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl border border-emerald-100 shadow-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-emerald-950">
                 {activeModal === 'avans' && 'Avans talebi'}
                 {activeModal === 'izin' && 'İzin talebi'}
@@ -302,66 +321,132 @@ export const OperatorPage: React.FC = () => {
                 {activeModal === 'makbuz' && 'İş makbuzu'}
                 {activeModal === 'masraf' && 'Saha masrafı'}
               </h3>
-              <button type="button" onClick={() => setActiveModal('none')} className="min-h-11 px-2 text-xs text-slate-500">Kapat</button>
+              <button type="button" onClick={() => setActiveModal('none')} className="text-xs text-slate-500 min-h-11 px-2">
+                Kapat
+              </button>
             </div>
+
             {activeModal === 'avans' && (
               <form onSubmit={handleSendAdvance} className="space-y-3">
-                <input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" placeholder="Tutar" />
-                <textarea value={advanceNote} onChange={(e) => setAdvanceNote(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" placeholder="Not" />
-                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold">Onaya gönder</button>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Tutar (₺)</label>
+                  <input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold text-emerald-950" />
+                </div>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Not</label>
+                  <textarea value={advanceNote} onChange={(e) => setAdvanceNote(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                </div>
+                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+                  Onaya gönder
+                </button>
               </form>
             )}
+
             {activeModal === 'izin' && (
               <form onSubmit={handleSendLeave} className="space-y-3">
-                <select value={leaveType} onChange={(e) => setLeaveType(e.target.value as LeaveType)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                  <option value="yillik">Yıllık</option>
-                  <option value="mazeret">Mazeret</option>
-                  <option value="rapor">Rapor</option>
-                  <option value="ucretsiz">Ücretsiz</option>
-                </select>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
-                  <input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Tür</label>
+                    <select value={leaveType} onChange={(e) => setLeaveType(e.target.value as LeaveType)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
+                      <option value="yillik">Yıllık</option>
+                      <option value="mazeret">Mazeret</option>
+                      <option value="rapor">Rapor</option>
+                      <option value="ucretsiz">Ücretsiz</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Gün</label>
+                    <input type="number" value={leaveDays} onChange={(e) => setLeaveDays(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Başlangıç</label>
+                    <input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Bitiş</label>
+                    <input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
                 </div>
-                <input type="number" value={leaveDays} onChange={(e) => setLeaveDays(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" placeholder="Gün" />
-                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold">Onaya gönder</button>
+                <textarea value={leaveDesc} onChange={(e) => setLeaveDesc(e.target.value)} placeholder="Açıklama" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+                  Onaya gönder
+                </button>
               </form>
             )}
+
             {activeModal === 'mesai' && (
               <form onSubmit={handleSendOvertime} className="space-y-3">
-                <input type="date" value={overtimeDate} onChange={(e) => setOvertimeDate(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="time" value={overtimeStart} onChange={(e) => setOvertimeStart(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
-                  <input type="time" value={overtimeEnd} onChange={(e) => setOvertimeEnd(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Tarih</label>
+                    <input type="date" value={overtimeDate} onChange={(e) => setOvertimeDate(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Saat</label>
+                    <input type="number" step="0.5" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Başlangıç</label>
+                    <input type="time" value={overtimeStart} onChange={(e) => setOvertimeStart(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-emerald-900 mb-1">Bitiş</label>
+                    <input type="time" value={overtimeEnd} onChange={(e) => setOvertimeEnd(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                  </div>
                 </div>
-                <input type="number" step="0.5" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
                 <select value={overtimeType} onChange={(e) => setOvertimeType(e.target.value as OvertimeType)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                  <option value="hafta_ici">Hafta içi</option>
-                  <option value="hafta_sonu">Hafta sonu</option>
-                  <option value="resmi_tatil">Resmi tatil</option>
+                  <option value="hafta_ici">Hafta içi (%50)</option>
+                  <option value="hafta_sonu">Hafta sonu (%100)</option>
+                  <option value="resmi_tatil">Resmi tatil (%100)</option>
                 </select>
-                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold">Onaya gönder</button>
+                <textarea value={overtimeDesc} onChange={(e) => setOvertimeDesc(e.target.value)} placeholder="İş / şantiye notu" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+                  Onaya gönder
+                </button>
               </form>
             )}
+
             {activeModal === 'makbuz' && (
               <form onSubmit={handleSendJobReceipt} className="space-y-3">
-                <select value={jobCustomerId} onChange={(e) => setJobCustomerId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                  <option value="">Cari (varsayılan ilk)</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
-                <select value={jobCraneId} onChange={(e) => setJobCraneId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                  <option value="">Vinç (varsayılan ilk)</option>
-                  {cranes.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
-                </select>
-                <input type="number" value={jobAmount || ''} onChange={(e) => setJobAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" placeholder="Tutar" />
-                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold">Makbuz gönder</button>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Cari</label>
+                  <select value={jobCustomerId} onChange={(e) => setJobCustomerId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
+                    <option value="">İlk cari (varsayılan)</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Vinç</label>
+                  <select value={jobCraneId} onChange={(e) => setJobCraneId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
+                    <option value="">İlk vinç (varsayılan)</option>
+                    {cranes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.code} {c.type || ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Tutar (₺)</label>
+                  <input type="number" value={jobAmount || ''} onChange={(e) => setJobAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
+                </div>
+                <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="İş açıklaması" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+                  Makbuz gönder
+                </button>
               </form>
             )}
+
             {activeModal === 'masraf' && (
               <form onSubmit={handleSendExpense} className="space-y-3">
-                <input type="number" value={expenseAmount || ''} onChange={(e) => setExpenseAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" placeholder="Tutar" />
-                <textarea value={expenseDetail} onChange={(e) => setExpenseDetail(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" placeholder="Detay" />
-                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold">Kaydet</button>
+                <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Tutar (₺)</label>
+                  <input type="number" value={expenseAmount || ''} onChange={(e) => setExpenseAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
+                </div>
+                <textarea value={expenseDetail} onChange={(e) => setExpenseDetail(e.target.value)} placeholder="Masraf detayı (yakıt, yemek…)" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+                  Kaydet
+                </button>
               </form>
             )}
           </div>

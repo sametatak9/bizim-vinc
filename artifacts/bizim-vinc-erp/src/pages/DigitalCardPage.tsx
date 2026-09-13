@@ -89,6 +89,9 @@ export const DigitalCardPage: React.FC<DigitalCardPageProps> = ({ token, onNavig
             Bu bağlantı geçersiz veya personel kaydı yayında değil.
             {error ? ` (${error})` : ''}
           </p>
+          <p className="text-xs text-emerald-800/70 mt-2">
+            Yönetici Supabase’de get_public_personnel_card fonksiyonunu çalıştırmış olmalı.
+          </p>
           <button type="button" onClick={onNavigateHome} className="mt-4 inline-flex items-center gap-1 text-emerald-800 font-semibold">
             <ArrowLeft size={14} /> Ana sayfa
           </button>

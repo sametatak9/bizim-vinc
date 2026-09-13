@@ -8,6 +8,11 @@ export type AppRole =
   | 'operasyon'
   | 'operator';
 
+export const EMPLOYEE_SELF_SERVICE_ROLES: AppRole[] = ['personel', 'operator'];
+
+export const isEmployeeSelfServiceRole = (role: AppRole): boolean =>
+  EMPLOYEE_SELF_SERVICE_ROLES.includes(role);
+
 export interface UserProfile {
   id: string; // auth.users id
   email: string;
