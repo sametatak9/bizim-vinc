@@ -1,0 +1,79 @@
+name: nav-tv-dashboard-fix
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/nav-tv-dashboard-fix.yml'
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Header sticky + remove TV; Dashboard TV panel
+        run: |
+          set -e
+          python3 << 'PY2'
+          from pathlib import Path
+          import re
+          for hp in ["src/components/Header.tsx", "artifacts/bizim-vinc-erp/src/components/Header.tsx"]:
+              p = Path(hp)
+              t = p.read_text()
+              t2 = t.replace("    { label: 'Canlı TV', path: '/tv', icon: Tv },\n", "")
+              t2 = t2.replace(
+                  'className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 text-slate-800 shadow-xs"',
+                  'className="sticky top-0 z-50 bg-white border-b-2 border-emerald-200 text-slate-800 shadow-md"'
+              )
+              if "path: '/tv'" not in t2:
+                  t2 = re.sub(r',?\s*Tv\b', '', t2)
+                  t2 = re.sub(r'\bTv,\s*', '', t2)
+              p.write_text(t2)
+              print('header', hp, 'tv', 'Canlı TV' in t2)
+          tv_block = """      {/* Canlı TV — üst menüden taşındı */}
+      <section className="bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm" aria-label="Canlı TV">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Tv size={22} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-emerald-950">Canlı TV / Saha Kiosk</h2>
+              <p className="text-xs text-emerald-800/70">Filo durumu ve operasyon özeti tam ekran görüntüleme</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('/tv')}
+            className="min-h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shrink-0"
+          >
+            <MonitorPlay size={18} />
+            Canlı TV Aç
+          </button>
+        </div>
+      </section>
+
+"""
+          for dp in ["src/pages/DashboardPage.tsx", "artifacts/bizim-vinc-erp/src/pages/DashboardPage.tsx"]:
+              p = Path(dp)
+              t = p.read_text()
+              if 'Canlı TV / Saha Kiosk' in t:
+                  print('dash already', dp)
+                  continue
+              t = t.replace(
+                  "  TrendingUp,\n} from 'lucide-react';",
+                  "  TrendingUp,\n  Tv,\n  MonitorPlay,\n} from 'lucide-react';",
+              )
+              marker = '      {/* 6 Top KPIs'
+              if marker in t:
+                  t = t.replace(marker, tv_block + marker, 1)
+                  print('dash ok', dp)
+              else:
+                  print('no marker', dp)
+              p.write_text(t)
+          PY2
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "fix(ui): sticky header, TV on dashboard, remove TV from top nav"
+          git push
