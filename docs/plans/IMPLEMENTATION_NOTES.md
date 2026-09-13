@@ -1,29 +1,23 @@
 # Bizim Vinç — implementation notes
 
-The imported SQL and product prompts describe a strong ERP direction. They are kept as planning sources and will be hardened before real company data is connected.
+## Status (2026-09-13)
 
-## First delivery
+Product routes (Dashboard, Personel, Puantaj, Onay, Filo, Operatör, Kart, Finans, Admin, TV, Makbuz, Cari) are implemented and wired to Supabase on Vercel.
 
-- Deliver one employer-facing screen first: the Turkish operations dashboard.
-- Keep the planned top navigation visible so the product direction is clear without pretending the other modules are complete.
-- Use clearly labeled demo data until the Supabase schema and policies are applied.
+## Canonical database
 
-## Before production data
+See **`docs/DATABASE.md`**. Use `/migrations/0002` … `0011` only.  
+`supabase/migrations/*` dated experiments are deprecated.
 
-1. Add and verify Row Level Security policies for every business table.
-2. Add Storage policies for personnel documents, cards, insurance, and isolated health documents.
-3. Make enum creation and named constraints safe for repeatable migrations.
-4. Implement server-side HMAC-SHA256 for `tc_hash`; never store plaintext identity numbers.
-5. Enforce the membership approval gate and site scopes in both route guards and database policies.
-6. Keep the public personnel card minimal: name, photo, and document status only.
-7. Enforce append-only audit logs and route official operational writes through approvals.
+## Before / with production data
 
-## Migration order
+1. Run `migrations/0011_production_security_and_ops.sql` (RLS + revoke anon).
+2. Storage buckets + policies for personnel documents / health (when Storage is enabled).
+3. Client TC hashing via `src/lib/tcHash.ts` (SHA-256); plan Edge Function HMAC for production secret.
+4. Membership gate: profile `status` on login + memberships RLS.
+5. Public card (`/kart/:token`): name, title, employee no, document flags only — no phone/TC/salary.
+6. `audit_logs` append-only (INSERT/SELECT policies only).
 
-Apply the imported sources in order:
+## Migration order (canonical)
 
-1. `20260912_001_bizim_vinc_init.sql`
-2. `20260912_002_ops_contracts_quotes.sql`
-3. `20260912_003_claude_enhancements.sql`
-
-These files are not applied automatically by the first visual demo.
+`0002_core` → `0003_security` → `0004` → `0005` → `0006` → `0007` → `0008` → `0009` → `0010` → **`0011_production_security_and_ops`**.
