@@ -103,16 +103,14 @@ ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS last_service TEXT;
 ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION DEFAULT 41.0100;
 ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION DEFAULT 29.0000;
 
--- 3. Yetkiler ve RLS İzinleri (ERP'nin veri okuyup yazabilmesi için)
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-
-ALTER TABLE public.personnel DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cranes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.approvals DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
+-- 3. Yetkiler ve RLS: service_role anahtarı frontend'e konulmaz.
+-- RLS açık kalır; authenticated kullanıcılar yalnızca migration'larda tanımlanan
+-- rol/personel politikaları kapsamında veri okuyup yazabilir.
+ALTER TABLE public.personnel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cranes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- 4. PostgREST şema önbelleğini anında yenile
 NOTIFY pgrst, 'reload schema';`;
@@ -260,7 +258,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
                       {t.exists ? (
                         <CheckCircle size={14} className="text-emerald-600 shrink-0" />
                       ) : (
-                        <AlertTriangle size={14} className="text-emerald-500 shrink-0" />
+                        <AlertTriangle size={14} className="text-emerald-600 shrink-0" />
                       )}
                       <span className="font-semibold">{t.nameTr}</span>
                     </div>

@@ -2661,6 +2661,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Bordro remote kaydedilemedi.');
+    const { error: runError } = await sb.from('payroll_runs').upsert({
+      id: runId, month, total_persons: newRun.personCount, total_gross: totalBase,
+      total_net: totalNet, total_overtime_pay: totalOvertimePay, status: 'draft', updated_at: new Date().toISOString(),
+    }, { onConflict: 'month' });
+    if (runError) throw runError;
+    const { error: itemsError } = await sb.from('payroll_items').insert(items.map((item) => ({
+      id: item.id, payroll_run_id: runId, personnel_id: item.personId, month,
+      base_salary: item.baseSalary, overtime_pay: item.overtimePay,
+      advance_deduction: item.advancesDeduction, net_pay: item.netSalary, status: 'draft',
+    })));
+    if (itemsError) throw itemsError;
+
     setPayrollRuns((prev) => {
       const filtered = prev.filter((r) => r.month !== month);
       const next = [newRun, ...filtered];
@@ -2682,6 +2696,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approvePayrollRun = async (runId: string) => {
+    if (!['founder', 'admin', 'yonetici', 'muhasebe'].includes(currentUser.role)) throw new Error('Bordro onayı için yetkiniz yok.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error } = await sb.from('payroll_runs').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', runId);
+    if (error) throw error;
+    const { error: itemError } = await sb.from('payroll_items').update({ status: 'approved' }).eq('payroll_run_id', runId);
+    if (itemError) throw itemError;
     setPayrollRuns((prev) => {
       const next = prev.map((r) =>
         r.id === runId
@@ -2710,6 +2731,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const payPayrollRun = async (runId: string, paymentMethod: 'banka' | 'nakit' = 'banka') => {
     const run = payrollRuns.find((r) => r.id === runId);
     if (!run) return;
+    if (!['founder', 'admin', 'muhasebe'].includes(currentUser.role)) throw new Error('Bordro ödemesi için yetkiniz yok.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error } = await sb.from('payroll_runs').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', runId);
+    if (error) throw error;
+    const { error: itemError } = await sb.from('payroll_items').update({ status: 'paid' }).eq('payroll_run_id', runId);
+    if (itemError) throw itemError;
 
     setPayrollRuns((prev) => {
       const next = prev.map((r) =>
