@@ -1,1 +1,126 @@
-PLACEHOLDER_WILL_BE_REPLACED
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+// NOTE: Full store was corrupted by placeholder write. This is a temporary stub.
+// Restore full file from main branch or from docs/store-recovery parts.
+// See docs/GROK_STORE_RECOVERY.md
+
+export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <div style={{ padding: 24, fontFamily: 'system-ui', background: '#F0FDF4', minHeight: '100vh' }}>
+      <h1 style={{ color: '#14532D' }}>Bizim Vinç ERP — Store kurtarma gerekli</h1>
+      <p style={{ color: '#166534' }}>
+        <code>src/lib/store.tsx</code> geçici olarak bozuldu. Lütfen main branch'teki store.tsx dosyasını
+        bu branch'e kopyalayın veya Grok sohbetindeki <code>store.tsx.FIXED</code> dosyasını kullanın.
+      </p>
+      <p style={{ color: '#15803D' }}>Detay: <code>docs/GROK_STORE_RECOVERY.md</code></p>
+      {children}
+    </div>
+  );
+};
+
+export function useERP(): any {
+  return {
+    currentUser: { id: 'guest', fullName: 'Kurtarma', role: 'founder', status: 'aktif' },
+    isAuthenticated: false,
+    personnel: [],
+    cranes: [],
+    approvals: [],
+    receipts: [],
+    expenses: [],
+    customers: [],
+    sites: [],
+    quotes: [],
+    contracts: [],
+    jobReceipts: [],
+    invoices: [],
+    collections: [],
+    payments: [],
+    memberships: [],
+    payrollRuns: [],
+    payrollItems: [],
+    attendance: [],
+    leaves: [],
+    overtimes: [],
+    advances: [],
+    puantajRecords: [],
+    periodLocks: {},
+    auditLogs: [],
+    notifications: [],
+    telemetry: [],
+    stats: {
+      totalPersonnel: 0, activePersonnel: 0, totalCranes: 0, totalCranesCount: 0,
+      activeCranes: 0, activeCranesCount: 0, pendingApprovals: 0, pendingApprovalsCount: 0,
+      totalRevenue: 0, todayRevenue: 0, totalExpense: 0, todayExpenses: 0, todayFuel: 0,
+      cutReceiptsCount: 0, pendingReceiptsCount: 0, unInvoicedReceiptsCount: 0,
+      unInvoicedReceiptsTotal: 0, pendingCollectionsTotal: 0, pendingPaymentsTotal: 0,
+      monthlyOvertimeHours: 0,
+    },
+    currentOperator: { id: '', employeeNo: '', fullName: '', phone: '', kind: 'operator', status: 'pasif', poolStatus: 'musait', title: '', initials: '', documentsOk: false, certExpiring: false },
+    setCurrentOperatorId: () => {},
+    toastMessage: 'Store kurtarma gerekli — docs/GROK_STORE_RECOVERY.md',
+    showToast: () => {},
+    isSyncing: false,
+    dbConnected: false,
+    isSupabaseOnline: false,
+    dbError: 'store.tsx placeholder — restore required',
+    retryDbConnection: async () => {},
+    refreshFromDb: async () => {},
+    loginWithCredentials: async () => ({ success: false, message: 'Store kurtarma gerekli' }),
+    registerUser: async () => ({ success: false, message: 'Store kurtarma gerekli' }),
+    logout: () => {},
+    updateUserProfile: () => {},
+    userProfiles: [],
+    activeRole: 'founder',
+    setActiveRole: () => {},
+    addPerson: async () => {},
+    updatePerson: async () => {},
+    deletePerson: async () => {},
+    exitPerson: async () => {},
+    requestMembership: async () => ({ success: false, message: '' }),
+    approveMembership: async () => {},
+    rejectMembership: async () => {},
+    addCustomer: async () => {},
+    updateCustomer: async () => {},
+    deleteCustomer: async () => {},
+    addSite: async () => {},
+    addQuote: async () => ({} as any),
+    createContractFromQuote: async () => ({} as any),
+    addJobReceipt: async () => ({} as any),
+    updateJobReceipt: async () => {},
+    approveJobReceipt: async () => {},
+    rejectJobReceipt: async () => {},
+    createInvoiceFromReceipts: async () => ({} as any),
+    updateInvoiceStatus: async () => {},
+    addCollection: async () => {},
+    markCollectionReceived: async () => {},
+    addPayment: async () => {},
+    markPaymentPaid: async () => {},
+    calculatePayroll: async () => ({} as any),
+    approvePayrollRun: async () => {},
+    payPayrollRun: async () => {},
+    addCrane: async () => {},
+    updateCrane: async () => {},
+    updateCraneStatus: async () => {},
+    deleteCrane: async () => {},
+    addApproval: async () => {},
+    approveRequest: async () => {},
+    rejectRequest: async () => {},
+    recordAttendance: async () => {},
+    createLeaveRequest: async () => {},
+    updateLeaveStatus: async () => {},
+    createOvertimeRequest: async () => {},
+    updateOvertimeStatus: async () => {},
+    createAdvanceRequest: async () => {},
+    updateAdvanceStatus: async () => {},
+    generateMonthlyPuantaj: async () => {},
+    togglePeriodLock: async () => {},
+    updatePuantajRecord: async () => {},
+    addReceipt: async () => {},
+    updateReceipt: async () => {},
+    addExpense: async () => {},
+    updateExpense: async () => {},
+    logAction: async () => {},
+    markNotificationRead: () => {},
+    markNotificationAsRead: () => {},
+    sendNotification: () => {},
+  };
+}
