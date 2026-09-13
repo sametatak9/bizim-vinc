@@ -12,6 +12,8 @@ import {
   XCircle,
   User,
   FileText,
+  Receipt,
+  Fuel,
 } from 'lucide-react';
 import { LeaveType, OvertimeType } from '../types';
 
@@ -24,6 +26,10 @@ export const OperatorPage: React.FC = () => {
     createAdvanceRequest,
     createLeaveRequest,
     createOvertimeRequest,
+    addJobReceipt,
+    addExpense,
+    customers,
+    cranes,
     showToast,
   } = useERP();
 
@@ -32,7 +38,11 @@ export const OperatorPage: React.FC = () => {
     personnel.find((p) => p.userId === currentUser.id || p.fullName === currentUser.fullName) ||
     personnel[0];
 
-  const [activeModal, setActiveModal] = useState<'none' | 'avans' | 'izin' | 'mesai'>('none');
+  const [activeModal, setActiveModal] = useState<'none' | 'avans' | 'izin' | 'mesai' | 'makbuz' | 'masraf'>('none');
+  const [jobAmount, setJobAmount] = useState(0);
+  const [jobDescription, setJobDescription] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState(0);
+  const [expenseDetail, setExpenseDetail] = useState('');
 
   // Avans Form State
   const [advanceAmount, setAdvanceAmount] = useState<number>(3000);
@@ -99,6 +109,53 @@ export const OperatorPage: React.FC = () => {
     setOvertimeDesc('');
   };
 
+  const handleSendJobReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const customer = customers[0];
+    const crane = cranes[0];
+    if (!customer || !crane || jobAmount <= 0) {
+      showToast('Makbuz için cari, vinç ve geçerli tutar gerekir.');
+      return;
+    }
+    await addJobReceipt({
+      customerId: customer.id,
+      customerName: customer.title,
+      craneCode: crane.code,
+      craneId: crane.id,
+      operatorId: myPerson.id,
+      operatorName: myPerson.fullName,
+      date: new Date().toISOString().slice(0, 10),
+      workingHours: 0,
+      amount: jobAmount,
+      status: 'pending_approval',
+      invoiced: false,
+      description: jobDescription || 'Saha işi',
+    });
+    setJobAmount(0);
+    setJobDescription('');
+    setActiveModal('none');
+  };
+
+  const handleSendExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (expenseAmount <= 0) {
+      showToast('Geçerli bir masraf tutarı giriniz.');
+      return;
+    }
+    await addExpense({
+      category: 'masraf',
+      title: 'Operatör saha masrafı',
+      detail: expenseDetail || 'Saha masrafı',
+      amount: expenseAmount,
+      craneCode: cranes[0]?.code,
+      personName: myPerson.fullName,
+      stationOrSupplier: myPerson.fullName,
+    });
+    setExpenseAmount(0);
+    setExpenseDetail('');
+    setActiveModal('none');
+  };
+
   // Kullanıcının kendi onay talepleri
   const myApprovals = approvals.filter(
     (a) => a.personId === myPerson.id || a.personName === myPerson.fullName
@@ -142,7 +199,7 @@ export const OperatorPage: React.FC = () => {
       </div>
 
       {/* Hızlı İşlem Düğmeleri */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <button
           onClick={() => handleAttendance('geldi')}
           className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-emerald-500/40 transition flex flex-col items-center justify-center text-center gap-2 group hover:bg-emerald-500/5 shadow-sm"
@@ -193,6 +250,20 @@ export const OperatorPage: React.FC = () => {
             <div className="text-xs font-bold text-neutral-200">İzin Talebi</div>
             <div className="text-[11px] text-neutral-400">Yıllık / Mazeret İzni</div>
           </div>
+        </button>
+        <button
+          onClick={() => setActiveModal('makbuz')}
+          className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-emerald-500/40 transition flex flex-col items-center justify-center text-center gap-2 group hover:bg-emerald-500/5 shadow-sm"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition"><Receipt className="w-5 h-5" /></div>
+          <div><div className="text-xs font-bold text-neutral-200">Makbuz / Fiş Kes</div><div className="text-[11px] text-neutral-400">İşi onaya gönder</div></div>
+        </button>
+        <button
+          onClick={() => setActiveModal('masraf')}
+          className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-rose-500/40 transition flex flex-col items-center justify-center text-center gap-2 group hover:bg-rose-500/5 shadow-sm"
+        >
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center group-hover:scale-110 transition"><Fuel className="w-5 h-5" /></div>
+          <div><div className="text-xs font-bold text-neutral-200">Masraf Gir</div><div className="text-[11px] text-neutral-400">Saha gideri bildir</div></div>
         </button>
       </div>
 
@@ -389,6 +460,33 @@ export const OperatorPage: React.FC = () => {
                   İzin Talebini Gönder
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'makbuz' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold">İş Makbuzu / Fiş Kes</h3>
+            <p className="text-xs text-neutral-400">Makbuz, cari kart ve vinç bilgisiyle yönetici onayına gönderilir.</p>
+            <form onSubmit={handleSendJobReceipt} className="space-y-3">
+              <input type="number" min="1" required value={jobAmount || ''} onChange={(e) => setJobAmount(Number(e.target.value))} placeholder="Tutar (₺)" className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-sm" />
+              <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="Yapılan iş / şantiye notu" rows={3} className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs" />
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setActiveModal('none')} className="px-4 py-2 rounded-xl text-xs text-neutral-400 bg-neutral-800">Vazgeç</button><button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-neutral-950">Onaya Gönder</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'masraf' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold">Saha Masrafı Gir</h3>
+            <form onSubmit={handleSendExpense} className="space-y-3">
+              <input type="number" min="1" required value={expenseAmount || ''} onChange={(e) => setExpenseAmount(Number(e.target.value))} placeholder="Tutar (₺)" className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-sm" />
+              <textarea value={expenseDetail} onChange={(e) => setExpenseDetail(e.target.value)} placeholder="Masraf açıklaması" rows={3} className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs" />
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setActiveModal('none')} className="px-4 py-2 rounded-xl text-xs text-neutral-400 bg-neutral-800">Vazgeç</button><button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-500 text-neutral-950">Masrafı Kaydet</button></div>
             </form>
           </div>
         </div>
