@@ -313,7 +313,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[11px]">{isSupabaseOnline ? 'Canlı DB' : 'Yerel / Supabase'}</span>
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                isSupabaseOnline ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'
+                isSupabaseOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
               }`}
             />
           </button>
