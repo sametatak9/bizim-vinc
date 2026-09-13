@@ -71,6 +71,9 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Yönetim', path: '/admin', icon: Shield },
     { label: 'Canlı TV', path: '/tv', icon: Tv },
   ];
+  const visibleNavItems = currentUser.role === 'operator'
+    ? navItems.filter((item) => item.path === '/operator')
+    : navItems;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 text-slate-800 shadow-xs">
@@ -143,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Navigation - Desktop (Clean, Light, Horizontal) */}
         <nav className="hidden 2xl:flex items-center gap-1" aria-label="Ana menü">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.path;
             return (
@@ -170,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Navigation - Medium & Large Desktops (Top priority items + Dropdown) */}
         <nav className="hidden md:flex 2xl:hidden items-center gap-1" aria-label="Kompakt menü">
-          {navItems.slice(0, 5).map((item) => {
+          {visibleNavItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.path;
             return (
@@ -204,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             {moreMenuOpen && (
               <div className="absolute left-0 mt-2 w-52 bg-white border border-emerald-100 rounded-xl shadow-xl p-1.5 z-50 animate-in fade-in">
-                {navItems.slice(5).map((item) => {
+                {visibleNavItems.slice(5).map((item) => {
                   const Icon = item.icon;
                   const isActive = currentPath === item.path;
                   return (
@@ -368,7 +371,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.path;
             return (
