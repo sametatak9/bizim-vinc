@@ -15,6 +15,7 @@ import { AdminPage } from './pages/AdminPage';
 import { TvBoardPage } from './pages/TvBoardPage';
 import { InvoiceReceiptPage } from './pages/InvoiceReceiptPage';
 import { CariPage } from './pages/CariPage';
+import { QuotesPage } from './pages/QuotesPage';
 import { CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
 import { isEmployeeSelfServiceRole } from './types';
 
@@ -149,6 +150,7 @@ function AppContent() {
         {currentPath === '/filo' && <FleetPage />}
         {currentPath === '/operator' && <OperatorPage />}
         {currentPath === '/finans' && <FinancePage />}
+        {currentPath === '/teklifler' && <QuotesPage />}
         {currentPath === '/admin' && <AdminPage />}
       </main>
 
