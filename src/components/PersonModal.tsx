@@ -147,7 +147,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                placeholder="Mehmet Kaya"
+                placeholder="Ad Soyad"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
