@@ -1,0 +1,46 @@
+name: restore-index-css
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/restore-index-css.yml'
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore CSS from good commit and add mobile guards
+        run: |
+          set -e
+          git show a9e3254c5625e3c25cddeb8dbbf04b2ff8bac84f:src/index.css > src/index.css
+          python3 << 'PY'
+          from pathlib import Path
+          css = Path('src/index.css').read_text()
+          if 'P1-C mobile overflow' not in css:
+              css += '''
+
+/* === P1-C mobile overflow guards === */
+html, body { max-width: 100%; overflow-x: hidden; }
+.dashboard-shell, main, .topbar-inner { max-width: 100%; }
+.table-wrap, .overflow-x-auto { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 640px) {
+  .topbar-inner { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  table { font-size: 12px; }
+}
+.fixed.inset-0 > div { padding-bottom: env(safe-area-inset-bottom, 0); }
+'''
+          Path('src/index.css').write_text(css)
+          dest = Path('artifacts/bizim-vinc-erp/src/index.css')
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          dest.write_text(css)
+          print('css bytes', len(css))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/index.css artifacts/bizim-vinc-erp/src/index.css
+          git diff --staged --quiet || git commit -m "fix: full index.css restored + P1-C mobile guards"
+          git push
