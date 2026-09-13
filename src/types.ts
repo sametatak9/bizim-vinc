@@ -48,6 +48,7 @@ export interface Person {
   cardSlug?: string;
   documentsOk: boolean;
   certExpiring: boolean;
+  certificateExpiresAt?: string;
   notes?: string;
   userId?: string; // linked user profile
   createdAt?: string;
@@ -67,6 +68,11 @@ export interface Crane {
   lastService: string;
   lat: number;
   lng: number;
+  meterHours?: number;
+  nextServiceHours?: number;
+  nextServiceDate?: string;
+  telemetryProvider?: 'manual' | 'nav_api';
+  telemetryLastSeen?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
