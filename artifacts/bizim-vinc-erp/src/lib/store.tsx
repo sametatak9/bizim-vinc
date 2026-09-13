@@ -2023,8 +2023,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ==========================================
   const addJobReceipt = async (receiptData: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>): Promise<JobReceipt> => {
     const id = generateUuid();
-    const seq = String(jobReceipts.length + 1).padStart(4, '0');
-    const receiptNo = `MB-2026-${seq}`;
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Makbuz numarası güvenli şekilde üretilemedi.');
+    const { data: receiptNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'receipt' });
+    if (sequenceError || !receiptNo) throw sequenceError || new Error('Makbuz numarası üretilemedi.');
 
     const newRec: JobReceipt = {
       ...receiptData,
@@ -2055,10 +2057,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz operatörce düzenlendi.`);
     showToast(`✓ Makbuz Kesildi (${receiptNo}) - Yönetici Onayına Sunuldu`);
 
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('job_receipts').insert([
+    try {
+        const { error: insertError } = await sb.from('job_receipts').insert([
           {
             id: newRec.id,
             receipt_no: newRec.receiptNo,
@@ -2076,10 +2076,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             invoiced: false,
           },
         ]);
+        if (insertError) throw insertError;
       } catch (err: any) {
-        console.warn('Supabase job receipt insert error:', err.message);
+        throw new Error(`Makbuz remote kaydı başarısız: ${err.message}`);
       }
-    }
 
     return newRec;
   };
@@ -2173,8 +2173,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalAmount = subtotal + taxAmount;
 
     const invoiceId = generateUuid();
-    const seq = String(invoices.length + 1).padStart(4, '0');
-    const invoiceNo = `FT-2026-${seq}`;
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Fatura numarası güvenli şekilde üretilemedi.');
+    const { data: invoiceNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'invoice' });
+    if (sequenceError || !invoiceNo) throw sequenceError || new Error('Fatura numarası üretilemedi.');
 
     const newInvoice: Invoice = {
       id: invoiceId,
@@ -2255,10 +2257,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAction('FATURA_KESILDI', 'Fatura', invoiceId, `${invoiceNo} nolu ${totalAmount.toLocaleString('tr-TR')} ₺ fatura düzenlendi.`);
     showToast(`✓ Fatura Kesildi: ${invoiceNo} (Toplam: ₺${totalAmount.toLocaleString('tr-TR')})`);
 
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('invoices').insert([
+    try {
+        const { error: invoiceError } = await sb.from('invoices').insert([
           {
             id: newInvoice.id,
             invoice_no: newInvoice.invoiceNo,
@@ -2275,10 +2275,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             notes: newInvoice.notes,
           },
         ]);
+        if (invoiceError) throw invoiceError;
       } catch (err: any) {
-        console.warn('Supabase invoice insert sync notice:', err.message);
+        throw new Error(`Fatura remote kaydı başarısız: ${err.message}`);
       }
-    }
 
     return newInvoice;
   };
