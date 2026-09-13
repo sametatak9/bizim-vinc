@@ -1685,6 +1685,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Cari yalnızca remote veritabanında güncellenebilir.');
+    const payload: Record<string, unknown> = {};
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.vknTckn !== undefined) payload.vkn_tckn = updates.vknTckn || null;
+    if (updates.taxOffice !== undefined) payload.tax_office = updates.taxOffice || null;
+    if (updates.authorizedPerson !== undefined) payload.authorized_person = updates.authorizedPerson || null;
+    if (updates.phone !== undefined) payload.phone = updates.phone;
+    if (updates.email !== undefined) payload.email = updates.email || null;
+    if (updates.address !== undefined) payload.address = updates.address || null;
+    if (updates.balance !== undefined) payload.balance = updates.balance;
+    if (updates.notes !== undefined) payload.notes = updates.notes || null;
+    const { error } = await sb.from('customers').update(payload).eq('id', id);
+    if (error) throw error;
     setCustomers((prev) => {
       const next = prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c));
       saveStored('bv_customers', next);
@@ -1694,6 +1708,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteCustomer = async (id: string) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Cari yalnızca remote veritabanından silinebilir.');
+    const { error } = await sb.from('customers').delete().eq('id', id);
+    if (error) throw error;
     setCustomers((prev) => {
       const next = prev.filter((c) => c.id !== id);
       saveStored('bv_customers', next);
