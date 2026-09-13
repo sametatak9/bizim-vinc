@@ -1,4 +1,8 @@
 {
+  "buildCommand": "pnpm --filter @workspace/bizim-vinc-erp run build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "outputDirectory": "artifacts/bizim-vinc-erp/dist/public",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",

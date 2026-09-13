@@ -25,7 +25,7 @@
 #     - typescript
 #
 # ============================================================================
-minimumReleaseAge: 1440
+minimumReleaseAge: 0
 
 minimumReleaseAgeExclude:
   # Exclude @replit scoped packages from the minimum release age check.
@@ -36,9 +36,6 @@ minimumReleaseAgeExclude:
 
 packages:
   - artifacts/*
-  - lib/*
-  - lib/integrations/*
-  - scripts
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.21
