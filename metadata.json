@@ -1,0 +1,6 @@
+{
+  "name": "Bizim Vinç ERP",
+  "description": "Bizim Vinç ERP — Filo, Personel, Onay Merkezi ve Saha Operasyon Yönetim Sistemi",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
