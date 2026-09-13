@@ -298,6 +298,37 @@ export interface Site {
   createdAt: string;
 }
 
+export interface Quote {
+  id: string;
+  quoteNo: string;
+  customerId: string;
+  customerName: string;
+  siteName?: string;
+  craneCode?: string;
+  lines: JobReceiptLine[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  validUntil?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Contract {
+  id: string;
+  contractNo: string;
+  quoteId?: string;
+  customerId: string;
+  customerName: string;
+  siteName?: string;
+  status: 'draft' | 'sent' | 'signed' | 'cancelled' | 'completed';
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+}
+
 // -------------------------------------------------------------
 // MAKBUZ (JOB RECEIPT) & FATURA (INVOICE) HATTI
 // -------------------------------------------------------------

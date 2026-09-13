@@ -20,6 +20,8 @@ import {
   NotificationItem,
   Customer,
   Site,
+  Quote,
+  Contract,
   JobReceipt,
   JobReceiptStatus,
   Invoice,
@@ -67,6 +69,10 @@ interface ERPContextType {
   addSite: (site: Omit<Site, 'id' | 'createdAt'>) => Promise<void>;
 
   // Makbuz -> Fatura Hattı
+  quotes: Quote[];
+  addQuote: (quote: Omit<Quote, 'id' | 'createdAt' | 'quoteNo'>) => Promise<Quote>;
+  contracts: Contract[];
+  createContractFromQuote: (quoteId: string) => Promise<Contract>;
   jobReceipts: JobReceipt[];
   addJobReceipt: (receipt: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>) => Promise<JobReceipt>;
   updateJobReceipt: (id: string, updates: Partial<JobReceipt>) => Promise<void>;
@@ -788,6 +794,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sites, setSites] = useState<Site[]>(() =>
     loadStored('bv_sites', INITIAL_SITES)
   );
+  const [quotes, setQuotes] = useState<Quote[]>(() => loadStored('bv_quotes', []));
+  const [contracts, setContracts] = useState<Contract[]>(() => loadStored('bv_contracts', []));
   const [jobReceipts, setJobReceipts] = useState<JobReceipt[]>(() =>
     loadStored('bv_job_receipts', INITIAL_JOB_RECEIPTS)
   );
@@ -2018,6 +2026,40 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addQuote = async (quoteData: Omit<Quote, 'id' | 'createdAt' | 'quoteNo'>): Promise<Quote> => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Teklif numarası güvenli şekilde üretilemedi.');
+    const { data: quoteNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'quote' });
+    if (sequenceError || !quoteNo) throw sequenceError || new Error('Teklif numarası üretilemedi.');
+    const quote: Quote = { ...quoteData, id: generateUuid(), quoteNo, createdAt: new Date().toISOString() };
+    const { error } = await sb.from('quotes').insert({
+      id: quote.id, quote_no: quote.quoteNo, customer_id: quote.customerId, customer_name: quote.customerName,
+      site_name: quote.siteName, crane_code: quote.craneCode, lines: quote.lines, subtotal: quote.subtotal,
+      tax_rate: quote.taxRate, tax_amount: quote.taxAmount, total_amount: quote.totalAmount, status: quote.status,
+      valid_until: quote.validUntil, notes: quote.notes, created_by: currentUser.id,
+    });
+    if (error) throw error;
+    setQuotes((prev) => { const next = [quote, ...prev]; saveStored('bv_quotes', next); return next; });
+    logAction('TEKLIF_OLUSTURULDU', 'Teklif', quote.id, `${quote.quoteNo} - ${quote.customerName}`);
+    showToast(`✓ Teklif oluşturuldu: ${quote.quoteNo}`);
+    return quote;
+  };
+
+  const createContractFromQuote = async (quoteId: string): Promise<Contract> => {
+    const quote = quotes.find((item) => item.id === quoteId);
+    if (!quote) throw new Error('Sözleşmeye dönüştürülecek teklif bulunamadı.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Sözleşme numarası üretilemedi.');
+    const { data: contractNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'contract' });
+    if (sequenceError || !contractNo) throw sequenceError || new Error('Sözleşme numarası üretilemedi.');
+    const contract: Contract = { id: generateUuid(), contractNo, quoteId, customerId: quote.customerId, customerName: quote.customerName, siteName: quote.siteName, status: 'draft', createdAt: new Date().toISOString() };
+    const { error } = await sb.from('contracts').insert({ id: contract.id, contract_no: contract.contractNo, quote_id: quote.id, customer_id: contract.customerId, customer_name: contract.customerName, site_name: contract.siteName, status: contract.status, created_by: currentUser.id });
+    if (error) throw error;
+    setContracts((prev) => { const next = [contract, ...prev]; saveStored('bv_contracts', next); return next; });
+    showToast(`✓ Sözleşme oluşturuldu: ${contract.contractNo}`);
+    return contract;
+  };
+
   // ==========================================
   // MAKBUZ (İŞ MAKBUZLARI) -> FATURA HATTI
   // ==========================================
@@ -2795,6 +2837,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteCustomer,
         sites,
         addSite,
+        quotes,
+        addQuote,
+        contracts,
+        createContractFromQuote,
         jobReceipts,
         addJobReceipt,
         updateJobReceipt,
