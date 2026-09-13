@@ -15,9 +15,9 @@ export const TvBoardPage: React.FC = () => {
   const pendingApprovals = approvals.filter((a) => a.status === 'pending');
 
   return (
-    <main className="p-6 max-w-[1800px] mx-auto min-h-screen flex flex-col gap-6" id="tv-board-page">
+    <main className="p-3 sm:p-6 max-w-[1800px] mx-auto min-h-screen flex flex-col gap-4 sm:gap-6 overflow-x-hidden" id="tv-board-page">
       {/* TV Header */}
-      <header className="flex items-center justify-between bg-emerald-950 text-white p-6 rounded-3xl shadow-xl border border-emerald-800">
+      <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-emerald-950 text-white p-4 sm:p-6 rounded-3xl shadow-xl border border-emerald-800">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg">
             <svg aria-hidden="true" viewBox="0 0 64 64" width="48" height="48" fill="none">
@@ -28,14 +28,14 @@ export const TvBoardPage: React.FC = () => {
             </svg>
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">BİZİM VİNÇ · OPERASYON TV</h1>
+            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">BİZİM VİNÇ · OPERASYON TV</h1>
             <p className="text-emerald-300 text-sm font-medium">Merkezi Saha Yönetim ve Filo İzleme Ekranı</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8">
           <div className="text-right">
-            <div className="text-4xl font-mono font-bold text-white tracking-tight">
+              <div className="text-2xl sm:text-4xl font-mono font-bold text-white tracking-tight">
               {time.toLocaleTimeString('tr-TR')}
             </div>
             <div className="text-emerald-300 text-sm font-medium">
@@ -50,42 +50,42 @@ export const TvBoardPage: React.FC = () => {
       </header>
 
       {/* 4 TV Big Metrics */}
-      <section className="grid grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-md">
           <span className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Bugünkü Ciro</span>
-          <div className="text-4xl font-mono font-black text-emerald-900">
+          <div className="text-2xl sm:text-4xl font-mono font-black text-emerald-900">
             {stats.todayRevenue.toLocaleString('tr-TR')} ₺
           </div>
         </div>
         <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-md">
           <span className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Sahada Aktif Vinç</span>
-          <div className="text-4xl font-mono font-black text-emerald-700">
+          <div className="text-2xl sm:text-4xl font-mono font-black text-emerald-700">
             {stats.activeCranesCount} / {stats.totalCranesCount}
           </div>
         </div>
         <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-md">
           <span className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Kesilen Makbuz</span>
-          <div className="text-4xl font-mono font-black text-emerald-900">
+          <div className="text-2xl sm:text-4xl font-mono font-black text-emerald-900">
             {stats.cutReceiptsCount} adet
           </div>
         </div>
         <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-md">
           <span className="text-sm font-bold text-gray-500 uppercase tracking-wider block mb-2">Bekleyen Onay</span>
-          <div className="text-4xl font-mono font-black text-orange-600">
+          <div className="text-2xl sm:text-4xl font-mono font-black text-emerald-600">
             {stats.pendingApprovalsCount} talep
           </div>
         </div>
       </section>
 
       {/* Main TV Split */}
-      <div className="grid grid-cols-3 gap-6 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1">
         {/* Left 2 Cols: Active Cranes on Site */}
-        <div className="col-span-2 bg-white rounded-3xl p-6 border border-emerald-100 shadow-md flex flex-col">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100 shadow-md flex flex-col">
           <h2 className="text-xl font-bold text-emerald-950 mb-4 flex items-center gap-2">
             <Truck className="text-emerald-700" size={24} />
             Sahadaki Vinçler ve Görev Noktaları
           </h2>
-          <div className="grid grid-cols-2 gap-4 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
             {activeCranes.map((c) => (
               <div
                 key={c.id}
