@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenS
           {/* Supabase connection indicator button */}
           <button
             onClick={onOpenSupabaseModal}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               isSupabaseOnline
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                 : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
@@ -95,8 +95,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenS
             id="supabase-status-btn"
           >
             <Database size={14} className={isSupabaseOnline ? 'text-emerald-600' : 'text-amber-600'} />
-            <span className="hidden sm:inline">
-              {isSupabaseOnline ? 'Supabase Bağlı' : 'Supabase (Yerel Yedek)'}
+            <span className="inline text-[11px] sm:text-xs">
+              {isSupabaseOnline ? 'Supabase' : 'Supabase'}
             </span>
             <span
               className={`w-2 h-2 rounded-full ${
@@ -125,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenS
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-emerald-900 hover:bg-emerald-50"
+            className="md:hidden p-2 rounded-lg text-emerald-900 hover:bg-emerald-50 border border-emerald-200"
             aria-label="Menüyü aç/kapat"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -135,8 +135,27 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate, onOpenS
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-emerald-100 px-4 py-3 shadow-lg">
+        <div className="md:hidden bg-white border-t border-emerald-100 px-4 py-3 shadow-xl">
           <div className="flex flex-col gap-1">
+            {/* Quick Supabase status button for mobile */}
+            <button
+              onClick={() => {
+                onOpenSupabaseModal();
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center justify-between p-2.5 mb-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold"
+            >
+              <div className="flex items-center gap-2">
+                <Database size={16} className={isSupabaseOnline ? 'text-emerald-600' : 'text-amber-600'} />
+                <span>Supabase Veritabanı Durumu</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isSupabaseOnline ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+              }`}>
+                {isSupabaseOnline ? 'Bağlı (200 OK)' : 'Kurulum Yap'}
+              </span>
+            </button>
+
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPath === item.path;
