@@ -117,8 +117,8 @@ export const FinancePage: React.FC = () => {
               onClick={() => setActiveTab('biriken')}
               className={`px-3 py-1.5 rounded-md transition ${
                 activeTab === 'biriken'
-                  ? 'bg-amber-600 text-white shadow-xs font-bold'
-                  : 'text-amber-800 hover:text-amber-950'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'text-emerald-800 hover:text-emerald-950'
               }`}
             >
               Biriken / Geciken ({receipts.filter((r) => r.status === 'birikti').length})
@@ -198,7 +198,7 @@ export const FinancePage: React.FC = () => {
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
                             r.status === 'kesildi'
                               ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
+                              : 'bg-emerald-100 text-emerald-800'
                           }`}
                         >
                           {r.status === 'kesildi' ? (

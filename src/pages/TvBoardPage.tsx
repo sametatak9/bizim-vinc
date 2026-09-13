@@ -122,7 +122,7 @@ export const TvBoardPage: React.FC = () => {
             {pendingApprovals.map((a) => (
               <div
                 key={a.id}
-                className="p-4 rounded-2xl bg-amber-50 border border-amber-200"
+                className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200"
               >
                 <div className="font-bold text-gray-900 text-sm mb-1">{a.title}</div>
                 <div className="text-xs text-emerald-900 font-semibold">{a.personName}</div>

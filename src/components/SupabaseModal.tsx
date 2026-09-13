@@ -184,13 +184,13 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
             className={`p-4 rounded-xl border flex items-start gap-3 ${
               isSupabaseOnline
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900'
             }`}
           >
             {isSupabaseOnline ? (
               <CheckCircle size={22} className="text-emerald-600 shrink-0 mt-0.5" />
             ) : (
-              <AlertTriangle size={22} className="text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle size={22} className="text-emerald-600 shrink-0 mt-0.5" />
             )}
             <div>
               <h3 className="text-sm font-bold">
@@ -253,7 +253,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
                     className={`flex items-center justify-between p-2 rounded-lg text-xs border ${
                       t.exists
                         ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
-                        : 'bg-amber-50/50 border-amber-200 text-amber-900'
+                        : 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
                     </div>
                     <span
                       className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        t.exists ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        t.exists ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
                       {t.exists ? 'Bağlı (200 OK)' : 'SQL Bekleniyor'}

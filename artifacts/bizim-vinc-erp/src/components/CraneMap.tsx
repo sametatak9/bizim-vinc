@@ -65,7 +65,7 @@ export const CraneMap: React.FC<CraneMapProps> = ({ cranes, onSelectCrane }) => 
           case 'musait':
             return '#2563eb'; // blue
           case 'bakimda':
-            return '#d97706'; // amber
+            return '#d97706'; // emerald
           case 'arizali':
             return '#dc2626'; // red
           default:

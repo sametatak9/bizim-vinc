@@ -118,9 +118,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </strong>
         </div>
 
-        <div className="bg-white border border-amber-200 rounded-2xl p-4 shadow-xs bg-amber-50/40" id="kpi-pending-receipts">
-          <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wide block">Biriken Makbuz</span>
-          <strong className="text-xl font-mono font-black text-amber-700 mt-1 block">
+        <div className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-xs bg-emerald-50/40" id="kpi-pending-receipts">
+          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide block">Biriken Makbuz</span>
+          <strong className="text-xl font-mono font-black text-emerald-700 mt-1 block">
             {stats.pendingReceiptsCount} adet
           </strong>
         </div>
@@ -215,22 +215,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </div>
 
           {/* Biriken Makbuzlar (Uyarı) */}
-          <div className="bg-white border border-amber-200 rounded-2xl shadow-xs overflow-hidden">
-            <header className="p-3.5 border-b border-amber-200 flex items-center justify-between bg-amber-50/60">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                <AlertTriangle size={16} className="text-amber-600" />
+          <div className="bg-white border border-emerald-200 rounded-2xl shadow-xs overflow-hidden">
+            <header className="p-3.5 border-b border-emerald-200 flex items-center justify-between bg-emerald-50/60">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                <AlertTriangle size={16} className="text-emerald-600" />
                 <h3>Biriken Makbuzlar (Geciken)</h3>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                 {pendingReceipts.length} bekleyen
               </span>
             </header>
-            <ul className="divide-y divide-amber-100/60 text-xs">
+            <ul className="divide-y divide-emerald-100/60 text-xs">
               {pendingReceipts.map((r) => (
-                <li key={r.id} className="p-3 hover:bg-amber-50/30 transition">
+                <li key={r.id} className="p-3 hover:bg-emerald-50/30 transition">
                   <div className="flex items-center justify-between">
                     <strong className="text-slate-900">{r.company}</strong>
-                    <span className="font-mono font-bold text-amber-700">
+                    <span className="font-mono font-bold text-emerald-700">
                       {r.amount.toLocaleString('tr-TR')} ₺
                     </span>
                   </div>
@@ -238,7 +238,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                     <span>
                       {r.craneCode} · {r.site}
                     </span>
-                    <span className="text-amber-700 font-medium">
+                    <span className="text-emerald-700 font-medium">
                       {r.daysPending} gündür kesilmedi
                     </span>
                   </div>

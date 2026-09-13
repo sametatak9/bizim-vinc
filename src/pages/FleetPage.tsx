@@ -59,7 +59,7 @@ export const FleetPage: React.FC = () => {
         </div>
         <div className="bg-white border border-emerald-100 rounded-xl p-3.5 shadow-xs">
           <span className="text-xs font-semibold text-gray-500 block mb-1">Bakım & Servis</span>
-          <span className={`font-mono text-2xl font-bold ${maintenanceCount > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+          <span className={`font-mono text-2xl font-bold ${maintenanceCount > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
             {maintenanceCount} araç
           </span>
         </div>
@@ -182,7 +182,7 @@ export const FleetPage: React.FC = () => {
                           : crane.status === 'musait'
                           ? 'bg-blue-100 text-blue-900 border-blue-300'
                           : crane.status === 'bakimda'
-                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                           : 'bg-red-100 text-red-900 border-red-300'
                       }`}
                     >

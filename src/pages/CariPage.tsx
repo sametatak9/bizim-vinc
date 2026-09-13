@@ -260,14 +260,14 @@ export const CariPage: React.FC = () => {
             <div className="text-xs text-emerald-700">{customers.length} kayıtlı cari</div>
           </div>
 
-          <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/80">
-            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">
+          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide">
               Bekleyen Tahsilat
             </span>
-            <div className="text-xl font-black text-amber-950 mt-1">
+            <div className="text-xl font-black text-emerald-950 mt-1">
               {pendingCollectionsTotal.toLocaleString('tr-TR')} ₺
             </div>
-            <div className="text-xs text-amber-700">Vadeli açık kayıtlar</div>
+            <div className="text-xs text-emerald-700">Vadeli açık kayıtlar</div>
           </div>
 
           <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-100">
@@ -533,7 +533,7 @@ export const CariPage: React.FC = () => {
                             <CheckCircle2 size={12} /> Tahsil Edildi
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                             <Clock size={12} /> Bekliyor
                           </span>
                         )}
@@ -598,7 +598,7 @@ export const CariPage: React.FC = () => {
                             <CheckCircle2 size={12} /> Ödendi
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                             <Clock size={12} /> Bekliyor
                           </span>
                         )}

@@ -245,14 +245,14 @@ export const InvoiceReceiptPage: React.FC = () => {
             <div className="text-xs text-slate-500">{invoices.length} fatura kesildi</div>
           </div>
 
-          <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/80">
-            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">
+          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide">
               Bekleyen Tahsilat
             </span>
-            <div className="text-xl font-black text-amber-950 mt-1">
+            <div className="text-xl font-black text-emerald-950 mt-1">
               {stats.pendingCollectionsTotal.toLocaleString('tr-TR')} ₺
             </div>
-            <div className="text-xs text-amber-700">Cari vadeli alacak</div>
+            <div className="text-xs text-emerald-700">Cari vadeli alacak</div>
           </div>
 
           <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-100">
@@ -332,7 +332,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                 onClick={() => setReceiptFilter('pending')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                   receiptFilter === 'pending'
-                    ? 'bg-amber-100 text-amber-900'
+                    ? 'bg-emerald-100 text-emerald-900'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -456,7 +456,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                                 <Check size={12} /> İmzalı ({receipt.customerSignatureName || 'Yetkili'})
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                 İmzasız
                               </span>
                             )}
@@ -475,7 +475,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                                 Reddedildi
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                 Onay Bekliyor
                               </span>
                             )}

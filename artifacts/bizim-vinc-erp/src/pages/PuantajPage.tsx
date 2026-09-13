@@ -148,7 +148,7 @@ export const PuantajPage: React.FC = () => {
             <button
               onClick={handleAutoGenerate}
               disabled={isLocked}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10 disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/10 disabled:opacity-50"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Otomatik Puantajı Derle</span>
@@ -310,7 +310,7 @@ export const PuantajPage: React.FC = () => {
                                   });
                                   setEditingRecordId(null);
                                 }}
-                                className="px-2 py-1 rounded bg-emerald-500 hover:bg-amber-400 text-neutral-950 font-bold text-[11px]"
+                                className="px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-[11px]"
                               >
                                 Kaydet
                               </button>

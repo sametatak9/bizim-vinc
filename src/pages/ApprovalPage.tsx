@@ -102,7 +102,7 @@ export const ApprovalPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/10"
             >
               <Plus className="w-4 h-4" />
               <span>Yeni Talep Aç</span>
@@ -372,7 +372,7 @@ export const ApprovalPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition"
                 >
                   Talebi Kaydet
                 </button>

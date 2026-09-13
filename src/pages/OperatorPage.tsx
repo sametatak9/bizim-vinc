@@ -167,7 +167,7 @@ export const OperatorPage: React.FC = () => {
       <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-neutral-950 font-bold flex items-center justify-center text-lg shadow-lg shadow-amber-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-neutral-950 font-bold flex items-center justify-center text-lg shadow-lg shadow-emerald-500/20">
               {myPerson.initials}
             </div>
             <div>
@@ -370,7 +370,7 @@ export const OperatorPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition"
                 >
                   Talebi İlet
                 </button>
@@ -455,7 +455,7 @@ export const OperatorPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition"
                 >
                   İzin Talebini Gönder
                 </button>
@@ -576,7 +576,7 @@ export const OperatorPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition"
                 >
                   Mesaiyi Onaya Gönder
                 </button>
