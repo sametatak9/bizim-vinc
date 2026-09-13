@@ -108,6 +108,7 @@ export const CraneMap: React.FC<CraneMapProps> = ({ cranes, onSelectCrane }) => 
         musait: 'Müsait (Depoda)',
         bakimda: 'Bakımda',
         arizali: 'Arızalı (Servis Bekliyor)',
+        pasif: 'Pasif (Hizmet Dışı)',
       };
 
       const popupContent = `

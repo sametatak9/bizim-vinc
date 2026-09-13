@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 
 const KNOWN_PROJECT_URL = 'https://jimywfjufmrpgnjynhkx.supabase.co';
 
@@ -7,36 +7,47 @@ function normalizeSupabaseUrl(rawUrl?: string): string {
     return KNOWN_PROJECT_URL;
   }
   let clean = rawUrl.trim();
-  // Strip trailing dots and slashes
   clean = clean.replace(/\.+$/, '').replace(/\/+$/, '');
-  // Strip /rest/v1 or similar path suffixes
   clean = clean.replace(/\/rest\/v1\/?$/, '');
-  // Ensure https://
   if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
     clean = `https://${clean}`;
   }
   return clean;
 }
 
-const rawEnvUrl =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
-  '';
-const rawEnvKey =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
-  '';
+// Check both window.localStorage, import.meta.env, and process.env
+const getEnvOrStorage = (key: string, storageKey: string): string => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(storageKey);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env?.[key] : '';
+  if (metaEnv) return metaEnv;
+  const procEnv = typeof process !== 'undefined' ? process.env?.[key] : '';
+  return procEnv || '';
+};
 
-export const supabaseUrl = normalizeSupabaseUrl(rawEnvUrl);
-export const supabaseAnonKey = rawEnvKey || '';
+export const getActiveSupabaseUrl = (): string => {
+  const raw = getEnvOrStorage('VITE_SUPABASE_URL', 'bv_custom_supabase_url');
+  return normalizeSupabaseUrl(raw);
+};
+
+export const getActiveSupabaseKey = (): string => {
+  return getEnvOrStorage('VITE_SUPABASE_ANON_KEY', 'bv_custom_supabase_key');
+};
+
+export const supabaseUrl = getActiveSupabaseUrl();
+export const supabaseAnonKey = getActiveSupabaseKey();
 
 export const isSupabaseConfigured = (): boolean => {
+  const url = getActiveSupabaseUrl();
+  const key = getActiveSupabaseKey();
   return Boolean(
-    supabaseUrl &&
-      supabaseUrl.startsWith('https://') &&
-      supabaseAnonKey &&
-      supabaseAnonKey.trim() !== '' &&
-      !supabaseAnonKey.includes('placeholder')
+    url &&
+      url.startsWith('https://') &&
+      key &&
+      key.trim() !== '' &&
+      !key.includes('placeholder')
   );
 };
 
@@ -46,9 +57,12 @@ export const getSupabase = (): SupabaseClient | null => {
   if (!isSupabaseConfigured()) {
     return null;
   }
+  const url = getActiveSupabaseUrl();
+  const key = getActiveSupabaseKey();
+
   if (!clientInstance) {
     try {
-      clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      clientInstance = createClient(url, key, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
@@ -61,6 +75,22 @@ export const getSupabase = (): SupabaseClient | null => {
   }
   return clientInstance;
 };
+
+export function setCustomSupabaseCredentials(url: string, key: string): void {
+  if (typeof window !== 'undefined') {
+    if (url) localStorage.setItem('bv_custom_supabase_url', url);
+    if (key) localStorage.setItem('bv_custom_supabase_key', key);
+    clientInstance = null; // reset client to re-initialize
+  }
+}
+
+export function clearCustomSupabaseCredentials(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bv_custom_supabase_url');
+    localStorage.removeItem('bv_custom_supabase_key');
+    clientInstance = null;
+  }
+}
 
 export function generateUuid(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -98,11 +128,19 @@ export const diagnoseSupabaseTables = async (): Promise<{
   }
 
   const targetTables = [
+    { table: 'profiles', nameTr: 'Kullanıcı Profilleri (profiles)' },
     { table: 'personnel', nameTr: 'Personel (personnel)' },
     { table: 'cranes', nameTr: 'Vinç Filosu (cranes)' },
     { table: 'approvals', nameTr: 'Onay Talepleri (approvals)' },
+    { table: 'attendance', nameTr: 'Günlük Yoklama (attendance)' },
+    { table: 'leaves', nameTr: 'İzin Talepleri (leaves)' },
+    { table: 'overtimes', nameTr: 'Mesai Kayıtları (overtimes)' },
+    { table: 'advances', nameTr: 'Avans Talepleri (advances)' },
+    { table: 'puantaj', nameTr: 'Aylık Puantaj (puantaj)' },
     { table: 'receipts', nameTr: 'Makbuzlar (receipts)' },
     { table: 'expenses', nameTr: 'Masraflar & Yakıt (expenses)' },
+    { table: 'audit_logs', nameTr: 'Denetim Günlüğü (audit_logs)' },
+    { table: 'notifications', nameTr: 'Bildirimler (notifications)' },
   ];
 
   const results: TableDiagnostic[] = [];
@@ -133,13 +171,12 @@ export const diagnoseSupabaseTables = async (): Promise<{
           });
         }
       } else {
-        // Table exists and can read
         results.push({
           table: t.table,
           nameTr: t.nameTr,
           exists: true,
           canRead: true,
-          canWrite: true, // will be confirmed when migration is run
+          canWrite: true,
           rowCount: data ? data.length : 0,
           message: 'Aktif ve bağlı',
         });
@@ -171,7 +208,7 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
   if (!isSupabaseConfigured()) {
     return {
       success: false,
-      message: 'Supabase Anon Key henüz tanımlanmamış.',
+      message: 'Supabase Anon Key henüz tanımlanmamış. Supabase Ayarları penceresinden girebilirsiniz.',
     };
   }
 
@@ -179,20 +216,20 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase client başlatılamadı.');
 
-    const { data, error } = await sb.from('personnel').select('*').limit(1);
+    const { error } = await sb.from('personnel').select('*').limit(1);
     if (error) {
       if (error.code === '42P01') {
         return {
           success: true,
-          message: 'Supabase bağlantısı başarılı! Ancak tablolar henüz oluşturulmamış (SQL şeması çalıştırılmalı).',
+          message: 'Supabase bağlantısı başarılı! Ancak tablolar henüz oluşturulmamış (SQL göç betiği çalıştırılmalı).',
         };
       }
-      return { success: false, message: `Supabase hatası: ${error.message}` };
+      return { success: false, message: `Supabase yanıt hatası: ${error.message}` };
     }
 
     return {
       success: true,
-      message: `Supabase PostgreSQL veritabanı başarıyla bağlandı (${supabaseUrl})!`,
+      message: `Supabase PostgreSQL veritabanı başarıyla bağlandı (${getActiveSupabaseUrl()})!`,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

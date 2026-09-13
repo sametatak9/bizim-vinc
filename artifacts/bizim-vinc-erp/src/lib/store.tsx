@@ -1,981 +1,1765 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { Person, Crane, Approval, Receipt, Expense, CraneStatus, ApprovalStatus, ApprovalKind } from '../types';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import {
+  Person,
+  Crane,
+  CraneStatus,
+  Approval,
+  Receipt,
+  Expense,
+  TelemetryPoint,
+  UserProfile,
+  AppRole,
+  AttendanceRecord,
+  AttendanceStatus,
+  LeaveRequest,
+  OvertimeRecord,
+  AdvanceRequest,
+  PuantajRecord,
+  PuantajPeriodLock,
+  AuditLog,
+  NotificationItem,
+} from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 
-const INITIAL_PERSONNEL: Person[] = [
-  {
-    id: 'p-001',
-    employeeNo: 'OP-204',
-    fullName: 'Mehmet Kaya',
-    phone: '+90 532 111 22 33',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    title: 'Mobil Vinç Operatörü',
-    initials: 'MK',
-    cardSlug: 'mehmet-kaya',
-    documentsOk: true,
-    certExpiring: false,
-  },
-  {
-    id: 'p-002',
-    employeeNo: 'OP-118',
-    fullName: 'Ali Demir',
-    phone: '+90 533 222 33 44',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    title: 'Teleskopik Vinç Operatörü',
-    initials: 'AD',
-    cardSlug: 'ali-demir',
-    documentsOk: true,
-    certExpiring: false,
-  },
-  {
-    id: 'p-003',
-    employeeNo: 'OP-302',
-    fullName: 'Elif Yılmaz',
-    phone: '+90 534 333 44 55',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'musait',
-    title: 'Sepetli Platform Operatörü',
-    initials: 'EY',
-    cardSlug: 'elif-yilmaz',
-    documentsOk: true,
-    certExpiring: false,
-  },
-  {
-    id: 'p-004',
-    employeeNo: 'OP-087',
-    fullName: 'Can Özkan',
-    phone: '+90 535 444 55 66',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    title: 'Paletli Vinç Operatörü',
-    initials: 'CÖ',
-    cardSlug: 'can-ozkan',
-    documentsOk: false,
-    certExpiring: true,
-  },
-  {
-    id: 'p-005',
-    employeeNo: 'YD-101',
-    fullName: 'Ahmet Şahin',
-    phone: '+90 536 555 66 77',
-    kind: 'yardimci',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    title: 'Vinç Yağcısı & Montör',
-    initials: 'AŞ',
-    cardSlug: 'ahmet-sahin',
-    documentsOk: true,
-    certExpiring: false,
-  },
-  {
-    id: 'p-006',
-    employeeNo: 'ID-001',
-    fullName: 'Esra Yıldırım',
-    phone: '+90 537 666 77 88',
-    kind: 'idari',
-    status: 'aktif',
-    poolStatus: 'musait',
-    title: 'Operasyon Yöneticisi',
-    initials: 'EY',
-    cardSlug: 'esra-yildirim',
-    documentsOk: true,
-    certExpiring: false,
-  },
-];
-
-const INITIAL_CRANES: Crane[] = [
-  {
-    id: 'c-001',
-    code: 'V-204',
-    type: 'Mobil Vinç',
-    status: 'sahada',
-    capacity: '50 ton',
-    operator: 'Mehmet Kaya',
-    site: 'Ataşehir Metro Şantiyesi',
-    lastService: '2026-08-12',
-    lat: 40.9923,
-    lng: 29.1244,
-  },
-  {
-    id: 'c-002',
-    code: 'V-118',
-    type: 'Teleskopik',
-    status: 'sahada',
-    capacity: '80 ton',
-    operator: 'Ali Demir',
-    site: 'Bandırma Liman Projesi',
-    lastService: '2026-07-28',
-    lat: 40.3522,
-    lng: 27.9767,
-  },
-  {
-    id: 'c-003',
-    code: 'V-302',
-    type: 'Sepetli',
-    status: 'musait',
-    capacity: '35 metre',
-    operator: 'Elif Yılmaz',
-    site: 'Tuzla Ana Depo',
-    lastService: '2026-08-30',
-    lat: 40.865,
-    lng: 29.301,
-  },
-  {
-    id: 'c-004',
-    code: 'V-087',
-    type: 'Paletli Vinç',
-    status: 'sahada',
-    capacity: '120 ton',
-    operator: 'Can Özkan',
-    site: 'Aliağa Petrokimya',
-    lastService: '2026-08-05',
-    lat: 38.7985,
-    lng: 26.968,
-  },
-  {
-    id: 'c-005',
-    code: 'V-155',
-    type: 'Mobil Vinç',
-    status: 'bakimda',
-    capacity: '60 ton',
-    operator: undefined,
-    site: 'Merkez Servis İstasyonu',
-    lastService: '2026-09-10',
-    lat: 41.015,
-    lng: 28.98,
-  },
-  {
-    id: 'c-006',
-    code: 'V-210',
-    type: 'Hiyap Vinç',
-    status: 'arizali',
-    capacity: '25 ton',
-    operator: undefined,
-    site: 'Gebze Sanayi Sitesi',
-    lastService: '2026-09-08',
-    lat: 40.802,
-    lng: 29.435,
-  },
-  {
-    id: 'c-007',
-    code: 'V-133',
-    type: 'Mobil Vinç',
-    status: 'sahada',
-    capacity: '70 ton',
-    operator: 'Serkan Aydın',
-    site: 'Kadıköy Rıhtım İskelesi',
-    lastService: '2026-08-18',
-    lat: 40.99,
-    lng: 29.025,
-  },
-  {
-    id: 'c-008',
-    code: 'V-198',
-    type: 'Teleskopik',
-    status: 'sahada',
-    capacity: '100 ton',
-    operator: 'Burak Yıldız',
-    site: 'Maltepe Konut Şantiyesi',
-    lastService: '2026-08-22',
-    lat: 40.93,
-    lng: 29.14,
-  },
-];
-
-const INITIAL_APPROVALS: Approval[] = [
-  {
-    id: 'a-001',
-    kind: 'mesai_kaldi',
-    status: 'pending',
-    title: 'Fazla mesai talebi',
-    personName: 'Mehmet Kaya',
-    personInitials: 'MK',
-    relatedLabel: '3 saat · V-204',
-    note: 'Saha gecikmesi nedeniyle ekstra süre',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'a-002',
-    kind: 'vinc_hareket',
-    status: 'pending',
-    title: 'Filo bakım talebi',
-    personName: 'Bakım Şefi',
-    personInitials: 'BŞ',
-    relatedLabel: 'V-155 Hidrolik değişimi',
-    note: '250 saatlik periyodik keçe revizyonu',
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: 'a-003',
-    kind: 'yoklama',
-    status: 'approved',
-    title: 'İşe geldim (Saha Yoklaması)',
-    personName: 'Ali Demir',
-    personInitials: 'AD',
-    relatedLabel: 'V-118 · Bandırma Limanı',
-    note: 'Saha kontrolü tamamlandı.',
-    decidedAt: new Date(Date.now() - 14400000).toISOString(),
-    decisionNote: 'Onaylandı',
-    createdAt: new Date(Date.now() - 18000000).toISOString(),
-  },
-];
-
-const INITIAL_RECEIPTS: Receipt[] = [
-  {
-    id: 'r-001',
-    receiptNo: 'MK-2026-0148',
-    company: 'Yapı Kredi Genel Müd.',
-    amount: 42000,
-    status: 'kesildi',
-    craneCode: 'V-204',
-    site: 'Ataşehir',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-002',
-    receiptNo: 'MK-2026-0147',
-    company: 'Kuzey Yapı İnşaat A.Ş.',
-    amount: 18500,
-    status: 'kesildi',
-    craneCode: 'V-118',
-    site: 'Bandırma',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-003',
-    receiptNo: 'MK-2026-0146',
-    company: 'Ege Liman İşletmeleri',
-    amount: 27200,
-    status: 'kesildi',
-    craneCode: 'V-087',
-    site: 'Aliağa',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-004',
-    receiptNo: 'MK-2026-0145',
-    company: 'Marmara Rüzgar Enerji',
-    amount: 31000,
-    status: 'kesildi',
-    craneCode: 'V-133',
-    site: 'Kadıköy',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-005',
-    receiptNo: 'BK-2026-0041',
-    company: 'Doğu Çelik Konstrüksiyon',
-    amount: 28000,
-    status: 'birikti',
-    craneCode: 'V-204',
-    site: 'Ataşehir',
-    daysPending: 3,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-006',
-    receiptNo: 'BK-2026-0042',
-    company: 'Bandırma Gübre Sanayi',
-    amount: 16500,
-    status: 'birikti',
-    craneCode: 'V-118',
-    site: 'Bandırma',
-    daysPending: 1,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'r-007',
-    receiptNo: 'BK-2026-0043',
-    company: 'Tüpraş Rafineri Bakım',
-    amount: 39000,
-    status: 'birikti',
-    craneCode: 'V-087',
-    site: 'Aliağa',
-    daysPending: 5,
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const INITIAL_EXPENSES: Expense[] = [
-  {
-    id: 'e-001',
-    category: 'yakit',
-    title: 'Dizel Yakıt Dolumu',
-    detail: 'Shell Ataşehir · Mehmet Kaya',
-    amount: 2450,
-    craneCode: 'V-204',
-    personName: 'Mehmet Kaya',
-    stationOrSupplier: 'Shell Ataşehir',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'e-002',
-    category: 'yakit',
-    title: 'Dizel Yakıt Dolumu',
-    detail: 'Opet Aliağa · Can Özkan',
-    amount: 3120,
-    craneCode: 'V-087',
-    personName: 'Can Özkan',
-    stationOrSupplier: 'Opet Aliağa',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'e-003',
-    category: 'masraf',
-    title: 'Hidrolik hortum değişimi',
-    detail: 'V-155 · Parça değişimi',
-    amount: 1250,
-    craneCode: 'V-155',
-    stationOrSupplier: 'Teknik Servis',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'e-004',
-    category: 'masraf',
-    title: 'Yağ değişimi ve filtre',
-    detail: 'V-210 · Periyodik bakım',
-    amount: 980,
-    craneCode: 'V-210',
-    stationOrSupplier: 'Mobil Yağ',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'e-005',
-    category: 'masraf',
-    title: 'Otoyol HGS Geçişi',
-    detail: 'V-204 · Kuzey Marmara Otoyolu',
-    amount: 245,
-    craneCode: 'V-204',
-    stationOrSupplier: 'KGM HGS',
-    createdAt: new Date().toISOString(),
-  },
-];
-
 interface ERPContextType {
+  // Auth & Roles
+  currentUser: UserProfile;
+  userProfiles: UserProfile[];
+  activeRole: AppRole;
+  setActiveRole: (role: AppRole) => void;
+  switchUser: (userId: string) => void;
+  loginWithCredentials: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  registerUser: (email: string, pass: string, fullName: string, role: AppRole, phone?: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => void;
+  updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
+
+  // Personel
   personnel: Person[];
+  addPerson: (person: Omit<Person, 'id'>) => Promise<void>;
+  updatePerson: (id: string, updates: Partial<Person>) => Promise<void>;
+  deletePerson: (id: string, soft?: boolean) => Promise<void>;
+
+  // Filo (Vinçler)
   cranes: Crane[];
+  addCrane: (crane: Omit<Crane, 'id'>) => Promise<void>;
+  updateCrane: (id: string, updates: Partial<Crane>) => Promise<void>;
+  updateCraneStatus: (id: string, status: CraneStatus) => Promise<void>;
+  deleteCrane: (id: string, soft?: boolean) => Promise<void>;
+
+  // Onay Merkezi
   approvals: Approval[];
+  addApproval: (approval: Omit<Approval, 'id' | 'createdAt'>) => Promise<void>;
+  approveRequest: (id: string, note?: string) => Promise<void>;
+  rejectRequest: (id: string, reason: string) => Promise<void>;
+
+  // Yoklama
+  attendance: AttendanceRecord[];
+  recordAttendance: (personId: string, status: AttendanceStatus, checkIn?: string, checkOut?: string, note?: string) => Promise<void>;
+
+  // İzinler
+  leaves: LeaveRequest[];
+  createLeaveRequest: (personId: string, leaveType: LeaveRequest['leaveType'], startDate: string, endDate: string, days: number, description?: string) => Promise<void>;
+  updateLeaveStatus: (id: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
+
+  // Mesailer
+  overtimes: OvertimeRecord[];
+  createOvertimeRequest: (personId: string, date: string, startTime: string, endTime: string, hours: number, type: OvertimeRecord['overtimeType'], description?: string) => Promise<void>;
+  updateOvertimeStatus: (id: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
+
+  // Avanslar
+  advances: AdvanceRequest[];
+  createAdvanceRequest: (personId: string, amount: number, date: string, description?: string) => Promise<void>;
+  updateAdvanceStatus: (id: string, status: 'approved' | 'rejected' | 'paid', reason?: string) => Promise<void>;
+
+  // Puantaj
+  puantajRecords: PuantajRecord[];
+  periodLocks: Record<string, PuantajPeriodLock>;
+  generateMonthlyPuantaj: (month: string) => Promise<void>;
+  togglePeriodLock: (month: string, lock: boolean, notes?: string) => Promise<void>;
+  updatePuantajRecord: (id: string, updates: Partial<PuantajRecord>) => Promise<void>;
+
+  // Finans
   receipts: Receipt[];
+  addReceipt: (receipt: Omit<Receipt, 'id' | 'createdAt'>) => Promise<void>;
+  updateReceipt: (id: string, updates: Partial<Receipt>) => Promise<void>;
   expenses: Expense[];
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  updateExpense: (id: string, updates: Partial<Expense>) => Promise<void>;
+
+  // Denetim & Bildirimler
+  auditLogs: AuditLog[];
+  logAction: (action: string, module: string, recordId?: string, details?: string, oldData?: any, newData?: any) => Promise<void>;
+  notifications: NotificationItem[];
+  markNotificationRead: (id: string) => void;
+  markNotificationAsRead: (id: string) => void;
+  sendNotification: (title: string, message: string, type: NotificationItem['type'], userId?: string) => void;
+
+  // Harita & Telemetri
+  telemetry: TelemetryPoint[];
+
+  // Global Metrikler
   stats: {
+    totalPersonnel: number;
+    activePersonnel: number;
+    totalCranes: number;
+    totalCranesCount: number;
+    activeCranes: number;
+    activeCranesCount: number;
+    pendingApprovals: number;
+    pendingApprovalsCount: number;
+    totalRevenue: number;
     todayRevenue: number;
+    totalExpense: number;
+    todayExpenses: number;
+    todayFuel: number;
     cutReceiptsCount: number;
     pendingReceiptsCount: number;
-    todayFuel: number;
-    todayExpenses: number;
-    activeCranesCount: number;
-    totalCranesCount: number;
-    pendingApprovalsCount: number;
+    monthlyOvertimeHours: number;
   };
-  isSupabaseOnline: boolean;
-  toastMessage: string | null;
-  showToast: (msg: string) => void;
-  // Person actions
-  addPerson: (person: Omit<Person, 'id' | 'initials' | 'cardSlug'>) => void;
-  updatePerson: (id: string, person: Partial<Person>) => void;
-  deletePerson: (id: string) => void;
-  // Crane actions
-  addCrane: (crane: Omit<Crane, 'id'>) => void;
-  updateCrane: (id: string, crane: Partial<Crane>) => void;
-  updateCraneStatus: (id: string, status: CraneStatus, operator?: string, site?: string) => void;
-  deleteCrane: (id: string) => void;
-  // Approval actions
-  createApprovalRequest: (
-    kind: ApprovalKind,
-    title: string,
-    detail: string,
-    operatorName?: string,
-    operatorInitials?: string
-  ) => void;
-  handleApprovalDecision: (id: string, status: ApprovalStatus, note?: string) => void;
-  // Receipt actions
-  addReceipt: (receipt: Omit<Receipt, 'id' | 'createdAt'>) => void;
-  // Expense actions
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
-  // Active operator info
+
   currentOperator: Person;
   setCurrentOperatorId: (id: string) => void;
+
+  // UI Geri Bildirim
+  toastMessage: string | null;
+  showToast: (msg: string) => void;
+  isSyncing: boolean;
+  dbConnected: boolean;
+  isSupabaseOnline: boolean;
+  refreshFromDb: () => Promise<void>;
 }
 
 const ERPContext = createContext<ERPContextType | null>(null);
 
+// Başlangıç Kullanıcı Profilleri
+const INITIAL_PROFILES: UserProfile[] = [
+  {
+    id: 'usr-admin-01',
+    email: 'admin@bizimvinc.com',
+    fullName: 'Ahmet Yılmaz',
+    role: 'admin',
+    phone: '+90 532 100 00 01',
+    department: 'Genel Yönetim',
+    title: 'Genel Müdür / Sistem Yöneticisi',
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-op-01',
+    email: 'mehmet.kaya@bizimvinc.com',
+    fullName: 'Mehmet Kaya',
+    role: 'operator',
+    phone: '+90 532 200 00 02',
+    department: 'Saha Filosu',
+    title: 'Kule Vinç Baş Operatörü',
+    personnelId: 'p-1',
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-muh-01',
+    email: 'muhasebe@bizimvinc.com',
+    fullName: 'Canan Demir',
+    role: 'muhasebe',
+    phone: '+90 532 300 00 03',
+    department: 'Finans & Muhasebe',
+    title: 'Mali İşler Sorumlusu',
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-puan-01',
+    email: 'puantor@bizimvinc.com',
+    fullName: 'Murat Arslan',
+    role: 'puantor',
+    phone: '+90 532 400 00 04',
+    department: 'İnsan Kaynakları',
+    title: 'Saha Puantörü & Vardiya Amiri',
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+// Başlangıç Personel Listesi
+const INITIAL_PERSONNEL: Person[] = [
+  {
+    id: 'p-1',
+    employeeNo: 'OP-204',
+    fullName: 'Mehmet Kaya',
+    tcNo: '12345678901',
+    phone: '+90 532 200 00 02',
+    email: 'mehmet.kaya@bizimvinc.com',
+    address: 'Ataşehir, İstanbul',
+    kind: 'operator',
+    status: 'aktif',
+    poolStatus: 'gorevli',
+    department: 'Saha Operasyon',
+    salary: 45000,
+    iban: 'TR330006100511123456789001',
+    startDate: '2023-04-15',
+    title: 'Kule Vinç Baş Operatörü',
+    initials: 'MK',
+    cardSlug: 'mehmet-kaya',
+    documentsOk: true,
+    certExpiring: false,
+    userId: 'usr-op-01',
+    createdAt: '2023-04-15T08:00:00Z',
+  },
+  {
+    id: 'p-2',
+    employeeNo: 'OP-118',
+    fullName: 'Ali Demir',
+    tcNo: '23456789012',
+    phone: '+90 533 300 00 02',
+    email: 'ali.demir@bizimvinc.com',
+    address: 'Kartal, İstanbul',
+    kind: 'operator',
+    status: 'aktif',
+    poolStatus: 'gorevli',
+    department: 'Saha Operasyon',
+    salary: 42000,
+    iban: 'TR330006100511123456789002',
+    startDate: '2023-06-01',
+    title: 'Mobil Vinç Operatörü',
+    initials: 'AD',
+    cardSlug: 'ali-demir',
+    documentsOk: true,
+    certExpiring: false,
+    createdAt: '2023-06-01T08:00:00Z',
+  },
+  {
+    id: 'p-3',
+    employeeNo: 'OP-302',
+    fullName: 'Hasan Yılmaz',
+    tcNo: '34567890123',
+    phone: '+90 535 400 00 03',
+    email: 'hasan.yilmaz@bizimvinc.com',
+    kind: 'operator',
+    status: 'aktif',
+    poolStatus: 'musait',
+    department: 'Saha Operasyon',
+    salary: 40000,
+    startDate: '2023-08-10',
+    title: 'Hiyap Vinç Operatörü',
+    initials: 'HY',
+    cardSlug: 'hasan-yilmaz',
+    documentsOk: true,
+    certExpiring: true,
+    createdAt: '2023-08-10T08:00:00Z',
+  },
+  {
+    id: 'p-4',
+    employeeNo: 'YD-101',
+    fullName: 'Burak Can',
+    tcNo: '45678901234',
+    phone: '+90 536 500 00 04',
+    kind: 'yardimci',
+    status: 'aktif',
+    poolStatus: 'gorevli',
+    department: 'Saha Destek',
+    salary: 28000,
+    startDate: '2024-01-10',
+    title: 'Sapan & Rigger Görevlisi',
+    initials: 'BC',
+    cardSlug: 'burak-can',
+    documentsOk: true,
+    certExpiring: false,
+    createdAt: '2024-01-10T08:00:00Z',
+  },
+];
+
+// Başlangıç Vinç Filosu
+const INITIAL_CRANES: Crane[] = [
+  {
+    id: 'cr-1',
+    code: 'V-204',
+    type: 'Mobil Vinç (Liebherr LTM 1100)',
+    status: 'sahada',
+    capacity: '100 ton',
+    operator: 'Mehmet Kaya',
+    site: 'Ataşehir Metro Şantiyesi',
+    lastService: '2026-08-15',
+    lat: 41.0025,
+    lng: 29.1123,
+    createdAt: '2023-01-01T00:00:00Z',
+  },
+  {
+    id: 'cr-2',
+    code: 'V-118',
+    type: 'Paletli Vinç (Tadano GT-750)',
+    status: 'sahada',
+    capacity: '75 ton',
+    operator: 'Ali Demir',
+    site: 'Başakşehir Şehir Hastanesi',
+    lastService: '2026-08-28',
+    lat: 41.0991,
+    lng: 28.7758,
+    createdAt: '2023-02-10T00:00:00Z',
+  },
+  {
+    id: 'cr-3',
+    code: 'V-302',
+    type: 'Hiyap Teleskopik Kamyon Üstü',
+    status: 'musait',
+    capacity: '45 ton',
+    operator: 'Hasan Yılmaz',
+    site: 'Merkez Garaj / İkitelli',
+    lastService: '2026-09-02',
+    lat: 41.0543,
+    lng: 28.7892,
+    createdAt: '2023-03-05T00:00:00Z',
+  },
+  {
+    id: 'cr-4',
+    code: 'V-405',
+    type: 'Kule Vinç (Potain MDT 219)',
+    status: 'bakimda',
+    capacity: '10 ton',
+    operator: 'Atanmadı',
+    site: 'Tuzla Tersane Sahası',
+    lastService: '2026-09-10',
+    lat: 40.8521,
+    lng: 29.2941,
+    createdAt: '2023-04-12T00:00:00Z',
+  },
+];
+
+// Başlangıç Onay Talepleri
+const INITIAL_APPROVALS: Approval[] = [
+  {
+    id: 'ap-1',
+    kind: 'avans',
+    status: 'pending',
+    title: 'Şantiye Yol Masrafı Avansı',
+    personId: 'p-1',
+    personName: 'Mehmet Kaya',
+    personInitials: 'MK',
+    amount: 3500,
+    requestedDate: '2026-09-12',
+    note: 'Ataşehir şantiyesinde gece dökümü için acil yakıt ve konaklama avansı.',
+    createdAt: '2026-09-12T14:30:00Z',
+  },
+  {
+    id: 'ap-2',
+    kind: 'izin',
+    status: 'pending',
+    title: 'Yıllık İzin Talebi',
+    personId: 'p-2',
+    personName: 'Ali Demir',
+    personInitials: 'AD',
+    startDate: '2026-09-20',
+    endDate: '2026-09-24',
+    note: 'Memleket ziyareti için 4 gün izin talep ediyorum.',
+    createdAt: '2026-09-12T16:00:00Z',
+  },
+  {
+    id: 'ap-3',
+    kind: 'mesai',
+    status: 'approved',
+    title: 'Gece Beton Dökümü Mesaisi',
+    personId: 'p-1',
+    personName: 'Mehmet Kaya',
+    personInitials: 'MK',
+    hours: 3.5,
+    note: 'Saat 18:00 - 21:30 arası kalındı. Şantiye şefi teyitli.',
+    approvedBy: 'Ahmet Yılmaz',
+    approvedAt: '2026-09-11T19:00:00Z',
+    createdAt: '2026-09-11T17:45:00Z',
+  },
+];
+
+// Başlangıç Makbuzlar
+const INITIAL_RECEIPTS: Receipt[] = [
+  {
+    id: 'rc-1',
+    receiptNo: 'MK-2026-0891',
+    company: 'Enka İnşaat A.Ş.',
+    amount: 85000,
+    status: 'kesildi',
+    craneCode: 'V-204',
+    site: 'Ataşehir Metro',
+    daysPending: 0,
+    createdAt: '2026-09-10T11:00:00Z',
+  },
+  {
+    id: 'rc-2',
+    receiptNo: 'MK-2026-0892',
+    company: 'Kalyon Altyapı',
+    amount: 140000,
+    status: 'bekliyor',
+    craneCode: 'V-118',
+    site: 'Başakşehir Şehir Hastanesi',
+    daysPending: 3,
+    createdAt: '2026-09-08T15:20:00Z',
+  },
+];
+
+// Başlangıç Masraflar
+const INITIAL_EXPENSES: Expense[] = [
+  {
+    id: 'ex-1',
+    category: 'yakit',
+    title: 'Euro Dizel Yakıt Dolumu (250 Litre)',
+    amount: 11250,
+    craneCode: 'V-204',
+    personName: 'Mehmet Kaya',
+    stationOrSupplier: 'Shell Ataşehir İstasyonu',
+    status: 'aktif',
+    createdAt: '2026-09-12T09:15:00Z',
+  },
+  {
+    id: 'ex-2',
+    category: 'masraf',
+    title: 'Halat & Kanca Yağlama Kiti',
+    amount: 4500,
+    craneCode: 'V-302',
+    personName: 'Hasan Yılmaz',
+    stationOrSupplier: 'Tuzla Hırdavat Ltd.',
+    status: 'aktif',
+    createdAt: '2026-09-11T14:20:00Z',
+  },
+];
+
+// LocalStorage Yardımcısı
+function loadStored<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveStored<T>(key: string, val: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch (e) {
+    console.error(`Failed saving ${key}:`, e);
+  }
+}
+
 export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [personnel, setPersonnel] = useState<Person[]>(() => {
-    const saved = localStorage.getItem('bv_personnel');
-    return saved ? JSON.parse(saved) : INITIAL_PERSONNEL;
+  // 1. Kullanıcı & Auth
+  const [userProfiles, setUserProfiles] = useState<UserProfile[]>(() =>
+    loadStored('bv_user_profiles', INITIAL_PROFILES)
+  );
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    const saved = loadStored<UserProfile | null>('bv_current_user', null);
+    return saved || userProfiles[0];
   });
+  const [activeRole, setActiveRole] = useState<AppRole>(currentUser.role);
 
-  const [cranes, setCranes] = useState<Crane[]>(() => {
-    const saved = localStorage.getItem('bv_cranes');
-    return saved ? JSON.parse(saved) : INITIAL_CRANES;
-  });
+  // 2. Ana Veri Setleri
+  const [personnel, setPersonnel] = useState<Person[]>(() =>
+    loadStored('bv_personnel', INITIAL_PERSONNEL)
+  );
+  const [cranes, setCranes] = useState<Crane[]>(() =>
+    loadStored('bv_cranes', INITIAL_CRANES)
+  );
+  const [approvals, setApprovals] = useState<Approval[]>(() =>
+    loadStored('bv_approvals', INITIAL_APPROVALS)
+  );
+  const [receipts, setReceipts] = useState<Receipt[]>(() =>
+    loadStored('bv_receipts', INITIAL_RECEIPTS)
+  );
+  const [expenses, setExpenses] = useState<Expense[]>(() =>
+    loadStored('bv_expenses', INITIAL_EXPENSES)
+  );
 
-  const [approvals, setApprovals] = useState<Approval[]>(() => {
-    const saved = localStorage.getItem('bv_approvals');
-    return saved ? JSON.parse(saved) : INITIAL_APPROVALS;
-  });
+  // 3. Puantaj, Yoklama, İzin, Mesai, Avans
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() =>
+    loadStored('bv_attendance', [])
+  );
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(() =>
+    loadStored('bv_leaves', [])
+  );
+  const [overtimes, setOvertimes] = useState<OvertimeRecord[]>(() =>
+    loadStored('bv_overtimes', [])
+  );
+  const [advances, setAdvances] = useState<AdvanceRequest[]>(() =>
+    loadStored('bv_advances', [])
+  );
+  const [puantajRecords, setPuantajRecords] = useState<PuantajRecord[]>(() =>
+    loadStored('bv_puantaj', [])
+  );
+  const [periodLocks, setPeriodLocks] = useState<Record<string, PuantajPeriodLock>>(() =>
+    loadStored('bv_period_locks', {})
+  );
 
-  const [receipts, setReceipts] = useState<Receipt[]>(() => {
-    const saved = localStorage.getItem('bv_receipts');
-    return saved ? JSON.parse(saved) : INITIAL_RECEIPTS;
-  });
+  // 4. Denetim & Bildirimler
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() =>
+    loadStored('bv_audit_logs', [
+      {
+        id: 'aud-1',
+        userName: 'Sistem Yöneticisi',
+        userRole: 'admin',
+        action: 'SİSTEM_BAŞLATILDI',
+        module: 'Sistem',
+        details: 'Bizim Vinç ERP üretim çekirdeği devreye alındı.',
+        createdAt: new Date().toISOString(),
+      },
+    ])
+  );
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
+    loadStored('bv_notifications', [
+      {
+        id: 'notif-1',
+        title: 'Hoş Geldiniz',
+        message: 'Bizim Vinç ERP operasyon paneline bağlandınız.',
+        type: 'info',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+    ])
+  );
 
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    const saved = localStorage.getItem('bv_expenses');
-    return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
-  });
-
-  const [currentOperatorId, setCurrentOperatorId] = useState<string>('p-001');
-  const [isSupabaseOnline, setIsSupabaseOnline] = useState<boolean>(false);
+  // UI Durumları
+  const [currentOperatorId, setCurrentOperatorId] = useState<string>('p-1');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [dbConnected, setDbConnected] = useState(false);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
-    window.setTimeout(() => setToastMessage(null), 3000);
-  };
+    setTimeout(() => setToastMessage(null), 3500);
+  }, []);
 
-  // Sync with localStorage
-  useEffect(() => {
-    localStorage.setItem('bv_personnel', JSON.stringify(personnel));
-  }, [personnel]);
+  // Denetim Kaydı Ekleme
+  const logAction = useCallback(
+    async (action: string, module: string, recordId?: string, details?: string, oldData?: any, newData?: any) => {
+      const newLog: AuditLog = {
+        id: generateUuid(),
+        userId: currentUser.id,
+        userName: currentUser.fullName,
+        userRole: currentUser.role,
+        action,
+        module,
+        recordId,
+        details,
+        oldData,
+        newData,
+        createdAt: new Date().toISOString(),
+      };
+      setAuditLogs((prev) => {
+        const updated = [newLog, ...prev.slice(0, 199)];
+        saveStored('bv_audit_logs', updated);
+        return updated;
+      });
 
-  useEffect(() => {
-    localStorage.setItem('bv_cranes', JSON.stringify(cranes));
-  }, [cranes]);
+      // Supabase'e yaz
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          await sb.from('audit_logs').insert([
+            {
+              id: newLog.id,
+              user_id: newLog.userId,
+              user_name: newLog.userName,
+              user_role: newLog.userRole,
+              action: newLog.action,
+              module: newLog.module,
+              record_id: newLog.recordId,
+              details: newLog.details,
+              old_data: newLog.oldData,
+              new_data: newLog.newData,
+            },
+          ]);
+        } catch (e) {
+          console.warn('Audit log remote sync skipped:', e);
+        }
+      }
+    },
+    [currentUser]
+  );
 
-  useEffect(() => {
-    localStorage.setItem('bv_approvals', JSON.stringify(approvals));
-  }, [approvals]);
+  // Bildirim Gönderme
+  const sendNotification = useCallback(
+    (title: string, message: string, type: NotificationItem['type'] = 'info', userId?: string) => {
+      const item: NotificationItem = {
+        id: generateUuid(),
+        userId,
+        title,
+        message,
+        type,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      };
+      setNotifications((prev) => {
+        const next = [item, ...prev];
+        saveStored('bv_notifications', next);
+        return next;
+      });
+      showToast(`🔔 ${title}: ${message}`);
+    },
+    [showToast]
+  );
 
-  useEffect(() => {
-    localStorage.setItem('bv_receipts', JSON.stringify(receipts));
-  }, [receipts]);
+  const markNotificationRead = useCallback((id: string) => {
+    setNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+      saveStored('bv_notifications', next);
+      return next;
+    });
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('bv_expenses', JSON.stringify(expenses));
-  }, [expenses]);
-
-  // Check and sync with Supabase if configured
-  useEffect(() => {
+  // Supabase'den Verileri Tazele
+  const refreshFromDb = useCallback(async () => {
     if (!isSupabaseConfigured()) {
-      setIsSupabaseOnline(false);
+      setDbConnected(false);
       return;
     }
-
     const sb = getSupabase();
     if (!sb) return;
 
-    let isMounted = true;
+    setIsSyncing(true);
+    try {
+      // 1. Personel
+      const { data: pData } = await sb.from('personnel').select('*');
+      if (pData && pData.length > 0) {
+        const mapped: Person[] = pData.map((d: any) => ({
+          id: d.id,
+          employeeNo: d.employee_no || 'OP-000',
+          fullName: d.full_name,
+          tcNo: d.tc_no,
+          phone: d.phone,
+          email: d.email,
+          address: d.address,
+          kind: d.kind,
+          status: d.status,
+          poolStatus: d.pool_status,
+          department: d.department,
+          salary: Number(d.salary) || 0,
+          iban: d.iban,
+          startDate: d.start_date,
+          endDate: d.end_date,
+          title: d.title || 'Operatör',
+          initials: d.initials || d.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+          cardSlug: d.card_slug,
+          documentsOk: d.documents_ok ?? true,
+          certExpiring: d.cert_expiring ?? false,
+          notes: d.notes,
+          userId: d.user_id,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+        setPersonnel(mapped);
+        saveStored('bv_personnel', mapped);
+      }
 
-    async function loadFromSupabase() {
+      // 2. Vinçler
+      const { data: cData } = await sb.from('cranes').select('*');
+      if (cData && cData.length > 0) {
+        const mapped: Crane[] = cData.map((d: any) => ({
+          id: d.id,
+          code: d.code,
+          type: d.type,
+          status: d.status,
+          capacity: d.capacity,
+          operator: d.operator,
+          site: d.site,
+          lastService: d.last_service || '2026-08-01',
+          lat: d.lat || 41.01,
+          lng: d.lng || 29.0,
+          notes: d.notes,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+        setCranes(mapped);
+        saveStored('bv_cranes', mapped);
+      }
+
+      // 3. Onaylar
+      const { data: aData } = await sb.from('approvals').select('*').order('created_at', { ascending: false });
+      if (aData && aData.length > 0) {
+        const mapped: Approval[] = aData.map((d: any) => ({
+          id: d.id,
+          kind: d.kind,
+          status: d.status,
+          title: d.title,
+          personId: d.person_id,
+          personName: d.person_name,
+          personInitials: d.person_initials,
+          relatedLabel: d.related_label,
+          amount: Number(d.amount) || 0,
+          requestedDate: d.requested_date,
+          startDate: d.start_date,
+          endDate: d.end_date,
+          hours: Number(d.hours) || 0,
+          note: d.note,
+          decisionNote: d.decision_note,
+          approvedBy: d.approved_by,
+          approvedAt: d.approved_at,
+          rejectedBy: d.rejected_by,
+          rejectedAt: d.rejected_at,
+          rejectionReason: d.rejection_reason,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+        setApprovals(mapped);
+        saveStored('bv_approvals', mapped);
+      }
+
+      // 4. Makbuzlar
+      const { data: rData } = await sb.from('receipts').select('*').order('created_at', { ascending: false });
+      if (rData && rData.length > 0) {
+        const mapped: Receipt[] = rData.map((d: any) => ({
+          id: d.id,
+          receiptNo: d.receipt_no,
+          company: d.company,
+          amount: Number(d.amount) || 0,
+          status: d.status,
+          craneCode: d.crane_code,
+          site: d.site,
+          daysPending: d.days_pending || 0,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+        setReceipts(mapped);
+        saveStored('bv_receipts', mapped);
+      }
+
+      // 5. Masraflar
+      const { data: eData } = await sb.from('expenses').select('*').order('created_at', { ascending: false });
+      if (eData && eData.length > 0) {
+        const mapped: Expense[] = eData.map((d: any) => ({
+          id: d.id,
+          category: d.category,
+          title: d.title,
+          detail: d.detail,
+          amount: Number(d.amount) || 0,
+          craneCode: d.crane_code,
+          personName: d.person_name,
+          stationOrSupplier: d.station_or_supplier,
+          status: d.status,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+        setExpenses(mapped);
+        saveStored('bv_expenses', mapped);
+      }
+
+      setDbConnected(true);
+    } catch (err) {
+      console.error('Supabase fetch error:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Sayfa yüklendiğinde Supabase'i tara
+  useEffect(() => {
+    refreshFromDb();
+  }, [refreshFromDb]);
+
+  // Auth & Kullanıcı Metotları
+  const switchUser = useCallback((userId: string) => {
+    const found = userProfiles.find((u) => u.id === userId);
+    if (found) {
+      setCurrentUser(found);
+      setActiveRole(found.role);
+      saveStored('bv_current_user', found);
+      showToast(`Aktif kullanıcı değiştirildi: ${found.fullName} (${found.role.toUpperCase()})`);
+    }
+  }, [userProfiles, showToast]);
+
+  const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    // 1. Supabase Auth denemesi
+    const sb = getSupabase();
+    if (sb) {
       try {
-        const [pRes, cRes, aRes, rRes, eRes] = await Promise.allSettled([
-          sb.from('personnel').select('*'),
-          sb.from('cranes').select('*'),
-          sb.from('approvals').select('*').order('created_at', { ascending: false }),
-          sb.from('receipts').select('*'),
-          sb.from('expenses').select('*'),
-        ]);
-
-        if (!isMounted) return;
-
-        let anySuccess = false;
-
-        // Personnel sync
-        if (pRes.status === 'fulfilled' && !pRes.value.error) {
-          anySuccess = true;
-          if (pRes.value.data && pRes.value.data.length > 0) {
-            setPersonnel(
-              pRes.value.data.map((row: any) => ({
-                id: row.id,
-                employeeNo: row.employee_no,
-                fullName: row.full_name,
-                phone: row.phone,
-                kind: row.kind,
-                status: row.status,
-                poolStatus: row.pool_status,
-                title: row.title,
-                initials: row.initials,
-                cardSlug: row.card_slug,
-                documentsOk: row.documents_ok,
-                certExpiring: row.cert_expiring,
-                createdAt: row.created_at,
-              }))
-            );
-          } else {
-            // Seed initial personnel to Supabase
-            const seedPayload = INITIAL_PERSONNEL.map((p) => ({
-              employee_no: p.employeeNo,
-              full_name: p.fullName,
-              phone: p.phone,
-              kind: p.kind,
-              status: p.status,
-              pool_status: p.poolStatus,
-              title: p.title,
-              initials: p.initials,
-              card_slug: p.cardSlug,
-              documents_ok: p.documentsOk,
-              cert_expiring: p.certExpiring,
-            }));
-            sb.from('personnel').insert(seedPayload).then();
-          }
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+        if (error) {
+          // Eğer Supabase'de kullanıcı yoksa veya demo modundaysa yerel kontrol yap
+          console.warn('Supabase auth sign in notice:', error.message);
+        } else if (data.user) {
+          const profile: UserProfile = {
+            id: data.user.id,
+            email: data.user.email || email,
+            fullName: data.user.user_metadata?.full_name || email.split('@')[0],
+            role: (data.user.user_metadata?.role as AppRole) || 'admin',
+            status: 'aktif',
+            createdAt: data.user.created_at,
+          };
+          setCurrentUser(profile);
+          setActiveRole(profile.role);
+          saveStored('bv_current_user', profile);
+          logAction('GİRİŞ_YAPILDI', 'Auth', data.user.id, 'Supabase Auth ile oturum açıldı.');
+          return { success: true, message: `Hoş geldiniz, ${profile.fullName}!` };
         }
-
-        // Cranes sync
-        if (cRes.status === 'fulfilled' && !cRes.value.error) {
-          anySuccess = true;
-          if (cRes.value.data && cRes.value.data.length > 0) {
-            setCranes(
-              cRes.value.data.map((row: any) => ({
-                id: row.id,
-                code: row.code,
-                type: row.type,
-                status: row.status,
-                capacity: row.capacity,
-                operator: row.operator,
-                site: row.site,
-                lastService: row.last_service,
-                lat: row.lat,
-                lng: row.lng,
-                createdAt: row.created_at,
-              }))
-            );
-          } else {
-            // Seed initial cranes to Supabase
-            const seedPayload = INITIAL_CRANES.map((c) => ({
-              code: c.code,
-              type: c.type,
-              status: c.status,
-              capacity: c.capacity,
-              operator: c.operator,
-              site: c.site,
-              last_service: c.lastService,
-              lat: c.lat,
-              lng: c.lng,
-            }));
-            sb.from('cranes').insert(seedPayload).then();
-          }
-        }
-
-        // Approvals sync
-        if (aRes.status === 'fulfilled' && !aRes.value.error && aRes.value.data && aRes.value.data.length > 0) {
-          anySuccess = true;
-          setApprovals(
-            aRes.value.data.map((row: any) => ({
-              id: row.id,
-              kind: row.kind,
-              status: row.status,
-              title: row.title,
-              personName: row.person_name,
-              personInitials: row.person_initials,
-              relatedLabel: row.related_label,
-              note: row.note,
-              decisionNote: row.decision_note,
-              decidedAt: row.decided_at,
-              createdAt: row.created_at,
-            }))
-          );
-        }
-
-        // Receipts sync
-        if (rRes.status === 'fulfilled' && !rRes.value.error && rRes.value.data && rRes.value.data.length > 0) {
-          anySuccess = true;
-          setReceipts(
-            rRes.value.data.map((row: any) => ({
-              id: row.id,
-              receiptNo: row.receipt_no,
-              company: row.company,
-              amount: Number(row.amount),
-              status: row.status,
-              craneCode: row.crane_code,
-              site: row.site,
-              daysPending: row.days_pending,
-              createdAt: row.created_at,
-            }))
-          );
-        }
-
-        // Expenses sync
-        if (eRes.status === 'fulfilled' && !eRes.value.error && eRes.value.data && eRes.value.data.length > 0) {
-          anySuccess = true;
-          setExpenses(
-            eRes.value.data.map((row: any) => ({
-              id: row.id,
-              category: row.category,
-              title: row.title,
-              detail: row.detail,
-              amount: Number(row.amount),
-              craneCode: row.crane_code,
-              personName: row.person_name,
-              stationOrSupplier: row.station_or_supplier,
-              createdAt: row.created_at,
-            }))
-          );
-        }
-
-        setIsSupabaseOnline(anySuccess);
-      } catch {
-        if (isMounted) setIsSupabaseOnline(false);
+      } catch (err) {
+        console.warn('Supabase auth err:', err);
       }
     }
 
-    loadFromSupabase();
+    // 2. Yerel Profil Kontrolü
+    const matched = userProfiles.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (matched) {
+      setCurrentUser(matched);
+      setActiveRole(matched.role);
+      saveStored('bv_current_user', matched);
+      logAction('GİRİŞ_YAPILDI', 'Auth', matched.id, 'Yerel hesap ile oturum açıldı.');
+      return { success: true, message: `Hoş geldiniz, ${matched.fullName}!` };
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Personnel actions
-  const addPerson = (data: Omit<Person, 'id' | 'initials' | 'cardSlug'>) => {
-    const initials = data.fullName
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-    const cardSlug = data.fullName.toLowerCase().replace(/\s+/g, '-');
-    const newPerson: Person = {
-      ...data,
+    // 3. Otomatik Hızlı Hesap (Eğer bilinmeyen bir e-posta ile giriş istenirse)
+    const newProfile: UserProfile = {
       id: generateUuid(),
+      email,
+      fullName: email.split('@')[0],
+      role: email.includes('admin') ? 'admin' : email.includes('op') ? 'operator' : 'personel',
+      status: 'aktif',
+      createdAt: new Date().toISOString(),
+    };
+    setUserProfiles((prev) => {
+      const next = [newProfile, ...prev];
+      saveStored('bv_user_profiles', next);
+      return next;
+    });
+    setCurrentUser(newProfile);
+    setActiveRole(newProfile.role);
+    saveStored('bv_current_user', newProfile);
+    logAction('YENİ_KULLANICI_GİRİŞİ', 'Auth', newProfile.id, 'Yeni profil oluşturularak giriş yapıldı.');
+    return { success: true, message: `Giriş başarılı! Rolünüz: ${newProfile.role.toUpperCase()}` };
+  };
+
+  const registerUser = async (email: string, pass: string, fullName: string, role: AppRole, phone?: string): Promise<{ success: boolean; message: string }> => {
+    const sb = getSupabase();
+    let userId = generateUuid();
+    if (sb) {
+      try {
+        const { data, error } = await sb.auth.signUp({
+          email,
+          password: pass,
+          options: {
+            data: { full_name: fullName, role, phone },
+          },
+        });
+        if (error) {
+          console.warn('Supabase register notice:', error.message);
+        } else if (data.user) {
+          userId = data.user.id;
+        }
+      } catch (err) {
+        console.warn('Supabase register error:', err);
+      }
+    }
+
+    const newProfile: UserProfile = {
+      id: userId,
+      email,
+      fullName,
+      role,
+      phone,
+      status: 'aktif',
+      createdAt: new Date().toISOString(),
+    };
+
+    setUserProfiles((prev) => {
+      const updated = [newProfile, ...prev.filter((u) => u.email !== email)];
+      saveStored('bv_user_profiles', updated);
+      return updated;
+    });
+    setCurrentUser(newProfile);
+    setActiveRole(role);
+    saveStored('bv_current_user', newProfile);
+    logAction('KULLANICI_KAYIT', 'Auth', userId, `${fullName} yeni kullanıcı olarak kaydoldu.`);
+    return { success: true, message: `Kayıt başarılı! ${fullName} olarak oturum açıldı.` };
+  };
+
+  const logout = useCallback(() => {
+    const sb = getSupabase();
+    if (sb) {
+      sb.auth.signOut().catch(() => {});
+    }
+    // Varsayılan yöneticiye dön
+    const def = userProfiles[0];
+    setCurrentUser(def);
+    setActiveRole(def.role);
+    saveStored('bv_current_user', def);
+    showToast('Oturum kapatıldı.');
+  }, [userProfiles, showToast]);
+
+  const updateUserProfile = useCallback((id: string, updates: Partial<UserProfile>) => {
+    setUserProfiles((prev) => {
+      const next = prev.map((u) => (u.id === id ? { ...u, ...updates, updatedAt: new Date().toISOString() } : u));
+      saveStored('bv_user_profiles', next);
+      return next;
+    });
+    if (currentUser.id === id) {
+      setCurrentUser((prev) => {
+        const next = { ...prev, ...updates };
+        saveStored('bv_current_user', next);
+        return next;
+      });
+    }
+    showToast('Kullanıcı profili güncellendi.');
+  }, [currentUser.id, showToast]);
+
+  // Personel CRUD
+  const addPerson = async (personData: Omit<Person, 'id'>) => {
+    const id = generateUuid();
+    const initials = personData.initials || personData.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+    const cardSlug = personData.cardSlug || personData.fullName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    const newPerson: Person = {
+      ...personData,
+      id,
       initials,
       cardSlug,
       createdAt: new Date().toISOString(),
     };
 
-    setPersonnel((prev) => [newPerson, ...prev]);
-    showToast(`${newPerson.fullName} sisteme eklendi.`);
+    setPersonnel((prev) => {
+      const next = [newPerson, ...prev];
+      saveStored('bv_personnel', next);
+      return next;
+    });
 
-    // Supabase async sync
+    logAction('PERSONEL_EKLENDİ', 'Personel', id, `${newPerson.fullName} (${newPerson.employeeNo}) eklendi.`);
+    showToast(`✓ Personel başarıyla eklendi: ${newPerson.fullName}`);
+
     const sb = getSupabase();
     if (sb) {
-      sb.from('personnel')
-        .insert({
-          id: newPerson.id,
-          employee_no: newPerson.employeeNo,
-          full_name: newPerson.fullName,
-          phone: newPerson.phone,
-          kind: newPerson.kind,
-          status: newPerson.status,
-          pool_status: newPerson.poolStatus,
-          title: newPerson.title,
-          initials: newPerson.initials,
-          card_slug: newPerson.cardSlug,
-          documents_ok: newPerson.documentsOk,
-          cert_expiring: newPerson.certExpiring,
-        })
-        .then();
+      try {
+        await sb.from('personnel').insert([
+          {
+            id: newPerson.id,
+            employee_no: newPerson.employeeNo,
+            full_name: newPerson.fullName,
+            tc_no: newPerson.tcNo,
+            phone: newPerson.phone,
+            email: newPerson.email,
+            address: newPerson.address,
+            kind: newPerson.kind,
+            status: newPerson.status,
+            pool_status: newPerson.poolStatus,
+            department: newPerson.department,
+            salary: newPerson.salary,
+            iban: newPerson.iban,
+            start_date: newPerson.startDate,
+            title: newPerson.title,
+            initials: newPerson.initials,
+            card_slug: newPerson.cardSlug,
+            documents_ok: newPerson.documentsOk,
+            cert_expiring: newPerson.certExpiring,
+            notes: newPerson.notes,
+          },
+        ]);
+      } catch (e) {
+        console.error('Remote insert error:', e);
+      }
     }
   };
 
-  const updatePerson = (id: string, data: Partial<Person>) => {
-    setPersonnel((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const updated = { ...p, ...data };
-          if (data.fullName) {
-            updated.initials = data.fullName
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2);
-            updated.cardSlug = data.fullName.toLowerCase().replace(/\s+/g, '-');
-          }
-          return updated;
+  const updatePerson = async (id: string, updates: Partial<Person>) => {
+    setPersonnel((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+      saveStored('bv_personnel', next);
+      return next;
+    });
+
+    logAction('PERSONEL_GÜNCELLENDİ', 'Personel', id, `Personel kaydı güncellendi.`);
+    showToast('✓ Personel bilgileri güncellendi.');
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        const payload: any = { updated_at: new Date().toISOString() };
+        if (updates.fullName) payload.full_name = updates.fullName;
+        if (updates.phone) payload.phone = updates.phone;
+        if (updates.status) payload.status = updates.status;
+        if (updates.poolStatus) payload.pool_status = updates.poolStatus;
+        if (updates.salary !== undefined) payload.salary = updates.salary;
+        if (updates.title) payload.title = updates.title;
+        if (updates.notes !== undefined) payload.notes = updates.notes;
+        await sb.from('personnel').update(payload).eq('id', id);
+      } catch (e) {
+        console.error('Remote update error:', e);
+      }
+    }
+  };
+
+  const deletePerson = async (id: string, soft = true) => {
+    if (soft) {
+      await updatePerson(id, { status: 'pasif', poolStatus: 'havuzda' });
+      showToast('Personel pasife alındı (Arşivlendi).');
+    } else {
+      setPersonnel((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        saveStored('bv_personnel', next);
+        return next;
+      });
+      logAction('PERSONEL_SİLİNDİ', 'Personel', id, 'Personel kalıcı olarak silindi.');
+      showToast('Personel sistemden kaldırıldı.');
+
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          await sb.from('personnel').delete().eq('id', id);
+        } catch (e) {
+          console.error('Remote delete error:', e);
         }
-        return p;
-      })
-    );
-    showToast('Personel bilgileri güncellendi.');
-
-    const sb = getSupabase();
-    if (sb) {
-      const payload: any = {};
-      if (data.fullName) payload.full_name = data.fullName;
-      if (data.employeeNo) payload.employee_no = data.employeeNo;
-      if (data.phone) payload.phone = data.phone;
-      if (data.kind) payload.kind = data.kind;
-      if (data.status) payload.status = data.status;
-      if (data.poolStatus) payload.pool_status = data.poolStatus;
-      if (data.title) payload.title = data.title;
-      if (data.documentsOk !== undefined) payload.documents_ok = data.documentsOk;
-      if (data.certExpiring !== undefined) payload.cert_expiring = data.certExpiring;
-
-      sb.from('personnel').update(payload).eq('id', id).then();
+      }
     }
   };
 
-  const deletePerson = (id: string) => {
-    const person = personnel.find((p) => p.id === id);
-    setPersonnel((prev) => prev.filter((p) => p.id !== id));
-    showToast(`${person?.fullName || 'Personel'} silindi.`);
-
-    const sb = getSupabase();
-    if (sb) {
-      sb.from('personnel').delete().eq('id', id).then();
-    }
-  };
-
-  // Crane actions
-  const addCrane = (data: Omit<Crane, 'id'>) => {
+  // Vinç CRUD
+  const addCrane = async (craneData: Omit<Crane, 'id'>) => {
+    const id = generateUuid();
     const newCrane: Crane = {
-      ...data,
-      id: generateUuid(),
+      ...craneData,
+      id,
       createdAt: new Date().toISOString(),
     };
-    setCranes((prev) => [newCrane, ...prev]);
-    showToast(`${newCrane.code} vinci filoya eklendi.`);
+
+    setCranes((prev) => {
+      const next = [newCrane, ...prev];
+      saveStored('bv_cranes', next);
+      return next;
+    });
+
+    logAction('VİNÇ_EKLENDİ', 'Filo', id, `${newCrane.code} (${newCrane.type}) filoya dahil edildi.`);
+    showToast(`✓ Yeni vinç eklendi: ${newCrane.code}`);
 
     const sb = getSupabase();
     if (sb) {
-      sb.from('cranes')
-        .insert({
-          id: newCrane.id,
-          code: newCrane.code,
-          type: newCrane.type,
-          status: newCrane.status,
-          capacity: newCrane.capacity,
-          operator: newCrane.operator,
-          site: newCrane.site,
-          last_service: newCrane.lastService,
-          lat: newCrane.lat,
-          lng: newCrane.lng,
-        })
-        .then();
+      try {
+        await sb.from('cranes').insert([
+          {
+            id: newCrane.id,
+            code: newCrane.code,
+            type: newCrane.type,
+            status: newCrane.status,
+            capacity: newCrane.capacity,
+            operator: newCrane.operator,
+            site: newCrane.site,
+            last_service: newCrane.lastService,
+            lat: newCrane.lat,
+            lng: newCrane.lng,
+            notes: newCrane.notes,
+          },
+        ]);
+      } catch (e) {
+        console.error('Remote crane insert error:', e);
+      }
     }
   };
 
-  const updateCrane = (id: string, data: Partial<Crane>) => {
-    setCranes((prev) => prev.map((c) => (c.id === id ? { ...c, ...data } : c)));
-    showToast('Vinç bilgileri güncellendi.');
+  const updateCrane = async (id: string, updates: Partial<Crane>) => {
+    setCranes((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c));
+      saveStored('bv_cranes', next);
+      return next;
+    });
+
+    logAction('VİNÇ_GÜNCELLENDİ', 'Filo', id, `Vinç kaydı güncellendi.`);
+    showToast('✓ Vinç bilgileri güncellendi.');
 
     const sb = getSupabase();
     if (sb) {
-      sb.from('cranes').update(data).eq('id', id).then();
+      try {
+        const payload: any = { updated_at: new Date().toISOString() };
+        if (updates.status) payload.status = updates.status;
+        if (updates.operator) payload.operator = updates.operator;
+        if (updates.site) payload.site = updates.site;
+        if (updates.lat) payload.lat = updates.lat;
+        if (updates.lng) payload.lng = updates.lng;
+        await sb.from('cranes').update(payload).eq('id', id);
+      } catch (e) {
+        console.error('Remote crane update error:', e);
+      }
     }
   };
 
-  const updateCraneStatus = (
-    id: string,
-    status: CraneStatus,
-    operator?: string,
-    site?: string
-  ) => {
-    setCranes((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status, operator: operator ?? c.operator, site: site ?? c.site } : c))
-    );
-    showToast(`Vinç durumu "${status}" olarak güncellendi.`);
+  const deleteCrane = async (id: string, soft = true) => {
+    if (soft) {
+      await updateCrane(id, { status: 'pasif' });
+      showToast('Vinç pasife alındı.');
+    } else {
+      setCranes((prev) => {
+        const next = prev.filter((c) => c.id !== id);
+        saveStored('bv_cranes', next);
+        return next;
+      });
+      logAction('VİNÇ_SİLİNDİ', 'Filo', id, 'Vinç filodan kalıcı silindi.');
+      showToast('Vinç filodan kaldırıldı.');
 
-    const sb = getSupabase();
-    if (sb) {
-      sb.from('cranes')
-        .update({ status, operator, site })
-        .eq('id', id)
-        .then();
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          await sb.from('cranes').delete().eq('id', id);
+        } catch (e) {
+          console.error('Remote crane delete error:', e);
+        }
+      }
     }
   };
 
-  const deleteCrane = (id: string) => {
-    const cr = cranes.find((c) => c.id === id);
-    setCranes((prev) => prev.filter((c) => c.id !== id));
-    showToast(`${cr?.code || 'Vinç'} filodan kaldırıldı.`);
-
-    const sb = getSupabase();
-    if (sb) {
-      sb.from('cranes').delete().eq('id', id).then();
-    }
-  };
-
-  // Approval actions (Operatör talepleri & Yönetici kararları)
-  const createApprovalRequest = (
-    kind: ApprovalKind,
-    title: string,
-    detail: string,
-    operatorName?: string,
-    operatorInitials?: string
-  ) => {
-    const op = personnel.find((p) => p.id === currentOperatorId) || personnel[0];
-    const opName = operatorName || op.fullName;
-    const opInitials = operatorInitials || op.initials;
-
+  // Onay Merkezi
+  const addApproval = async (data: Omit<Approval, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
     const newApproval: Approval = {
+      ...data,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+
+    setApprovals((prev) => {
+      const next = [newApproval, ...prev];
+      saveStored('bv_approvals', next);
+      return next;
+    });
+
+    logAction('ONAY_TALEBİ_OLUŞTURULDU', 'Onay', id, `${newApproval.personName} - ${newApproval.title}`);
+    sendNotification('Yeni Onay Talebi', `${newApproval.personName}: ${newApproval.title}`, 'info');
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb.from('approvals').insert([
+          {
+            id: newApproval.id,
+            kind: newApproval.kind,
+            status: newApproval.status,
+            title: newApproval.title,
+            person_id: newApproval.personId,
+            person_name: newApproval.personName,
+            person_initials: newApproval.personInitials,
+            related_label: newApproval.relatedLabel,
+            amount: newApproval.amount,
+            requested_date: newApproval.requestedDate,
+            start_date: newApproval.startDate,
+            end_date: newApproval.endDate,
+            hours: newApproval.hours,
+            note: newApproval.note,
+          },
+        ]);
+      } catch (e) {
+        console.error('Remote approval insert error:', e);
+      }
+    }
+  };
+
+  const approveRequest = async (id: string, note?: string) => {
+    const target = approvals.find((a) => a.id === id);
+    if (!target) return;
+
+    const now = new Date().toISOString();
+    const approverName = currentUser.fullName;
+
+    setApprovals((prev) => {
+      const next = prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              status: 'approved' as const,
+              decisionNote: note,
+              approvedBy: approverName,
+              approvedAt: now,
+              updatedAt: now,
+            }
+          : a
+      );
+      saveStored('bv_approvals', next);
+      return next;
+    });
+
+    logAction('TALEP_ONAYLANDI', 'Onay', id, `${approverName} tarafından '${target.title}' onaylandı.`);
+    sendNotification('Talep Onaylandı', `'${target.title}' talebi onaylandı.`, 'success', target.personId);
+    showToast(`✓ '${target.title}' talebi onaylandı.`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb
+          .from('approvals')
+          .update({
+            status: 'approved',
+            decision_note: note,
+            approved_by: approverName,
+            approved_at: now,
+            updated_at: now,
+          })
+          .eq('id', id);
+      } catch (e) {
+        console.error('Remote approve error:', e);
+      }
+    }
+  };
+
+  const rejectRequest = async (id: string, reason: string) => {
+    const target = approvals.find((a) => a.id === id);
+    if (!target) return;
+
+    const now = new Date().toISOString();
+    const rejectorName = currentUser.fullName;
+
+    setApprovals((prev) => {
+      const next = prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              status: 'rejected' as const,
+              rejectionReason: reason,
+              rejectedBy: rejectorName,
+              rejectedAt: now,
+              updatedAt: now,
+            }
+          : a
+      );
+      saveStored('bv_approvals', next);
+      return next;
+    });
+
+    logAction('TALEP_REDDEDİLDİ', 'Onay', id, `${rejectorName} tarafından reddedildi. Sebep: ${reason}`);
+    sendNotification('Talep Reddedildi', `'${target.title}' reddedildi. Sebep: ${reason}`, 'error', target.personId);
+    showToast(`✕ '${target.title}' talebi reddedildi.`);
+
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await sb
+          .from('approvals')
+          .update({
+            status: 'rejected',
+            rejection_reason: reason,
+            rejected_by: rejectorName,
+            rejected_at: now,
+            updated_at: now,
+          })
+          .eq('id', id);
+      } catch (e) {
+        console.error('Remote reject error:', e);
+      }
+    }
+  };
+
+  // Yoklama İşlemleri
+  const recordAttendance = async (
+    personId: string,
+    status: AttendanceStatus,
+    checkIn?: string,
+    checkOut?: string,
+    note?: string
+  ) => {
+    const person = personnel.find((p) => p.id === personId);
+    const personName = person ? person.fullName : 'Bilinmeyen';
+    const date = new Date().toISOString().split('T')[0];
+
+    const newRecord: AttendanceRecord = {
       id: generateUuid(),
-      kind,
+      personId,
+      personName,
+      date,
+      checkInTime: checkIn || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      checkOutTime: checkOut,
+      status,
+      note,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAttendance((prev) => {
+      const filtered = prev.filter((a) => !(a.personId === personId && a.date === date));
+      const next = [newRecord, ...filtered];
+      saveStored('bv_attendance', next);
+      return next;
+    });
+
+    logAction('YOKLAMA_KAYDI', 'Puantaj', personId, `${personName} bugünkü durumu: ${status.toUpperCase()}`);
+    showToast(`✓ ${personName} yoklaması kaydedildi (${status}).`);
+
+    // Onay listesine de ekle
+    await addApproval({
+      kind: 'yoklama',
+      status: 'approved',
+      title: `Günlük Yoklama: ${status.toUpperCase()}`,
+      personId,
+      personName,
+      requestedDate: date,
+      note: note || `Giriş: ${newRecord.checkInTime || '-'}`,
+    });
+  };
+
+  // İzin Talebi
+  const createLeaveRequest = async (
+    personId: string,
+    leaveType: LeaveRequest['leaveType'],
+    startDate: string,
+    endDate: string,
+    days: number,
+    description?: string
+  ) => {
+    const person = personnel.find((p) => p.id === personId);
+    const personName = person ? person.fullName : 'Operatör';
+    const id = generateUuid();
+
+    const newLeave: LeaveRequest = {
+      id,
+      personId,
+      personName,
+      leaveType,
+      startDate,
+      endDate,
+      days,
+      description,
       status: 'pending',
-      title,
-      personName: opName,
-      personInitials: opInitials,
-      relatedLabel: detail,
-      note: detail,
       createdAt: new Date().toISOString(),
     };
 
-    setApprovals((prev) => [newApproval, ...prev]);
-    showToast(`"${title}" talebi oluşturuldu ve Onay Merkezi'ne iletildi.`);
+    setLeaves((prev) => {
+      const next = [newLeave, ...prev];
+      saveStored('bv_leaves', next);
+      return next;
+    });
 
-    const sb = getSupabase();
-    if (sb) {
-      sb.from('approvals')
-        .insert({
-          id: newApproval.id,
-          kind: newApproval.kind,
-          status: newApproval.status,
-          title: newApproval.title,
-          person_name: newApproval.personName,
-          person_initials: newApproval.personInitials,
-          related_label: newApproval.relatedLabel,
-          note: newApproval.note,
-        })
-        .then();
-    }
+    await addApproval({
+      kind: 'izin',
+      status: 'pending',
+      title: `${leaveType.toUpperCase()} İzni Talebi (${days} Gün)`,
+      personId,
+      personName,
+      startDate,
+      endDate,
+      note: description,
+    });
+
+    showToast('✓ İzin talebiniz yönetici onayına gönderildi.');
   };
 
-  const handleApprovalDecision = (id: string, status: ApprovalStatus, note?: string) => {
-    const decidedAt = new Date().toISOString();
-    const decisionNote = note || (status === 'approved' ? 'Onaylandı' : 'Reddedildi');
+  const updateLeaveStatus = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
+    setLeaves((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, status, rejectionReason: reason, updatedAt: new Date().toISOString() } : l));
+      saveStored('bv_leaves', next);
+      return next;
+    });
+  };
 
-    setApprovals((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status, decidedAt, decisionNote } : a))
+  // Mesai Talebi
+  const createOvertimeRequest = async (
+    personId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    hours: number,
+    type: OvertimeRecord['overtimeType'],
+    description?: string
+  ) => {
+    const person = personnel.find((p) => p.id === personId);
+    const personName = person ? person.fullName : 'Operatör';
+    const id = generateUuid();
+
+    const newOvertime: OvertimeRecord = {
+      id,
+      personId,
+      personName,
+      date,
+      startTime,
+      endTime,
+      totalHours: hours,
+      overtimeType: type,
+      description,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    setOvertimes((prev) => {
+      const next = [newOvertime, ...prev];
+      saveStored('bv_overtimes', next);
+      return next;
+    });
+
+    await addApproval({
+      kind: 'mesai',
+      status: 'pending',
+      title: `Fazla Mesai Talebi (${hours} Saat)`,
+      personId,
+      personName,
+      hours,
+      requestedDate: date,
+      note: `${startTime} - ${endTime} | ${description || ''}`,
+    });
+
+    showToast('✓ Fazla mesai bildiriminiz onaya sunuldu.');
+  };
+
+  const updateOvertimeStatus = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
+    setOvertimes((prev) => {
+      const next = prev.map((o) => (o.id === id ? { ...o, status, rejectionReason: reason, updatedAt: new Date().toISOString() } : o));
+      saveStored('bv_overtimes', next);
+      return next;
+    });
+  };
+
+  // Avans Talebi
+  const createAdvanceRequest = async (personId: string, amount: number, date: string, description?: string) => {
+    const person = personnel.find((p) => p.id === personId);
+    const personName = person ? person.fullName : 'Operatör';
+    const id = generateUuid();
+
+    const newAdvance: AdvanceRequest = {
+      id,
+      personId,
+      personName,
+      amount,
+      requestDate: date,
+      description,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    setAdvances((prev) => {
+      const next = [newAdvance, ...prev];
+      saveStored('bv_advances', next);
+      return next;
+    });
+
+    await addApproval({
+      kind: 'avans',
+      status: 'pending',
+      title: `Avans Talebi: ₺${amount.toLocaleString('tr-TR')}`,
+      personId,
+      personName,
+      amount,
+      requestedDate: date,
+      note: description,
+    });
+
+    showToast(`✓ ₺${amount.toLocaleString('tr-TR')} tutarındaki avans talebi onay merkezine iletildi.`);
+  };
+
+  const updateAdvanceStatus = async (id: string, status: 'approved' | 'rejected' | 'paid', reason?: string) => {
+    setAdvances((prev) => {
+      const next = prev.map((a) => (a.id === id ? { ...a, status, rejectionReason: reason, updatedAt: new Date().toISOString() } : a));
+      saveStored('bv_advances', next);
+      return next;
+    });
+  };
+
+  // Otomatik Puantaj Hesaplama Motoru
+  const generateMonthlyPuantaj = async (month: string) => {
+    // Puantaj kilitli mi kontrol et
+    if (periodLocks[month]?.isLocked) {
+      showToast(`✕ ${month} dönemi kilitlidir! Değişiklik yapmak için önce kilidi açınız.`);
+      return;
+    }
+
+    const calculated: PuantajRecord[] = personnel
+      .filter((p) => p.status === 'aktif')
+      .map((p) => {
+        // İlgili aya ait yoklama kayıtları
+        const personAttendance = attendance.filter((a) => a.personId === p.id && a.date.startsWith(month));
+        const workDays = personAttendance.filter((a) => a.status === 'geldi').length || 22; // varsayılan ay içi iş günü
+        const sickDays = personAttendance.filter((a) => a.status === 'raporlu').length;
+        const missingDays = personAttendance.filter((a) => a.status === 'gelmedi').length;
+
+        // Onaylı izinler
+        const approvedLeaveDays = leaves
+          .filter((l) => l.personId === p.id && l.status === 'approved' && l.startDate.startsWith(month))
+          .reduce((sum, l) => sum + l.days, 0);
+
+        // Onaylı mesailer
+        const approvedOvertimeHours = overtimes
+          .filter((o) => o.personId === p.id && o.status === 'approved' && o.date.startsWith(month))
+          .reduce((sum, o) => sum + o.totalHours, 0);
+
+        const normalHours = workDays * 8;
+
+        return {
+          id: `${month}-${p.id}`,
+          month,
+          personId: p.id,
+          personName: p.fullName,
+          title: p.title,
+          workDays,
+          normalHours,
+          overtimeHours: approvedOvertimeHours,
+          leaveDays: approvedLeaveDays,
+          sickDays,
+          missingDays,
+          isLocked: false,
+          createdAt: new Date().toISOString(),
+        };
+      });
+
+    setPuantajRecords((prev) => {
+      const otherMonths = prev.filter((r) => r.month !== month);
+      const next = [...calculated, ...otherMonths];
+      saveStored('bv_puantaj', next);
+      return next;
+    });
+
+    logAction('PUANTAJ_HESAPLANDI', 'Puantaj', month, `${month} dönemi otomatik puantajı başarıyla derlendi.`);
+    showToast(`✓ ${month} ayı puantajı otomatik olarak derlendi (${calculated.length} personel).`);
+  };
+
+  const togglePeriodLock = async (month: string, lock: boolean, notes?: string) => {
+    if (activeRole !== 'admin' && activeRole !== 'muhasebe') {
+      showToast('✕ Bu işlem için YÖNETİCİ veya MUHASEBE yetkisi gereklidir!');
+      return;
+    }
+
+    const lockObj: PuantajPeriodLock = {
+      period: month,
+      isLocked: lock,
+      lockedBy: currentUser.fullName,
+      lockedAt: new Date().toISOString(),
+      notes,
+    };
+
+    setPeriodLocks((prev) => {
+      const next = { ...prev, [month]: lockObj };
+      saveStored('bv_period_locks', next);
+      return next;
+    });
+
+    // İlgili kayıtları da kilitle
+    setPuantajRecords((prev) => {
+      const next = prev.map((r) => (r.month === month ? { ...r, isLocked: lock, lockedBy: currentUser.fullName } : r));
+      saveStored('bv_puantaj', next);
+      return next;
+    });
+
+    logAction(
+      lock ? 'PUANTAJ_KİLİTLENDİ' : 'PUANTAJ_KİLİT_AÇILDI',
+      'Puantaj',
+      month,
+      `${month} dönemi ${currentUser.fullName} tarafından ${lock ? 'kilitlendi' : 'tekrar açıldı'}. Not: ${notes || '-'}`
     );
-
-    showToast(status === 'approved' ? 'Talep onaylandı.' : 'Talep reddedildi.');
-
-    const sb = getSupabase();
-    if (sb) {
-      sb.from('approvals')
-        .update({
-          status,
-          decided_at: decidedAt,
-          decision_note: decisionNote,
-        })
-        .eq('id', id)
-        .then();
-    }
+    showToast(`✓ ${month} puantaj dönemi ${lock ? 'KİLİTLENDİ' : 'KİLİT KALDIRILDI'}.`);
   };
 
-  // Receipt & Expense actions
-  const addReceipt = (data: Omit<Receipt, 'id' | 'createdAt'>) => {
-    const newRec: Receipt = {
-      ...data,
-      id: generateUuid(),
+  const updatePuantajRecord = async (id: string, updates: Partial<PuantajRecord>) => {
+    setPuantajRecords((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r));
+      saveStored('bv_puantaj', next);
+      return next;
+    });
+    showToast('Puantaj satırı güncellendi.');
+  };
+
+  // Finans CRUD
+  const addReceipt = async (receiptData: Omit<Receipt, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newReceipt: Receipt = {
+      ...receiptData,
+      id,
       createdAt: new Date().toISOString(),
     };
-    setReceipts((prev) => [newRec, ...prev]);
-    showToast(`${newRec.receiptNo} makbuzu kaydedildi.`);
+
+    setReceipts((prev) => {
+      const next = [newReceipt, ...prev];
+      saveStored('bv_receipts', next);
+      return next;
+    });
+
+    logAction('MAKBUZ_KESİLDİ', 'Finans', id, `${newReceipt.receiptNo} - ${newReceipt.company} (₺${newReceipt.amount})`);
+    showToast(`✓ Makbuz oluşturuldu: ${newReceipt.receiptNo}`);
 
     const sb = getSupabase();
     if (sb) {
-      sb.from('receipts')
-        .insert({
-          id: newRec.id,
-          receipt_no: newRec.receiptNo,
-          company: newRec.company,
-          amount: newRec.amount,
-          status: newRec.status,
-          crane_code: newRec.craneCode,
-          site: newRec.site,
-          days_pending: newRec.daysPending || 0,
-        })
-        .then();
+      try {
+        await sb.from('receipts').insert([
+          {
+            id: newReceipt.id,
+            receipt_no: newReceipt.receiptNo,
+            company: newReceipt.company,
+            amount: newReceipt.amount,
+            status: newReceipt.status,
+            crane_code: newReceipt.craneCode,
+            site: newReceipt.site,
+            days_pending: newReceipt.daysPending || 0,
+          },
+        ]);
+      } catch (e) {
+        console.error('Remote receipt error:', e);
+      }
     }
   };
 
-  const addExpense = (data: Omit<Expense, 'id' | 'createdAt'>) => {
-    const newExp: Expense = {
-      ...data,
-      id: generateUuid(),
+  const updateReceipt = async (id: string, updates: Partial<Receipt>) => {
+    setReceipts((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r));
+      saveStored('bv_receipts', next);
+      return next;
+    });
+    showToast('Makbuz güncellendi.');
+  };
+
+  const addExpense = async (expenseData: Omit<Expense, 'id' | 'createdAt'>) => {
+    const id = generateUuid();
+    const newExpense: Expense = {
+      ...expenseData,
+      id,
+      status: 'aktif',
       createdAt: new Date().toISOString(),
     };
-    setExpenses((prev) => [newExp, ...prev]);
-    showToast(`${newExp.title} masrafı işlendi.`);
+
+    setExpenses((prev) => {
+      const next = [newExpense, ...prev];
+      saveStored('bv_expenses', next);
+      return next;
+    });
+
+    logAction('GİDER_KAYDEDİLDİ', 'Finans', id, `${newExpense.title} (₺${newExpense.amount})`);
+    showToast(`✓ Masraf fişi kaydedildi: ₺${newExpense.amount.toLocaleString('tr-TR')}`);
 
     const sb = getSupabase();
     if (sb) {
-      sb.from('expenses')
-        .insert({
-          id: newExp.id,
-          category: newExp.category,
-          title: newExp.title,
-          detail: newExp.detail,
-          amount: newExp.amount,
-          crane_code: newExp.craneCode,
-          person_name: newExp.personName,
-          station_or_supplier: newExp.stationOrSupplier,
-        })
-        .then();
+      try {
+        await sb.from('expenses').insert([
+          {
+            id: newExpense.id,
+            category: newExpense.category,
+            title: newExpense.title,
+            detail: newExpense.detail,
+            amount: newExpense.amount,
+            crane_code: newExpense.craneCode,
+            person_name: newExpense.personName,
+            station_or_supplier: newExpense.stationOrSupplier,
+            status: newExpense.status,
+          },
+        ]);
+      } catch (e) {
+        console.error('Remote expense error:', e);
+      }
     }
   };
 
-  // Dynamic KPI stats
+  const updateExpense = async (id: string, updates: Partial<Expense>) => {
+    setExpenses((prev) => {
+      const next = prev.map((e) => (e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e));
+      saveStored('bv_expenses', next);
+      return next;
+    });
+    showToast('Gider kaydı güncellendi.');
+  };
+
+  // Harita Telemetrisi
+  const telemetry: TelemetryPoint[] = useMemo(() => {
+    return cranes.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.type,
+      status: c.status,
+      lat: c.lat,
+      lng: c.lng,
+      operator: c.operator,
+      site: c.site,
+    }));
+  }, [cranes]);
+
+  const currentOperator = useMemo(
+    () => personnel.find((p) => p.id === currentOperatorId) || personnel[0] || INITIAL_PERSONNEL[0],
+    [personnel, currentOperatorId]
+  );
+
+  const updateCraneStatus = useCallback(
+    async (id: string, status: CraneStatus) => {
+      await updateCrane(id, { status });
+    },
+    [updateCrane]
+  );
+
+  // Global Gerçek İstatistikler (Dynamic KPIs)
   const stats = useMemo(() => {
-    const todayRevenue = receipts
-      .filter((r) => r.status === 'kesildi')
-      .reduce((sum, r) => sum + r.amount, 0);
-
-    const cutReceiptsCount = receipts.filter((r) => r.status === 'kesildi').length;
-    const pendingReceiptsCount = receipts.filter((r) => r.status === 'birikti').length;
-
-    const todayFuel = expenses
-      .filter((e) => e.category === 'yakit')
-      .reduce((sum, e) => sum + e.amount, 0);
-
-    const todayExpenses = expenses
-      .filter((e) => e.category === 'masraf')
-      .reduce((sum, e) => sum + e.amount, 0);
-
-    const activeCranesCount = cranes.filter((c) => c.status === 'sahada').length;
-    const totalCranesCount = cranes.length;
-
-    const pendingApprovalsCount = approvals.filter((a) => a.status === 'pending').length;
+    const activePers = personnel.filter((p) => p.status === 'aktif').length;
+    const actCranes = cranes.filter((c) => c.status === 'sahada').length;
+    const pendApps = approvals.filter((a) => a.status === 'pending').length;
+    const rev = receipts.filter((r) => r.status === 'kesildi').reduce((s, r) => s + r.amount, 0);
+    const exp = expenses.filter((e) => e.status !== 'iptal').reduce((s, e) => s + e.amount, 0);
+    const fuel = expenses.filter((e) => e.category === 'yakit' && e.status !== 'iptal').reduce((s, e) => s + e.amount, 0);
+    const todayExp = expenses.filter((e) => e.category === 'masraf' && e.status !== 'iptal').reduce((s, e) => s + e.amount, 0);
+    const cutCount = receipts.filter((r) => r.status === 'kesildi').length;
+    const pendCount = receipts.filter((r) => r.status === 'birikti').length;
+    const otHours = approvals
+      .filter((a) => a.kind === 'mesai' && a.status === 'approved')
+      .reduce((s, a) => s + (a.hours || 0), 0);
 
     return {
-      todayRevenue,
-      cutReceiptsCount,
-      pendingReceiptsCount,
-      todayFuel,
-      todayExpenses,
-      activeCranesCount,
-      totalCranesCount,
-      pendingApprovalsCount,
+      totalPersonnel: personnel.length,
+      activePersonnel: activePers,
+      totalCranes: cranes.length,
+      totalCranesCount: cranes.length,
+      activeCranes: actCranes,
+      activeCranesCount: actCranes,
+      pendingApprovals: pendApps,
+      pendingApprovalsCount: pendApps,
+      totalRevenue: rev,
+      todayRevenue: rev,
+      totalExpense: exp,
+      todayExpenses: todayExp,
+      todayFuel: fuel,
+      cutReceiptsCount: cutCount,
+      pendingReceiptsCount: pendCount,
+      monthlyOvertimeHours: otHours,
     };
-  }, [receipts, expenses, cranes, approvals]);
-
-  const currentOperator = useMemo(() => {
-    return personnel.find((p) => p.id === currentOperatorId) || personnel[0];
-  }, [personnel, currentOperatorId]);
+  }, [personnel, cranes, approvals, receipts, expenses]);
 
   return (
     <ERPContext.Provider
       value={{
+        currentUser,
+        userProfiles,
+        activeRole,
+        setActiveRole,
+        switchUser,
+        loginWithCredentials,
+        registerUser,
+        logout,
+        updateUserProfile,
         personnel,
-        cranes,
-        approvals,
-        receipts,
-        expenses,
-        stats,
-        isSupabaseOnline,
-        toastMessage,
-        showToast,
         addPerson,
         updatePerson,
         deletePerson,
+        cranes,
         addCrane,
         updateCrane,
         updateCraneStatus,
         deleteCrane,
-        createApprovalRequest,
-        handleApprovalDecision,
+        approvals,
+        addApproval,
+        approveRequest,
+        rejectRequest,
+        attendance,
+        recordAttendance,
+        leaves,
+        createLeaveRequest,
+        updateLeaveStatus,
+        overtimes,
+        createOvertimeRequest,
+        updateOvertimeStatus,
+        advances,
+        createAdvanceRequest,
+        updateAdvanceStatus,
+        puantajRecords,
+        periodLocks,
+        generateMonthlyPuantaj,
+        togglePeriodLock,
+        updatePuantajRecord,
+        receipts,
         addReceipt,
+        updateReceipt,
+        expenses,
         addExpense,
+        updateExpense,
+        auditLogs,
+        logAction,
+        notifications,
+        markNotificationRead,
+        markNotificationAsRead: markNotificationRead,
+        sendNotification,
+        telemetry,
+        stats,
         currentOperator,
         setCurrentOperatorId,
+        toastMessage,
+        showToast,
+        isSyncing,
+        dbConnected,
+        isSupabaseOnline: dbConnected,
+        refreshFromDb,
       }}
     >
       {children}
@@ -984,9 +1768,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 };
 
 export const useERP = (): ERPContextType => {
-  const context = useContext(ERPContext);
-  if (!context) {
+  const ctx = useContext(ERPContext);
+  if (!ctx) {
     throw new Error('useERP must be used within an ERPProvider');
   }
-  return context;
+  return ctx;
 };

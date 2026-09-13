@@ -79,6 +79,14 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         certExpiring,
       });
     } else {
+      const initials = fullName
+        .trim()
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 3)
+        .toUpperCase() || 'P';
+
       addPerson({
         fullName,
         employeeNo,
@@ -87,6 +95,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         status,
         poolStatus,
         title,
+        initials,
         documentsOk,
         certExpiring,
       });
