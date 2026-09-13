@@ -80,7 +80,7 @@ interface ERPContextType {
 
   // Cari (Customers) & Şantiye (Sites)
   customers: Customer[];
-  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => Promise<void>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => Promise<Customer>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
   sites: Site[];
@@ -813,6 +813,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             documents_ok: newPerson.documentsOk,
             cert_expiring: newPerson.certExpiring,
             notes: newPerson.notes,
+            end_date: newPerson.endDate || null,
+            user_id: newPerson.userId || null,
           },
         ]);
     if (insertError) {
@@ -834,15 +836,22 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const payload: any = { updated_at: new Date().toISOString() };
         if (updates.fullName) payload.full_name = updates.fullName;
         if (updates.employeeNo) payload.employee_no = updates.employeeNo;
-        if (updates.phone) payload.phone = updates.phone;
+        if (updates.phone !== undefined) payload.phone = updates.phone;
+        if (updates.email !== undefined) payload.email = updates.email || null;
+        if (updates.address !== undefined) payload.address = updates.address || null;
         if (updates.kind) payload.kind = updates.kind;
         if (updates.personnelTypeId !== undefined) payload.personnel_type_id = updates.personnelTypeId || null;
         if (updates.status) payload.status = updates.status;
-        if (updates.poolStatus) payload.pool_status = updates.poolStatus;
+        if (updates.poolStatus !== undefined) payload.pool_status = updates.poolStatus;
         if (updates.salary !== undefined) payload.salary = updates.salary;
         if (updates.startDate !== undefined) payload.start_date = updates.startDate || null;
         if (updates.title) payload.title = updates.title;
         if (updates.endDate !== undefined) payload.end_date = updates.endDate || null;
+        if (updates.iban !== undefined) payload.iban = updates.iban || null;
+        if (updates.department !== undefined) payload.department = updates.department || null;
+        if (updates.userId !== undefined) payload.user_id = updates.userId || null;
+        if (updates.documentsOk !== undefined) payload.documents_ok = updates.documentsOk;
+        if (updates.certExpiring !== undefined) payload.cert_expiring = updates.certExpiring;
         if (updates.notes !== undefined) payload.notes = updates.notes;
     const { error: updateError } = await sb.from('personnel').update(payload).eq('id', id);
     if (updateError) {
@@ -1586,7 +1595,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ==========================================
   // CARI (MÜŞTERİ) & ŞANTİYE YÖNETİMİ
   // ==========================================
-  const addCustomer = async (custData: Omit<Customer, 'id' | 'createdAt'>) => {
+  const addCustomer = async (custData: Omit<Customer, 'id' | 'createdAt'>): Promise<Customer> => {
     const id = generateUuid();
     const newCust: Customer = {
       ...custData,
@@ -1594,35 +1603,25 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       balance: custData.balance || 0,
       createdAt: new Date().toISOString(),
     };
-    setCustomers((prev) => {
-      const next = [newCust, ...prev];
-      saveStored('bv_customers', next);
-      return next;
-    });
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Cari yalnızca remote veritabanına kaydedilebilir.');
+    const { error } = await sb.from('customers').insert([{
+      id: newCust.id,
+      title: newCust.title,
+      vkn_tckn: newCust.vknTckn,
+      tax_office: newCust.taxOffice,
+      authorized_person: newCust.authorizedPerson,
+      phone: newCust.phone,
+      email: newCust.email,
+      address: newCust.address,
+      balance: newCust.balance,
+      notes: newCust.notes,
+    }]);
+    if (error) throw error;
+    setCustomers((prev) => { const next = [newCust, ...prev]; saveStored('bv_customers', next); return next; });
     logAction('CARI_EKLENDI', 'Cari', id, `${newCust.title} carisi sisteme eklendi.`);
     showToast(`✓ Cari Kart Oluşturuldu: ${newCust.title}`);
-
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('customers').insert([
-          {
-            id: newCust.id,
-            title: newCust.title,
-            vkn_tckn: newCust.vknTckn,
-            tax_office: newCust.taxOffice,
-            authorized_person: newCust.authorizedPerson,
-            phone: newCust.phone,
-            email: newCust.email,
-            address: newCust.address,
-            balance: newCust.balance,
-            notes: newCust.notes,
-          },
-        ]);
-      } catch (err: any) {
-        console.warn('Supabase customer insert notice:', err.message);
-      }
-    }
+    return newCust;
   };
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
