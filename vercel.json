@@ -1,6 +1,6 @@
 {
-  "buildCommand": "echo prebuilt-dist",
-  "installCommand": "echo skip-install",
+  "buildCommand": "pnpm --dir artifacts/bizim-vinc-erp install --no-frozen-lockfile && pnpm --dir artifacts/bizim-vinc-erp run build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "outputDirectory": "artifacts/bizim-vinc-erp/dist/public",
   "framework": null,
   "rewrites": [
