@@ -26,6 +26,7 @@
 #
 # ============================================================================
 minimumReleaseAge: 0
+strictDepBuilds: false
 
 minimumReleaseAgeExclude:
   # Exclude @replit scoped packages from the minimum release age check.
@@ -70,6 +71,8 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
+  - '@google/genai'
+  - protobufjs
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
@@ -157,3 +160,8 @@ overrides:
   esbuild: "0.28.2"
   # orval pins js-yaml to an exact version older than the CVE fix (>=4.3.2)
   js-yaml: '4.3.2'
+
+allowBuilds:
+  '@google/genai': set this to true or false
+  esbuild: set this to true or false
+  protobufjs: set this to true or false
