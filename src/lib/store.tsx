@@ -475,7 +475,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     async function loadFromSupabase() {
       try {
-        const [pRes, cRes, aRes, rRes, eRes] = await Promise.all([
+        const [pRes, cRes, aRes, rRes, eRes] = await Promise.allSettled([
           sb.from('personnel').select('*'),
           sb.from('cranes').select('*'),
           sb.from('approvals').select('*').order('created_at', { ascending: false }),
@@ -483,10 +483,16 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           sb.from('expenses').select('*'),
         ]);
 
-        if (isMounted) {
-          if (pRes.data && pRes.data.length > 0) {
+        if (!isMounted) return;
+
+        let anySuccess = false;
+
+        // Personnel sync
+        if (pRes.status === 'fulfilled' && !pRes.value.error) {
+          anySuccess = true;
+          if (pRes.value.data && pRes.value.data.length > 0) {
             setPersonnel(
-              pRes.data.map((row: any) => ({
+              pRes.value.data.map((row: any) => ({
                 id: row.id,
                 employeeNo: row.employee_no,
                 fullName: row.full_name,
@@ -502,11 +508,32 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 createdAt: row.created_at,
               }))
             );
+          } else {
+            // Seed initial personnel to Supabase
+            const seedPayload = INITIAL_PERSONNEL.map((p) => ({
+              id: p.id,
+              employee_no: p.employeeNo,
+              full_name: p.fullName,
+              phone: p.phone,
+              kind: p.kind,
+              status: p.status,
+              pool_status: p.poolStatus,
+              title: p.title,
+              initials: p.initials,
+              card_slug: p.cardSlug,
+              documents_ok: p.documentsOk,
+              cert_expiring: p.certExpiring,
+            }));
+            sb.from('personnel').insert(seedPayload).then();
           }
+        }
 
-          if (cRes.data && cRes.data.length > 0) {
+        // Cranes sync
+        if (cRes.status === 'fulfilled' && !cRes.value.error) {
+          anySuccess = true;
+          if (cRes.value.data && cRes.value.data.length > 0) {
             setCranes(
-              cRes.data.map((row: any) => ({
+              cRes.value.data.map((row: any) => ({
                 id: row.id,
                 code: row.code,
                 type: row.type,
@@ -520,28 +547,81 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 createdAt: row.created_at,
               }))
             );
+          } else {
+            // Seed initial cranes to Supabase
+            const seedPayload = INITIAL_CRANES.map((c) => ({
+              id: c.id,
+              code: c.code,
+              type: c.type,
+              status: c.status,
+              capacity: c.capacity,
+              operator: c.operator,
+              site: c.site,
+              last_service: c.lastService,
+              lat: c.lat,
+              lng: c.lng,
+            }));
+            sb.from('cranes').insert(seedPayload).then();
           }
-
-          if (aRes.data && aRes.data.length > 0) {
-            setApprovals(
-              aRes.data.map((row: any) => ({
-                id: row.id,
-                kind: row.kind,
-                status: row.status,
-                title: row.title,
-                personName: row.person_name,
-                personInitials: row.person_initials,
-                relatedLabel: row.related_label,
-                note: row.note,
-                decisionNote: row.decision_note,
-                decidedAt: row.decided_at,
-                createdAt: row.created_at,
-              }))
-            );
-          }
-
-          setIsSupabaseOnline(true);
         }
+
+        // Approvals sync
+        if (aRes.status === 'fulfilled' && !aRes.value.error && aRes.value.data && aRes.value.data.length > 0) {
+          anySuccess = true;
+          setApprovals(
+            aRes.value.data.map((row: any) => ({
+              id: row.id,
+              kind: row.kind,
+              status: row.status,
+              title: row.title,
+              personName: row.person_name,
+              personInitials: row.person_initials,
+              relatedLabel: row.related_label,
+              note: row.note,
+              decisionNote: row.decision_note,
+              decidedAt: row.decided_at,
+              createdAt: row.created_at,
+            }))
+          );
+        }
+
+        // Receipts sync
+        if (rRes.status === 'fulfilled' && !rRes.value.error && rRes.value.data && rRes.value.data.length > 0) {
+          anySuccess = true;
+          setReceipts(
+            rRes.value.data.map((row: any) => ({
+              id: row.id,
+              receiptNo: row.receipt_no,
+              company: row.company,
+              amount: Number(row.amount),
+              status: row.status,
+              craneCode: row.crane_code,
+              site: row.site,
+              daysPending: row.days_pending,
+              createdAt: row.created_at,
+            }))
+          );
+        }
+
+        // Expenses sync
+        if (eRes.status === 'fulfilled' && !eRes.value.error && eRes.value.data && eRes.value.data.length > 0) {
+          anySuccess = true;
+          setExpenses(
+            eRes.value.data.map((row: any) => ({
+              id: row.id,
+              category: row.category,
+              title: row.title,
+              detail: row.detail,
+              amount: Number(row.amount),
+              craneCode: row.crane_code,
+              personName: row.person_name,
+              stationOrSupplier: row.station_or_supplier,
+              createdAt: row.created_at,
+            }))
+          );
+        }
+
+        setIsSupabaseOnline(anySuccess);
       } catch {
         if (isMounted) setIsSupabaseOnline(false);
       }

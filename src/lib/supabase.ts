@@ -1,16 +1,36 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const KNOWN_PROJECT_URL = 'https://jimywfjufmrpgnjynhkx.supabase.co';
+
+function normalizeSupabaseUrl(rawUrl?: string): string {
+  if (!rawUrl || rawUrl.startsWith('sb_secret_') || rawUrl.includes('placeholder')) {
+    return KNOWN_PROJECT_URL;
+  }
+  let clean = rawUrl.trim();
+  // Strip trailing dots and slashes
+  clean = clean.replace(/\.+$/, '').replace(/\/+$/, '');
+  // Strip /rest/v1 or similar path suffixes
+  clean = clean.replace(/\/rest\/v1\/?$/, '');
+  // Ensure https://
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    clean = `https://${clean}`;
+  }
+  return clean;
+}
+
+const rawEnvUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const rawEnvKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+export const supabaseUrl = normalizeSupabaseUrl(rawEnvUrl);
+export const supabaseAnonKey = rawEnvKey || '';
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
     supabaseUrl &&
-      supabaseUrl.trim() !== '' &&
-      !supabaseUrl.includes('placeholder') &&
-      (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://')) &&
+      supabaseUrl.startsWith('https://') &&
       supabaseAnonKey &&
-      supabaseAnonKey.trim() !== ''
+      supabaseAnonKey.trim() !== '' &&
+      !supabaseAnonKey.includes('placeholder')
   );
 };
 
@@ -28,7 +48,8 @@ export const getSupabase = (): SupabaseClient | null => {
           autoRefreshToken: true,
         },
       });
-    } catch {
+    } catch (err) {
+      console.error('Supabase initialization error:', err);
       return null;
     }
   }
@@ -36,17 +57,10 @@ export const getSupabase = (): SupabaseClient | null => {
 };
 
 export const testSupabaseConnection = async (): Promise<{ success: boolean; message: string }> => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     return {
       success: false,
-      message: 'Supabase URL veya Anon Key henüz tanımlanmamış.',
-    };
-  }
-
-  if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
-    return {
-      success: false,
-      message: `Geçersiz URL: VITE_SUPABASE_URL değeri "${supabaseUrl.slice(0, 15)}..." olarak girilmiş. Buraya 'https://xyz.supabase.co' formatındaki Project URL girilmelidir (Secret key yapıştırılmış olabilir).`,
+      message: 'Supabase Anon Key henüz tanımlanmamış.',
     };
   }
 
@@ -54,13 +68,12 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase client başlatılamadı.');
 
-    const { error } = await sb.from('personnel').select('id').limit(1);
+    const { data, error } = await sb.from('personnel').select('*').limit(1);
     if (error) {
-      // If table does not exist, connection is alive but migration needed
       if (error.code === '42P01') {
         return {
           success: true,
-          message: 'Supabase bağlantısı aktif! Ancak tablolar henüz oluşturulmamış (SQL migration çalıştırılmalı).',
+          message: 'Supabase bağlantısı başarılı! Ancak tablolar henüz oluşturulmamış (SQL şeması çalıştırılmalı).',
         };
       }
       return { success: false, message: `Supabase hatası: ${error.message}` };
@@ -68,7 +81,7 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
 
     return {
       success: true,
-      message: 'Supabase PostgreSQL veritabanı başarıyla bağlandı ve sorgulandı!',
+      message: `Supabase PostgreSQL veritabanı başarıyla bağlandı (${supabaseUrl})!`,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
