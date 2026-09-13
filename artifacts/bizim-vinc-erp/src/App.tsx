@@ -23,7 +23,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage, dbError, refreshFromDb, isAuthenticated } = useERP();
+  const { toastMessage, dbError, refreshFromDb, isAuthenticated, currentUser } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -79,6 +79,20 @@ function AppContent() {
             <p className="text-sm text-emerald-700 mt-2">En derinden, en yükseklere</p>
           </div>
           <AuthModal isOpen onClose={() => undefined} />
+        </div>
+      </div>
+    );
+  }
+
+  const operatorOnly = currentUser.role === 'operator';
+  if (operatorOnly && currentPath !== '/operator') {
+    return (
+      <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">BV</div>
+          <h1 className="text-lg font-black text-slate-900">Operatör paneli</h1>
+          <p className="mt-2 text-sm text-slate-500">Bu hesap yalnızca kendi operasyon taleplerine erişebilir.</p>
+          <button onClick={() => navigate('/operator')} className="mt-6 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition">Operatör paneline git</button>
         </div>
       </div>
     );
