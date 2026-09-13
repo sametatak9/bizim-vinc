@@ -32,7 +32,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const fuelExpenses = expenses.filter((e) => e.category === 'yakit').slice(0, 3);
   const otherExpenses = expenses.filter((e) => e.category === 'masraf').slice(0, 3);
 
-  const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'onaylandi');
+  const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
 
   const handleOpenCrane = (c: Crane) => {
     setSelectedCrane(c);

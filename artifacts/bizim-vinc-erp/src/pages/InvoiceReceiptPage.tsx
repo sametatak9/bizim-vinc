@@ -128,20 +128,22 @@ export const InvoiceReceiptPage: React.FC = () => {
 
     await addJobReceipt({
       customerId: newReceiptForm.customerId,
-      customerName: customer?.name || 'Müşteri',
+      customerName: customer?.title || customer?.name || 'Müşteri',
       siteId: newReceiptForm.siteId || undefined,
       siteName: site?.name || undefined,
       craneId: newReceiptForm.craneId || undefined,
-      craneCode: crane?.code || undefined,
+      craneCode: crane?.code || 'V-GENEL',
       operatorId: currentUser.id,
       operatorName: currentUser.fullName,
       date: newReceiptForm.date,
       hoursWorked: Number(newReceiptForm.hoursWorked),
       hourlyRate: Number(newReceiptForm.hourlyRate),
       amount,
+      status: 'pending',
+      invoiced: false,
       signedByCustomer: newReceiptForm.signedByCustomer,
       customerSignatureName: newReceiptForm.customerSignatureName || undefined,
-      notes: newReceiptForm.notes || undefined,
+      note: newReceiptForm.notes || undefined,
     });
 
     setIsNewReceiptModalOpen(false);
@@ -164,21 +166,11 @@ export const InvoiceReceiptPage: React.FC = () => {
     e.preventDefault();
     if (selectedReceiptIds.length === 0) return;
 
-    // Check if all selected receipts belong to the same customer
-    const firstReceipt = jobReceipts.find((r) => r.id === selectedReceiptIds[0]);
-    if (!firstReceipt) return;
-
-    const customerId = invoiceForm.customerId || firstReceipt.customerId;
-    const customer = customers.find((c) => c.id === customerId);
-
-    await createInvoiceFromReceipts({
-      customerId,
-      customerName: customer?.name || firstReceipt.customerName,
-      receiptIds: selectedReceiptIds,
-      dueDate: invoiceForm.dueDate,
-      taxRate: Number(invoiceForm.taxRate),
-      notes: invoiceForm.notes,
-    });
+    await createInvoiceFromReceipts(
+      selectedReceiptIds,
+      invoiceForm.dueDate,
+      invoiceForm.notes
+    );
 
     setIsInvoiceModalOpen(false);
     setSelectedReceiptIds([]);
@@ -698,7 +690,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                   <option value="">-- Müşteri Seçin --</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} (Bakiye: {c.balance?.toLocaleString('tr-TR')} ₺)
+                      {c.title || c.name} (Bakiye: {c.balance?.toLocaleString('tr-TR')} ₺)
                     </option>
                   ))}
                 </select>
@@ -863,7 +855,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                 >
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.title || c.name}
                     </option>
                   ))}
                 </select>

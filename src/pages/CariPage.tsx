@@ -91,11 +91,15 @@ export const CariPage: React.FC = () => {
   const filteredCustomers = customers.filter((c) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
+    const custTitle = (c.title || c.name || '').toLowerCase();
+    const contact = (c.authorizedPerson || c.contactName || '').toLowerCase();
+    const phone = (c.phone || '').toLowerCase();
+    const tax = (c.vknTckn || c.taxNo || '').toLowerCase();
     return (
-      c.name.toLowerCase().includes(term) ||
-      c.contactName?.toLowerCase().includes(term) ||
-      c.phone?.toLowerCase().includes(term) ||
-      c.taxNo?.includes(term)
+      custTitle.includes(term) ||
+      contact.includes(term) ||
+      phone.includes(term) ||
+      tax.includes(term)
     );
   });
 
@@ -113,16 +117,18 @@ export const CariPage: React.FC = () => {
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     await addCustomer({
+      title: customerForm.name,
       name: customerForm.name,
+      vknTckn: customerForm.taxNo || undefined,
       taxNo: customerForm.taxNo || undefined,
       taxOffice: customerForm.taxOffice || undefined,
+      authorizedPerson: customerForm.contactName || undefined,
       contactName: customerForm.contactName || undefined,
-      phone: customerForm.phone || undefined,
+      phone: customerForm.phone || '',
       email: customerForm.email || undefined,
       address: customerForm.address || undefined,
       type: customerForm.type,
       balance: Number(customerForm.initialBalance) || 0,
-      active: true,
     });
     setIsCustomerModalOpen(false);
     setCustomerForm({
@@ -143,12 +149,13 @@ export const CariPage: React.FC = () => {
     const cust = customers.find((c) => c.id === siteForm.customerId);
     await addSite({
       customerId: siteForm.customerId,
-      customerName: cust?.name,
+      customerName: cust?.title || cust?.name || '',
       name: siteForm.name,
       location: siteForm.location,
       address: siteForm.address || undefined,
       contactPerson: siteForm.contactPerson || undefined,
       contactPhone: siteForm.contactPhone || undefined,
+      phone: siteForm.contactPhone || undefined,
       status: 'aktif',
     });
     setIsSiteModalOpen(false);
@@ -169,11 +176,12 @@ export const CariPage: React.FC = () => {
 
     await addCollection({
       customerId: collectionForm.customerId,
-      customerName: cust.name,
+      customerName: cust.title || cust.name || 'Müşteri',
       amount: Number(collectionForm.amount),
       date: collectionForm.dueDate,
       dueDate: collectionForm.dueDate,
       paymentMethod: collectionForm.paymentMethod,
+      status: 'bekliyor',
       notes: collectionForm.notes || undefined,
     });
     setIsCollectionModalOpen(false);
@@ -188,6 +196,7 @@ export const CariPage: React.FC = () => {
       amount: Number(paymentForm.amount),
       dueDate: paymentForm.dueDate,
       paymentMethod: paymentForm.paymentMethod,
+      status: 'bekliyor',
       notes: paymentForm.notes || undefined,
     });
     setIsPaymentModalOpen(false);
@@ -389,19 +398,19 @@ export const CariPage: React.FC = () => {
                     return (
                       <tr key={cust.id} className="hover:bg-emerald-50/40 transition">
                         <td className="p-3.5">
-                          <div className="font-bold text-slate-900 text-sm">{cust.name}</div>
+                          <div className="font-bold text-slate-900 text-sm">{cust.title || cust.name}</div>
                           <div className="text-[11px] text-slate-500">{cust.address || 'Adres belirtilmedi'}</div>
                         </td>
                         <td className="p-3.5">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                            {cust.type === 'musteri' ? 'Müşteri' : cust.type === 'taseron' ? 'Taşeron' : 'Diğer'}
+                            {cust.type === 'musteri' ? 'Müşteri' : cust.type === 'taseron' ? 'Taşeron' : 'Müşteri'}
                           </span>
                         </td>
                         <td className="p-3.5 font-mono text-slate-600">
-                          {cust.taxNo ? `${cust.taxNo} / ${cust.taxOffice || 'VD'}` : '—'}
+                          {cust.vknTckn || cust.taxNo ? `${cust.vknTckn || cust.taxNo} / ${cust.taxOffice || 'VD'}` : '—'}
                         </td>
                         <td className="p-3.5">
-                          <div className="font-semibold text-slate-800">{cust.contactName || '—'}</div>
+                          <div className="font-semibold text-slate-800">{cust.authorizedPerson || cust.contactName || '—'}</div>
                           <div className="text-[11px] text-slate-500">{cust.phone || cust.email || '—'}</div>
                         </td>
                         <td className="p-3.5">
@@ -742,7 +751,7 @@ export const CariPage: React.FC = () => {
                   <option value="">-- Müşteri Seçin --</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.title || c.name}
                     </option>
                   ))}
                 </select>
@@ -828,7 +837,7 @@ export const CariPage: React.FC = () => {
                   <option value="">-- Müşteri Seçin --</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} (Bakiye: {c.balance?.toLocaleString('tr-TR')} ₺)
+                      {c.title || c.name} (Bakiye: {c.balance?.toLocaleString('tr-TR')} ₺)
                     </option>
                   ))}
                 </select>

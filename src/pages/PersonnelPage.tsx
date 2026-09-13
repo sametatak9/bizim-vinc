@@ -90,21 +90,18 @@ export const PersonnelPage: React.FC = () => {
   const handleSaveAllAttendance = async () => {
     for (const p of personnel) {
       const input = attendanceInputs[p.id] || { status: 'geldi' as AttendanceStatus, hours: 0 };
-      await recordAttendance({
-        personId: p.id,
-        personName: p.fullName,
-        date: attendanceDate,
-        status: input.status,
-      });
+      await recordAttendance(p.id, input.status);
 
       if (input.hours > 0) {
-        await createOvertimeRequest({
-          personId: p.id,
-          personName: p.fullName,
-          date: attendanceDate,
-          hours: input.hours,
-          note: `${attendanceDate} günlük mesai girişi`,
-        });
+        await createOvertimeRequest(
+          p.id,
+          attendanceDate,
+          '18:00',
+          '22:00',
+          input.hours,
+          'hafta_ici',
+          `${attendanceDate} günlük mesai girişi`
+        );
       }
     }
   };

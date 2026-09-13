@@ -267,7 +267,11 @@ export interface Receipt {
 export interface Customer {
   id: string;
   title: string; // Ünvan
+  name?: string; // alias for title
+  type?: 'musteri' | 'taseron' | 'diger';
   vknTckn?: string; // VKN / TCKN
+  taxNo?: string; // alias for vknTckn
+  contactName?: string; // alias for authorizedPerson
   authorizedPerson?: string; // Yetkili kişi
   phone: string;
   email?: string;
@@ -285,7 +289,9 @@ export interface Site {
   customerId?: string;
   customerName?: string;
   location?: string;
+  address?: string;
   contactPerson?: string;
+  contactPhone?: string;
   phone?: string;
   status: 'aktif' | 'tamamlandi' | 'askida';
   createdAt: string;
@@ -294,7 +300,14 @@ export interface Site {
 // -------------------------------------------------------------
 // MAKBUZ (JOB RECEIPT) & FATURA (INVOICE) HATTI
 // -------------------------------------------------------------
-export type JobReceiptStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+export type JobReceiptStatus =
+  | 'draft'
+  | 'pending'
+  | 'pending_approval'
+  | 'approved'
+  | 'onaylandi'
+  | 'rejected'
+  | 'invoiced';
 
 export interface JobReceiptLine {
   description: string;
@@ -311,12 +324,17 @@ export interface JobReceipt {
   siteId?: string;
   siteName?: string;
   craneCode: string;
+  craneId?: string;
   operatorId?: string;
   operatorName: string;
   date: string; // YYYY-MM-DD
   startTime?: string; // HH:mm
   endTime?: string; // HH:mm
   workingHours?: number;
+  hoursWorked?: number;
+  hourlyRate?: number;
+  signedByCustomer?: boolean;
+  customerSignatureName?: string;
   description?: string;
   lines?: JobReceiptLine[];
   amount: number;
@@ -334,7 +352,14 @@ export interface JobReceipt {
   updatedAt?: string;
 }
 
-export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'partial' | 'cancelled';
+export type InvoiceStatus =
+  | 'draft'
+  | 'issued'
+  | 'gonderildi'
+  | 'paid'
+  | 'odendi'
+  | 'partial'
+  | 'cancelled';
 
 export interface Invoice {
   id: string;
