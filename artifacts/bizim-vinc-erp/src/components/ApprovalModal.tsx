@@ -37,7 +37,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({ approval, isOpen, 
       <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div className="px-6 py-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-sm">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-bold flex items-center justify-center text-sm">
               {approval.personInitials || 'OP'}
             </div>
             <div>
@@ -62,7 +62,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({ approval, isOpen, 
               <span
                 className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                   approval.status === 'pending'
-                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                     : approval.status === 'approved'
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                     : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
@@ -79,14 +79,14 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({ approval, isOpen, 
             <div className="text-sm font-bold text-neutral-100">{approval.title}</div>
 
             {approval.amount && approval.amount > 0 && (
-              <div className="text-sm font-bold text-amber-400 flex items-center gap-1">
+              <div className="text-sm font-bold text-emerald-400 flex items-center gap-1">
                 <DollarSign className="w-4 h-4" />
                 <span>₺{approval.amount.toLocaleString('tr-TR')}</span>
               </div>
             )}
 
             {approval.hours && approval.hours > 0 && (
-              <div className="text-xs font-semibold text-amber-400 flex items-center gap-1">
+              <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{approval.hours} Saat Fazla Mesai</span>
               </div>
@@ -121,7 +121,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({ approval, isOpen, 
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Örn: Uygundur, puantaja işlendi."
                   rows={2}
-                  className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-neutral-100 focus:outline-none focus:border-amber-500"
+                  className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-neutral-100 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 

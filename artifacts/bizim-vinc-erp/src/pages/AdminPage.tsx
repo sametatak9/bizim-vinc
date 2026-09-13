@@ -53,15 +53,15 @@ export const AdminPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-neutral-100">Yönetim & Denetim Paneli</h1>
-              <p className="text-xs text-neutral-400">
+              <h1 className="text-xl font-bold text-emerald-950">Yönetim & Denetim Paneli</h1>
+              <p className="text-xs text-slate-600">
                 Kullanıcı rolleri, güvenlik ilkeleri, sistem denetim kayıtları ve veritabanı ayarları
               </p>
             </div>
@@ -71,7 +71,7 @@ export const AdminPage: React.FC = () => {
             <button
               onClick={refreshFromDb}
               disabled={isSyncing}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-neutral-700 text-emerald-950 border border-neutral-700 transition flex items-center gap-2"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Senkronize ediliyor...' : 'Yenile'}</span>
@@ -80,13 +80,13 @@ export const AdminPage: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-800 mt-5 text-xs font-medium">
+        <div className="flex border-b border-emerald-100 mt-5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('users')}
             className={`pb-2.5 px-4 transition border-b-2 flex items-center gap-2 ${
               activeTab === 'users'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -96,8 +96,8 @@ export const AdminPage: React.FC = () => {
             onClick={() => setActiveTab('audit')}
             className={`pb-2.5 px-4 transition border-b-2 flex items-center gap-2 ${
               activeTab === 'audit'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -107,8 +107,8 @@ export const AdminPage: React.FC = () => {
             onClick={() => setActiveTab('database')}
             className={`pb-2.5 px-4 transition border-b-2 flex items-center gap-2 ${
               activeTab === 'database'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
             }`}
           >
             <Database className="w-4 h-4" />
@@ -119,19 +119,19 @@ export const AdminPage: React.FC = () => {
 
       {/* TAB 1: USERS & ROLES */}
       {activeTab === 'users' && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/40">
-            <div className="text-xs text-neutral-400">
+        <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
+            <div className="text-xs text-slate-600">
               Sistemde tanımlı yetkili kullanıcılar ve erişim seviyeleri
             </div>
-            <span className="text-xs text-neutral-400">
-              Aktif Oturum: <strong className="text-amber-400 font-mono uppercase">{activeRole}</strong>
+            <span className="text-xs text-slate-600">
+              Aktif Oturum: <strong className="text-emerald-600 font-mono uppercase">{activeRole}</strong>
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-300">
-              <thead className="bg-neutral-950 text-neutral-400 font-semibold border-b border-neutral-800 uppercase tracking-wider text-[11px]">
+            <table className="w-full text-left text-xs text-emerald-900">
+              <thead className="bg-emerald-50 text-slate-600 font-semibold border-b border-emerald-100 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Kullanıcı</th>
                   <th className="py-3 px-4">E-Posta & Telefon</th>
@@ -143,31 +143,31 @@ export const AdminPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-neutral-800/60">
                 {userProfiles.map((user) => (
-                  <tr key={user.id} className="hover:bg-neutral-800/30 transition">
+                  <tr key={user.id} className="hover:bg-emerald-50/30 transition">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-xs">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 font-bold flex items-center justify-center text-xs">
                           {user.fullName.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-semibold text-neutral-100">{user.fullName}</div>
-                          <div className="text-[11px] text-neutral-500 font-mono">{user.id}</div>
+                          <div className="font-semibold text-emerald-950">{user.fullName}</div>
+                          <div className="text-[11px] text-slate-500 font-mono">{user.id}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-neutral-300">
+                    <td className="py-3 px-4 text-emerald-900">
                       <div>{user.email}</div>
-                      <div className="text-[11px] text-neutral-500">{user.phone || '-'}</div>
+                      <div className="text-[11px] text-slate-500">{user.phone || '-'}</div>
                     </td>
-                    <td className="py-3 px-4 text-neutral-400">
+                    <td className="py-3 px-4 text-slate-600">
                       <div>{user.title || '-'}</div>
-                      <div className="text-[11px] text-neutral-500">{user.department || '-'}</div>
+                      <div className="text-[11px] text-slate-500">{user.department || '-'}</div>
                     </td>
                     <td className="py-3 px-4">
                       <select
                         value={user.role}
                         onChange={(e) => updateUserProfile(user.id, { role: e.target.value as AppRole })}
-                        className="bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500"
+                        className="bg-emerald-50 border border-neutral-700 rounded-lg px-2.5 py-1 text-xs text-emerald-600 font-bold focus:outline-none focus:border-emerald-500"
                       >
                         <option value="admin">ADMIN (Tam Yetki)</option>
                         <option value="yonetici">YÖNETİCİ</option>
@@ -183,7 +183,7 @@ export const AdminPage: React.FC = () => {
                         className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                           user.status === 'aktif'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-neutral-800 text-neutral-400'
+                            : 'bg-emerald-50 text-slate-600'
                         }`}
                       >
                         {user.status}
@@ -196,7 +196,7 @@ export const AdminPage: React.FC = () => {
                             status: user.status === 'aktif' ? 'pasif' : 'aktif',
                           })
                         }
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-neutral-700 text-emerald-900 transition"
                       >
                         {user.status === 'aktif' ? 'Pasife Al' : 'Aktif Yap'}
                       </button>
@@ -211,25 +211,25 @@ export const AdminPage: React.FC = () => {
 
       {/* TAB 2: AUDIT LOG */}
       {activeTab === 'audit' && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm space-y-4">
-          <div className="p-4 border-b border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-950/40">
+        <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm space-y-4">
+          <div className="p-4 border-b border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/40">
             <div className="flex items-center gap-2 flex-1 max-w-md">
-              <Search className="w-4 h-4 text-neutral-500" />
+              <Search className="w-4 h-4 text-slate-500" />
               <input
                 type="text"
                 value={auditSearch}
                 onChange={(e) => setAuditSearch(e.target.value)}
                 placeholder="İşlem, kullanıcı veya açıklama ara..."
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-amber-500"
+                className="w-full bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-1.5 text-xs text-emerald-950 placeholder-neutral-600 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-neutral-500" />
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={auditModuleFilter}
                 onChange={(e) => setAuditModuleFilter(e.target.value)}
-                className="bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-xs text-neutral-300 focus:outline-none"
+                className="bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-1.5 text-xs text-emerald-900 focus:outline-none"
               >
                 <option value="all">Tüm Modüller</option>
                 <option value="Auth">Auth / Giriş</option>
@@ -243,7 +243,7 @@ export const AdminPage: React.FC = () => {
 
               <button
                 onClick={exportAuditJSON}
-                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition border border-neutral-700"
+                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-neutral-700 text-emerald-950 text-xs font-semibold flex items-center gap-1.5 transition border border-neutral-700"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>JSON İndir</span>
@@ -252,8 +252,8 @@ export const AdminPage: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-300">
-              <thead className="bg-neutral-950 text-neutral-400 font-semibold border-b border-neutral-800 uppercase tracking-wider text-[11px]">
+            <table className="w-full text-left text-xs text-emerald-900">
+              <thead className="bg-emerald-50 text-slate-600 font-semibold border-b border-emerald-100 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Tarih / Saat</th>
                   <th className="py-3 px-4">Kullanıcı</th>
@@ -264,23 +264,23 @@ export const AdminPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-neutral-800/60">
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-neutral-800/30 transition">
-                    <td className="py-3 px-4 font-mono text-neutral-400 text-[11px] whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-emerald-50/30 transition">
+                    <td className="py-3 px-4 font-mono text-slate-600 text-[11px] whitespace-nowrap">
                       {new Date(log.createdAt).toLocaleString('tr-TR')}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-neutral-200">{log.userName}</div>
-                      <div className="text-[10px] text-amber-500/80 font-mono uppercase">{log.userRole || '-'}</div>
+                      <div className="font-semibold text-emerald-950">{log.userName}</div>
+                      <div className="text-[10px] text-emerald-600/80 font-mono uppercase">{log.userRole || '-'}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700 text-[11px]">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-neutral-700 text-[11px]">
                         {log.module}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-semibold text-neutral-200 font-mono text-[11px]">
+                    <td className="py-3 px-4 font-semibold text-emerald-950 font-mono text-[11px]">
                       {log.action}
                     </td>
-                    <td className="py-3 px-4 text-neutral-400 text-xs">
+                    <td className="py-3 px-4 text-slate-600 text-xs">
                       {log.details || '-'}
                     </td>
                   </tr>
@@ -293,21 +293,21 @@ export const AdminPage: React.FC = () => {
 
       {/* TAB 3: DATABASE STATUS */}
       {activeTab === 'database' && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="bg-white border border-emerald-100 rounded-2xl p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   dbConnected
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                    : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'
                 }`}
               >
                 <Database className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-neutral-100">Supabase PostgreSQL Durumu</h3>
-                <p className="text-xs text-neutral-400">
+                <h3 className="text-base font-bold text-emerald-950">Supabase PostgreSQL Durumu</h3>
+                <p className="text-xs text-slate-600">
                   {dbConnected
                     ? 'PostgreSQL veritabanı aktif ve tam bağlı durumdadır.'
                     : 'Yerel depolama (Local Persistence) devrede. Supabase Anon Key bekleniyor.'}
@@ -318,7 +318,7 @@ export const AdminPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  dbConnected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                  dbConnected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500/20 text-emerald-600'
                 }`}
               >
                 {dbConnected ? 'CANLI / CONNECTED' : 'YEREL ÇEKİRDEK'}
@@ -327,20 +327,20 @@ export const AdminPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4">
-              <div className="text-xs text-neutral-400 mb-1">Veritabanı Şeması</div>
-              <div className="text-sm font-bold text-neutral-100">14 Çekirdek Tablo</div>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <div className="text-xs text-slate-600 mb-1">Veritabanı Şeması</div>
+              <div className="text-sm font-bold text-emerald-950">14 Çekirdek Tablo</div>
               <div className="text-[11px] text-emerald-400 mt-1">RLS Güvenlik İlkeleri Aktif</div>
             </div>
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4">
-              <div className="text-xs text-neutral-400 mb-1">Kimlik Doğrulama</div>
-              <div className="text-sm font-bold text-neutral-100">Supabase Auth & RBAC</div>
-              <div className="text-[11px] text-amber-400 mt-1">Roller: Admin, Yönetici, Muhasebe, Puantör, vb.</div>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <div className="text-xs text-slate-600 mb-1">Kimlik Doğrulama</div>
+              <div className="text-sm font-bold text-emerald-950">Supabase Auth & RBAC</div>
+              <div className="text-[11px] text-emerald-600 mt-1">Roller: Admin, Yönetici, Muhasebe, Puantör, vb.</div>
             </div>
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4">
-              <div className="text-xs text-neutral-400 mb-1">Denetim Günlüğü</div>
-              <div className="text-sm font-bold text-neutral-100">{auditLogs.length} Kayıt Tutuluyor</div>
-              <div className="text-[11px] text-neutral-400 mt-1">Otomatik Audit Trigger</div>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <div className="text-xs text-slate-600 mb-1">Denetim Günlüğü</div>
+              <div className="text-sm font-bold text-emerald-950">{auditLogs.length} Kayıt Tutuluyor</div>
+              <div className="text-[11px] text-slate-600 mt-1">Otomatik Audit Trigger</div>
             </div>
           </div>
         </div>

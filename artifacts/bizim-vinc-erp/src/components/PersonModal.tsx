@@ -243,9 +243,9 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
                 type="checkbox"
                 checked={certExpiring}
                 onChange={(e) => setCertExpiring(e.target.checked)}
-                className="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
               />
-              <AlertCircle size={16} className="text-amber-600" />
+              <AlertCircle size={16} className="text-emerald-600" />
               <span>Sertifika Süresi Yaklaşıyor (Uyarı)</span>
             </label>
           </div>

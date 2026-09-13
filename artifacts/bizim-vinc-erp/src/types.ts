@@ -48,6 +48,7 @@ export interface Person {
   cardSlug?: string;
   documentsOk: boolean;
   certExpiring: boolean;
+  certificateExpiresAt?: string;
   notes?: string;
   userId?: string; // linked user profile
   createdAt?: string;
@@ -67,6 +68,11 @@ export interface Crane {
   lastService: string;
   lat: number;
   lng: number;
+  meterHours?: number;
+  nextServiceHours?: number;
+  nextServiceDate?: string;
+  telemetryProvider?: 'manual' | 'nav_api';
+  telemetryLastSeen?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -295,6 +301,37 @@ export interface Site {
   contactPhone?: string;
   phone?: string;
   status: 'aktif' | 'tamamlandi' | 'askida';
+  createdAt: string;
+}
+
+export interface Quote {
+  id: string;
+  quoteNo: string;
+  customerId: string;
+  customerName: string;
+  siteName?: string;
+  craneCode?: string;
+  lines: JobReceiptLine[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  validUntil?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Contract {
+  id: string;
+  contractNo: string;
+  quoteId?: string;
+  customerId: string;
+  customerName: string;
+  siteName?: string;
+  status: 'draft' | 'sent' | 'signed' | 'cancelled' | 'completed';
+  startDate?: string;
+  endDate?: string;
   createdAt: string;
 }
 

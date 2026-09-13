@@ -139,7 +139,7 @@ export const PersonnelPage: React.FC = () => {
         </div>
         <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-xs">
           <span className="text-xs font-semibold text-slate-500 block mb-1">Sertifika Uyarısı</span>
-          <span className={`font-mono text-2xl font-bold ${certAlertCount > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+          <span className={`font-mono text-2xl font-bold ${certAlertCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
             {certAlertCount}
           </span>
         </div>
@@ -319,7 +319,7 @@ export const PersonnelPage: React.FC = () => {
                           person.status === 'aktif'
                             ? 'bg-emerald-100 text-emerald-800'
                             : person.status === 'izinli'
-                            ? 'bg-amber-100 text-amber-800'
+                            ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
@@ -362,7 +362,7 @@ export const PersonnelPage: React.FC = () => {
                         )}
 
                         {person.certExpiring && (
-                          <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded-sm font-bold">
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded-sm font-bold">
                             Yenileme!
                           </span>
                         )}
@@ -586,7 +586,7 @@ export const PersonnelPage: React.FC = () => {
                       ? 'bg-purple-100 text-purple-800'
                       : currentRun.status === 'approved'
                       ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
                   }`}
                 >
                   Durum: {currentRun.status === 'paid' ? 'Ödendi' : currentRun.status === 'approved' ? 'Yönetici Onaylı' : 'Taslak Hesaplama'}
@@ -627,7 +627,7 @@ export const PersonnelPage: React.FC = () => {
                         <td className="p-3 text-right font-mono text-emerald-800 font-bold">
                           +{item.overtimePay.toLocaleString('tr-TR')} ₺
                         </td>
-                        <td className="p-3 text-right font-mono text-amber-700 font-bold">
+                        <td className="p-3 text-right font-mono text-emerald-700 font-bold">
                           -{item.advancesDeduction.toLocaleString('tr-TR')} ₺
                         </td>
                         <td className="p-3 text-right font-mono font-black text-sm text-emerald-950">
@@ -676,7 +676,7 @@ export const PersonnelPage: React.FC = () => {
                             ? 'bg-purple-100 text-purple-800'
                             : run.status === 'approved'
                             ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
                         }`}
                       >
                         {run.status === 'paid' ? 'Ödendi' : run.status === 'approved' ? 'Onaylandı (Ödeme Bekliyor)' : 'Taslak'}

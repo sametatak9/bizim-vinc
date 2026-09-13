@@ -103,16 +103,14 @@ ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS last_service TEXT;
 ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION DEFAULT 41.0100;
 ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION DEFAULT 29.0000;
 
--- 3. Yetkiler ve RLS İzinleri (ERP'nin veri okuyup yazabilmesi için)
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-
-ALTER TABLE public.personnel DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cranes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.approvals DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
+-- 3. Yetkiler ve RLS: service_role anahtarı frontend'e konulmaz.
+-- RLS açık kalır; authenticated kullanıcılar yalnızca migration'larda tanımlanan
+-- rol/personel politikaları kapsamında veri okuyup yazabilir.
+ALTER TABLE public.personnel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cranes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- 4. PostgREST şema önbelleğini anında yenile
 NOTIFY pgrst, 'reload schema';`;
@@ -184,13 +182,13 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
             className={`p-4 rounded-xl border flex items-start gap-3 ${
               isSupabaseOnline
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900'
             }`}
           >
             {isSupabaseOnline ? (
               <CheckCircle size={22} className="text-emerald-600 shrink-0 mt-0.5" />
             ) : (
-              <AlertTriangle size={22} className="text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle size={22} className="text-emerald-600 shrink-0 mt-0.5" />
             )}
             <div>
               <h3 className="text-sm font-bold">
@@ -253,20 +251,20 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
                     className={`flex items-center justify-between p-2 rounded-lg text-xs border ${
                       t.exists
                         ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
-                        : 'bg-amber-50/50 border-amber-200 text-amber-900'
+                        : 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       {t.exists ? (
                         <CheckCircle size={14} className="text-emerald-600 shrink-0" />
                       ) : (
-                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                        <AlertTriangle size={14} className="text-emerald-600 shrink-0" />
                       )}
                       <span className="font-semibold">{t.nameTr}</span>
                     </div>
                     <span
                       className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        t.exists ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        t.exists ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
                       {t.exists ? 'Bağlı (200 OK)' : 'SQL Bekleniyor'}

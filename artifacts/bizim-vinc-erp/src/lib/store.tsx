@@ -20,6 +20,8 @@ import {
   NotificationItem,
   Customer,
   Site,
+  Quote,
+  Contract,
   JobReceipt,
   JobReceiptStatus,
   Invoice,
@@ -67,6 +69,10 @@ interface ERPContextType {
   addSite: (site: Omit<Site, 'id' | 'createdAt'>) => Promise<void>;
 
   // Makbuz -> Fatura Hattı
+  quotes: Quote[];
+  addQuote: (quote: Omit<Quote, 'id' | 'createdAt' | 'quoteNo'>) => Promise<Quote>;
+  contracts: Contract[];
+  createContractFromQuote: (quoteId: string) => Promise<Contract>;
   jobReceipts: JobReceipt[];
   addJobReceipt: (receipt: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>) => Promise<JobReceipt>;
   updateJobReceipt: (id: string, updates: Partial<JobReceipt>) => Promise<void>;
@@ -788,6 +794,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sites, setSites] = useState<Site[]>(() =>
     loadStored('bv_sites', INITIAL_SITES)
   );
+  const [quotes, setQuotes] = useState<Quote[]>(() => loadStored('bv_quotes', []));
+  const [contracts, setContracts] = useState<Contract[]>(() => loadStored('bv_contracts', []));
   const [jobReceipts, setJobReceipts] = useState<JobReceipt[]>(() =>
     loadStored('bv_job_receipts', INITIAL_JOB_RECEIPTS)
   );
@@ -1548,6 +1556,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Yoklama remote kaydedilemedi.');
+    const { error: attendanceError } = await sb.from('attendance_records').upsert({
+      id: newRecord.id,
+      person_id: personId,
+      person_name: personName,
+      date,
+      check_in_time: newRecord.checkInTime,
+      check_out_time: newRecord.checkOutTime,
+      status,
+      note,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'person_id,date' });
+    if (attendanceError) throw attendanceError;
+
     setAttendance((prev) => {
       const filtered = prev.filter((a) => !(a.personId === personId && a.date === date));
       const next = [newRecord, ...filtered];
@@ -1651,6 +1674,14 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
+
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Mesai remote kaydedilemedi.');
+    const { error: overtimeError } = await sb.from('overtimes').insert({
+      id, person_id: personId, person_name: personName, date, start_time: startTime, end_time: endTime,
+      total_hours: hours, overtime_type: type, description, status: 'pending',
+    });
+    if (overtimeError) throw overtimeError;
 
     setOvertimes((prev) => {
       const next = [newOvertime, ...prev];
@@ -2018,13 +2049,49 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addQuote = async (quoteData: Omit<Quote, 'id' | 'createdAt' | 'quoteNo'>): Promise<Quote> => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Teklif numarası güvenli şekilde üretilemedi.');
+    const { data: quoteNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'quote' });
+    if (sequenceError || !quoteNo) throw sequenceError || new Error('Teklif numarası üretilemedi.');
+    const quote: Quote = { ...quoteData, id: generateUuid(), quoteNo, createdAt: new Date().toISOString() };
+    const { error } = await sb.from('quotes').insert({
+      id: quote.id, quote_no: quote.quoteNo, customer_id: quote.customerId, customer_name: quote.customerName,
+      site_name: quote.siteName, crane_code: quote.craneCode, lines: quote.lines, subtotal: quote.subtotal,
+      tax_rate: quote.taxRate, tax_amount: quote.taxAmount, total_amount: quote.totalAmount, status: quote.status,
+      valid_until: quote.validUntil, notes: quote.notes, created_by: currentUser.id,
+    });
+    if (error) throw error;
+    setQuotes((prev) => { const next = [quote, ...prev]; saveStored('bv_quotes', next); return next; });
+    logAction('TEKLIF_OLUSTURULDU', 'Teklif', quote.id, `${quote.quoteNo} - ${quote.customerName}`);
+    showToast(`✓ Teklif oluşturuldu: ${quote.quoteNo}`);
+    return quote;
+  };
+
+  const createContractFromQuote = async (quoteId: string): Promise<Contract> => {
+    const quote = quotes.find((item) => item.id === quoteId);
+    if (!quote) throw new Error('Sözleşmeye dönüştürülecek teklif bulunamadı.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Sözleşme numarası üretilemedi.');
+    const { data: contractNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'contract' });
+    if (sequenceError || !contractNo) throw sequenceError || new Error('Sözleşme numarası üretilemedi.');
+    const contract: Contract = { id: generateUuid(), contractNo, quoteId, customerId: quote.customerId, customerName: quote.customerName, siteName: quote.siteName, status: 'draft', createdAt: new Date().toISOString() };
+    const { error } = await sb.from('contracts').insert({ id: contract.id, contract_no: contract.contractNo, quote_id: quote.id, customer_id: contract.customerId, customer_name: contract.customerName, site_name: contract.siteName, status: contract.status, created_by: currentUser.id });
+    if (error) throw error;
+    setContracts((prev) => { const next = [contract, ...prev]; saveStored('bv_contracts', next); return next; });
+    showToast(`✓ Sözleşme oluşturuldu: ${contract.contractNo}`);
+    return contract;
+  };
+
   // ==========================================
   // MAKBUZ (İŞ MAKBUZLARI) -> FATURA HATTI
   // ==========================================
   const addJobReceipt = async (receiptData: Omit<JobReceipt, 'id' | 'createdAt' | 'receiptNo'>): Promise<JobReceipt> => {
     const id = generateUuid();
-    const seq = String(jobReceipts.length + 1).padStart(4, '0');
-    const receiptNo = `MB-2026-${seq}`;
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Makbuz numarası güvenli şekilde üretilemedi.');
+    const { data: receiptNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'receipt' });
+    if (sequenceError || !receiptNo) throw sequenceError || new Error('Makbuz numarası üretilemedi.');
 
     const newRec: JobReceipt = {
       ...receiptData,
@@ -2055,10 +2122,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz operatörce düzenlendi.`);
     showToast(`✓ Makbuz Kesildi (${receiptNo}) - Yönetici Onayına Sunuldu`);
 
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('job_receipts').insert([
+    try {
+        const { error: insertError } = await sb.from('job_receipts').insert([
           {
             id: newRec.id,
             receipt_no: newRec.receiptNo,
@@ -2076,10 +2141,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             invoiced: false,
           },
         ]);
+        if (insertError) throw insertError;
       } catch (err: any) {
-        console.warn('Supabase job receipt insert error:', err.message);
+        throw new Error(`Makbuz remote kaydı başarısız: ${err.message}`);
       }
-    }
 
     return newRec;
   };
@@ -2173,8 +2238,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalAmount = subtotal + taxAmount;
 
     const invoiceId = generateUuid();
-    const seq = String(invoices.length + 1).padStart(4, '0');
-    const invoiceNo = `FT-2026-${seq}`;
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Fatura numarası güvenli şekilde üretilemedi.');
+    const { data: invoiceNo, error: sequenceError } = await sb.rpc('next_document_number', { p_key: 'invoice' });
+    if (sequenceError || !invoiceNo) throw sequenceError || new Error('Fatura numarası üretilemedi.');
 
     const newInvoice: Invoice = {
       id: invoiceId,
@@ -2255,10 +2322,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAction('FATURA_KESILDI', 'Fatura', invoiceId, `${invoiceNo} nolu ${totalAmount.toLocaleString('tr-TR')} ₺ fatura düzenlendi.`);
     showToast(`✓ Fatura Kesildi: ${invoiceNo} (Toplam: ₺${totalAmount.toLocaleString('tr-TR')})`);
 
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('invoices').insert([
+    try {
+        const { error: invoiceError } = await sb.from('invoices').insert([
           {
             id: newInvoice.id,
             invoice_no: newInvoice.invoiceNo,
@@ -2275,10 +2340,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             notes: newInvoice.notes,
           },
         ]);
+        if (invoiceError) throw invoiceError;
       } catch (err: any) {
-        console.warn('Supabase invoice insert sync notice:', err.message);
+        throw new Error(`Fatura remote kaydı başarısız: ${err.message}`);
       }
-    }
 
     return newInvoice;
   };
@@ -2596,6 +2661,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Bordro remote kaydedilemedi.');
+    const { error: runError } = await sb.from('payroll_runs').upsert({
+      id: runId, month, total_persons: newRun.personCount, total_gross: totalBase,
+      total_net: totalNet, total_overtime_pay: totalOvertimePay, status: 'draft', updated_at: new Date().toISOString(),
+    }, { onConflict: 'month' });
+    if (runError) throw runError;
+    const { error: itemsError } = await sb.from('payroll_items').insert(items.map((item) => ({
+      id: item.id, payroll_run_id: runId, personnel_id: item.personId, month,
+      base_salary: item.baseSalary, overtime_pay: item.overtimePay,
+      advance_deduction: item.advancesDeduction, net_pay: item.netSalary, status: 'draft',
+    })));
+    if (itemsError) throw itemsError;
+
     setPayrollRuns((prev) => {
       const filtered = prev.filter((r) => r.month !== month);
       const next = [newRun, ...filtered];
@@ -2617,6 +2696,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approvePayrollRun = async (runId: string) => {
+    if (!['founder', 'admin', 'yonetici', 'muhasebe'].includes(currentUser.role)) throw new Error('Bordro onayı için yetkiniz yok.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error } = await sb.from('payroll_runs').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', runId);
+    if (error) throw error;
+    const { error: itemError } = await sb.from('payroll_items').update({ status: 'approved' }).eq('payroll_run_id', runId);
+    if (itemError) throw itemError;
     setPayrollRuns((prev) => {
       const next = prev.map((r) =>
         r.id === runId
@@ -2645,6 +2731,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const payPayrollRun = async (runId: string, paymentMethod: 'banka' | 'nakit' = 'banka') => {
     const run = payrollRuns.find((r) => r.id === runId);
     if (!run) return;
+    if (!['founder', 'admin', 'muhasebe'].includes(currentUser.role)) throw new Error('Bordro ödemesi için yetkiniz yok.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error } = await sb.from('payroll_runs').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', runId);
+    if (error) throw error;
+    const { error: itemError } = await sb.from('payroll_items').update({ status: 'paid' }).eq('payroll_run_id', runId);
+    if (itemError) throw itemError;
 
     setPayrollRuns((prev) => {
       const next = prev.map((r) =>
@@ -2795,6 +2888,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteCustomer,
         sites,
         addSite,
+        quotes,
+        addQuote,
+        contracts,
+        createContractFromQuote,
         jobReceipts,
         addJobReceipt,
         updateJobReceipt,
