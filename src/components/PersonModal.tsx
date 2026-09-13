@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Person, PersonKind, PersonStatus, PoolStatus } from '../types';
+import { Person, PersonKind, PersonStatus, PoolStatus, PersonnelDocumentType } from '../types';
 import { X, Check, Copy, ExternalLink, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useERP } from '../lib/store';
 
@@ -10,12 +10,13 @@ interface PersonModalProps {
 }
 
 export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClose }) => {
-  const { addPerson, updatePerson, deletePerson, showToast } = useERP();
+  const { addPerson, updatePerson, deletePerson, showToast, personnelDocuments, uploadPersonnelDocument, currentUser, personnelTypes } = useERP();
 
   const [fullName, setFullName] = useState('');
   const [employeeNo, setEmployeeNo] = useState('');
   const [phone, setPhone] = useState('');
   const [kind, setKind] = useState<PersonKind>('operator');
+  const [personnelTypeId, setPersonnelTypeId] = useState('');
   const [status, setStatus] = useState<PersonStatus>('aktif');
   const [poolStatus, setPoolStatus] = useState<PoolStatus>('musait');
   const [title, setTitle] = useState('');
@@ -25,6 +26,8 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
   const [documentsOk, setDocumentsOk] = useState(true);
   const [certExpiring, setCertExpiring] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [documentType, setDocumentType] = useState<PersonnelDocumentType>('isg');
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (person) {
@@ -32,6 +35,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setEmployeeNo(person.employeeNo);
       setPhone(person.phone);
       setKind(person.kind);
+      setPersonnelTypeId(person.personnelTypeId || '');
       setStatus(person.status);
       setPoolStatus(person.poolStatus);
       setTitle(person.title);
@@ -45,6 +49,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setEmployeeNo(`OP-${Math.floor(100 + Math.random() * 900)}`);
       setPhone('+90 5');
       setKind('operator');
+      setPersonnelTypeId('');
       setStatus('aktif');
       setPoolStatus('musait');
       setTitle('Mobil Vinç Operatörü');
@@ -89,6 +94,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         employeeNo,
         phone,
         kind,
+        personnelTypeId: personnelTypeId || undefined,
         status,
         poolStatus,
         title,
@@ -112,6 +118,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         employeeNo,
         phone,
         kind,
+        personnelTypeId: personnelTypeId || undefined,
         status,
         poolStatus,
         title,
@@ -125,6 +132,16 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
     }
 
     onClose();
+  };
+
+  const handleDocumentUpload = async () => {
+    if (!person || !documentFile) return;
+    try {
+      await uploadPersonnelDocument(person.id, documentType, documentFile, documentType === 'adli_sicil');
+      setDocumentFile(null);
+    } catch (error: any) {
+      showToast(`Belge yüklenemedi: ${error.message || 'bilinmeyen hata'}`);
+    }
   };
 
   const handleDelete = () => {
@@ -224,6 +241,13 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
               </select>
             </div>
             <div>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">Dinamik Personel Türü</label>
+              <select value={personnelTypeId} onChange={(e) => setPersonnelTypeId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <option value="">Varsayılan tür</option>
+                {personnelTypes.filter((type) => type.isActive).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-bold text-emerald-950 mb-1">Personel Durumu</label>
               <button type="button" onClick={() => setStatus(status === 'pasif' ? 'aktif' : 'pasif')} className={`w-full px-3 py-2 rounded-lg text-sm font-bold border transition ${status === 'pasif' ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-emerald-50 text-emerald-700 border-emerald-300'}`}>
                 {status === 'pasif' ? 'Pasif' : 'Aktif'}
@@ -266,6 +290,32 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
               <span>Sertifika Süresi Yaklaşıyor (Uyarı)</span>
             </label>
           </div>
+
+          {person && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+              <div>
+                <div className="text-xs font-bold text-emerald-950">Personel Evrakları</div>
+                <div className="text-[11px] text-slate-500">Belgeler özel depoda saklanır. Adli sicil yalnız Founder/HR yetkisiyle görünür.</div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                <select value={documentType} onChange={(e) => setDocumentType(e.target.value as PersonnelDocumentType)} className="px-2.5 py-2 border border-slate-300 rounded-lg text-xs">
+                  <option value="isg">İSG Belgesi</option>
+                  {kind === 'operator' && <option value="myk">MYK Operatör Belgesi</option>}
+                  <option value="ehliyet">Sürücü Belgesi</option>
+                  <option value="saglik">Sağlık Raporu</option>
+                  <option value="adli_sicil">Adli Sicil Kaydı</option>
+                  <option value="diger">Diğer</option>
+                </select>
+                <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setDocumentFile(e.target.files?.[0] || null)} className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-2 file:py-1.5 file:text-xs" />
+                <button type="button" disabled={!documentFile || (documentType === 'adli_sicil' && !['founder', 'admin', 'yonetici'].includes(currentUser.role))} onClick={handleDocumentUpload} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-40">Yükle</button>
+              </div>
+              <div className="space-y-1">
+                {personnelDocuments.filter((document) => document.personnelId === person.id && (!document.isSensitive || ['founder', 'admin', 'yonetici'].includes(currentUser.role))).map((document) => (
+                  <div key={document.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs"><span>{document.fileName}</span><span className="text-slate-400">{document.documentType}</span></div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Digital QR Card Link for existing personnel */}
           {person && (

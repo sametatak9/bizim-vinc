@@ -32,6 +32,9 @@ import {
   PayrollRun,
   PayrollItem,
   PayrollStatus,
+  PersonnelDocument,
+  PersonnelDocumentType,
+  PersonnelType,
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 import { hashTcIdentity } from './tcHash';
@@ -63,6 +66,10 @@ interface ERPContextType {
   updatePerson: (id: string, updates: Partial<Person>) => Promise<void>;
   deletePerson: (id: string, soft?: boolean) => Promise<void>;
   exitPerson: (id: string, reason: string) => Promise<void>;
+  personnelDocuments: PersonnelDocument[];
+  uploadPersonnelDocument: (personnelId: string, type: PersonnelDocumentType, file: File, isSensitive?: boolean) => Promise<void>;
+  personnelTypes: PersonnelType[];
+  addPersonnelType: (name: string) => Promise<void>;
 
   // Üyelik & Eşleştirme
   memberships: Membership[];
@@ -243,6 +250,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [personnel, setPersonnel] = useState<Person[]>(() =>
     loadStored('bv_personnel', [])
   );
+  const [personnelDocuments, setPersonnelDocuments] = useState<PersonnelDocument[]>(() =>
+    loadStored('bv_personnel_documents', [])
+  );
+  const [personnelTypes, setPersonnelTypes] = useState<PersonnelType[]>(() => loadStored('bv_personnel_types', []));
   const [cranes, setCranes] = useState<Crane[]>(() =>
     loadStored('bv_cranes', [])
   );
@@ -429,6 +440,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           email: d.email,
           address: d.address,
           kind: d.kind,
+          personnelTypeId: d.personnel_type_id,
           status: d.status,
           poolStatus: d.pool_status,
           department: d.department,
@@ -449,6 +461,27 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPersonnel(mapped);
         saveStored('bv_personnel', mapped);
       }
+
+      const { data: documentData, error: documentError } = await sb.from('personnel_documents').select('id, personnel_id, document_type, file_name, storage_path, expires_at, is_sensitive, created_at');
+      if (documentError) throw documentError;
+      const mappedDocuments: PersonnelDocument[] = (documentData || []).map((d: any) => ({
+        id: d.id,
+        personnelId: d.personnel_id,
+        documentType: d.document_type,
+        fileName: d.file_name,
+        storagePath: d.storage_path,
+        expiresAt: d.expires_at,
+        isSensitive: Boolean(d.is_sensitive),
+        createdAt: d.created_at,
+      }));
+      setPersonnelDocuments(mappedDocuments);
+      saveStored('bv_personnel_documents', mappedDocuments);
+
+      const { data: typeData, error: typeError } = await sb.from('personnel_types').select('id, name, is_active').order('name');
+      if (typeError) throw typeError;
+      const mappedTypes: PersonnelType[] = (typeData || []).map((d: any) => ({ id: d.id, name: d.name, isActive: Boolean(d.is_active) }));
+      setPersonnelTypes(mappedTypes);
+      saveStored('bv_personnel_types', mappedTypes);
 
       // 2. Vinçler
       const { data: cData, error: cranesError } = await sb.from('cranes').select('*');
@@ -757,6 +790,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             email: newPerson.email,
             address: newPerson.address,
             kind: newPerson.kind,
+            personnel_type_id: newPerson.personnelTypeId || null,
             status: newPerson.status,
             pool_status: newPerson.poolStatus,
             department: newPerson.department,
@@ -792,6 +826,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (updates.employeeNo) payload.employee_no = updates.employeeNo;
         if (updates.phone) payload.phone = updates.phone;
         if (updates.kind) payload.kind = updates.kind;
+        if (updates.personnelTypeId !== undefined) payload.personnel_type_id = updates.personnelTypeId || null;
         if (updates.status) payload.status = updates.status;
         if (updates.poolStatus) payload.pool_status = updates.poolStatus;
         if (updates.salary !== undefined) payload.salary = updates.salary;
@@ -811,6 +846,36 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     logAction('PERSONEL_GÜNCELLENDİ', 'Personel', id, `Personel kaydı güncellendi.`);
     showToast('✓ Personel bilgileri güncellendi.');
+  };
+
+  const uploadPersonnelDocument = async (personnelId: string, type: PersonnelDocumentType, file: File, isSensitive = false) => {
+    const sb = getSupabase();
+    if (!sb || !currentUser.id || currentUser.id === 'guest') throw new Error('Supabase bağlantısı veya oturum yok.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Belge boyutu en fazla 10 MB olabilir.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storagePath = `${personnelId}/${type}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await sb.storage.from('personnel-documents').upload(storagePath, file, { upsert: false });
+    if (uploadError) throw uploadError;
+    const { data, error: insertError } = await sb.from('personnel_documents').insert({
+      personnel_id: personnelId, document_type: type, file_name: file.name, storage_path: storagePath,
+      is_sensitive: isSensitive, uploaded_by: currentUser.id,
+    }).select('id, personnel_id, document_type, file_name, storage_path, expires_at, is_sensitive, created_at').single();
+    if (insertError) throw insertError;
+    const document: PersonnelDocument = { id: data.id, personnelId: data.personnel_id, documentType: data.document_type, fileName: data.file_name, storagePath: data.storage_path, expiresAt: data.expires_at, isSensitive: Boolean(data.is_sensitive), createdAt: data.created_at };
+    setPersonnelDocuments((prev) => { const next = [document, ...prev]; saveStored('bv_personnel_documents', next); return next; });
+    showToast(`✓ ${file.name} belgesi yüklendi.`);
+  };
+
+  const addPersonnelType = async (name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { data, error } = await sb.from('personnel_types').insert({ name: normalized, created_by: currentUser.id }).select('id, name, is_active').single();
+    if (error) throw error;
+    const type: PersonnelType = { id: data.id, name: data.name, isActive: Boolean(data.is_active) };
+    setPersonnelTypes((prev) => { const next = [...prev, type].sort((a, b) => a.name.localeCompare(b.name, 'tr')); saveStored('bv_personnel_types', next); return next; });
+    showToast(`✓ ${normalized} personel türü eklendi.`);
   };
 
   const deletePerson = async (id: string, soft = true) => {
@@ -2433,6 +2498,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePerson,
         deletePerson,
         exitPerson,
+        personnelDocuments,
+        uploadPersonnelDocument,
+        personnelTypes,
+        addPersonnelType,
         memberships,
         requestMembership,
         approveMembership,
