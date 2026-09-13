@@ -74,7 +74,7 @@ function AppContent() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
           <div className="mb-6">
             <div className="text-2xl font-black tracking-tight text-emerald-950">BİZİM VİNÇ <span className="text-sm px-2 py-1 bg-emerald-100 text-emerald-800 rounded-md">ERP</span></div>
@@ -89,7 +89,7 @@ function AppContent() {
   const employeeSelfServiceOnly = isEmployeeSelfServiceRole(currentUser.role);
   if (employeeSelfServiceOnly && currentPath !== '/operator') {
     return (
-      <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
           <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">BV</div>
           <h1 className="text-lg font-black text-slate-900">Personel talepleri</h1>
@@ -101,7 +101,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Topbar navigation */}
       <Header
         currentPath={currentPath}

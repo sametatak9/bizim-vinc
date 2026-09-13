@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useERP } from '../lib/store';
-import { CraneMap } from '../components/CraneMap';
 import { CraneModal } from '../components/CraneModal';
 import { Crane } from '../types';
 import {
@@ -25,7 +24,7 @@ interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
-  const { stats, receipts, expenses, cranes, jobReceipts } = useERP();
+  const { stats, receipts, expenses, cranes, jobReceipts, approvals } = useERP();
   const [selectedCrane, setSelectedCrane] = useState<Crane | null>(null);
   const [isCraneModalOpen, setIsCraneModalOpen] = useState(false);
 
@@ -33,6 +32,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const pendingReceipts = receipts.filter((r) => r.status === 'birikti').slice(0, 4);
   const fuelExpenses = expenses.filter((e) => e.category === 'yakit').slice(0, 3);
   const otherExpenses = expenses.filter((e) => e.category === 'masraf').slice(0, 3);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const monthKey = todayKey.slice(0, 7);
+  const approvedToday = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 10) === todayKey);
+  const approvedThisMonth = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 7) === monthKey);
 
   const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
 
@@ -165,13 +168,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
+      <section className="bg-slate-950 text-white rounded-2xl p-4 shadow-xl border border-amber-500/30">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-bold">Yönetici karar akışı</div><h2 className="text-lg font-black mt-1">Onaylar ve gün sonu raporu</h2></div><div className="flex items-center gap-2 text-xs"><span className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-black">Bekleyen {stats.pendingApprovalsCount}</span><span className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200">Bugün {approvedToday.length}</span><span className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200">Ay {approvedThisMonth.length}</span></div></div>
+        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">{approvals.filter((a) => a.status === 'approved').slice(0, 4).map((a) => <div key={a.id} className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs"><div className="font-bold text-slate-100 truncate">{a.title}</div><div className="text-slate-400 mt-1">Onaylayan: {a.approvedBy || '—'}</div></div>)}</div>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 flex flex-col">
           <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
             <header className="p-4 border-b border-emerald-100 flex items-center justify-between gap-3 bg-emerald-50/40">
               <div>
                 <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>Canlı Filo & Operasyon Haritası</span>
+                  <span>Canlı Filo Operasyonu</span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
                     Canlı GPS
@@ -181,15 +189,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   Marmara & Ege Şantiye Noktaları, Araç Durumları ve Operatör Konumları
                 </div>
               </div>
-              <button
-                onClick={handleAddNewCrane}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
-              >
-                <Plus size={14} /> Yeni Vinç
-              </button>
+              <button onClick={() => onNavigate('/tv')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-amber-300 rounded-xl text-xs font-bold transition shadow-xs">Operasyon TV’ye git</button>
             </header>
-            <div className="flex-1 min-h-[500px]">
-              <CraneMap cranes={cranes} onSelectCrane={handleOpenCrane} />
+            <div className="flex-1 min-h-[500px] flex items-center justify-center bg-slate-950 text-white rounded-b-2xl p-8">
+              <div className="text-center max-w-md"><div className="text-amber-400 text-xs uppercase tracking-[0.25em] font-bold">Tek canlı harita ekranı</div><div className="text-2xl font-black mt-2">Harita Operasyon TV’ye taşındı</div><p className="text-slate-400 text-sm mt-2">Saha konumları, aktif vinçler ve onay akışı için tek canlı ekranı kullanın.</p><button onClick={() => onNavigate('/tv')} className="mt-5 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 text-sm font-black">TV ekranını aç</button></div>
             </div>
           </div>
         </section>
