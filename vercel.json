@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd artifacts/bizim-vinc-erp && npm install --legacy-peer-deps && npx vite build",
-  "installCommand": "echo skip-root-install",
+  "installCommand": "npm --prefix artifacts/bizim-vinc-erp install --legacy-peer-deps",
+  "buildCommand": "npm --prefix artifacts/bizim-vinc-erp run build",
   "outputDirectory": "artifacts/bizim-vinc-erp/dist/public",
   "framework": null,
   "rewrites": [
