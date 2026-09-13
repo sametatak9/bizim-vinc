@@ -206,6 +206,9 @@ export const CariPage: React.FC = () => {
   const pendingCollectionsTotal = collections
     .filter((c) => c.status === 'bekliyor')
     .reduce((sum, c) => sum + c.amount, 0);
+  const receivedTotal = collections.filter((c) => c.status === 'tahsil_edildi').reduce((sum, c) => sum + c.amount, 0);
+  const paidTotal = payments.filter((p) => p.status === 'odendi').reduce((sum, p) => sum + p.amount, 0);
+  const netCashBalance = receivedTotal - paidTotal;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
@@ -292,6 +295,12 @@ export const CariPage: React.FC = () => {
               ₺
             </div>
             <div className="text-xs text-slate-500">Kasaya giren</div>
+          </div>
+
+          <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-100">
+            <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wide">Banka / Kasa Net</span>
+            <div className={`text-xl font-black mt-1 ${netCashBalance >= 0 ? 'text-blue-950' : 'text-rose-700'}`}>{netCashBalance.toLocaleString('tr-TR')} ₺</div>
+            <div className="text-xs text-blue-700">Tahsilat − gerçekleşen ödeme</div>
           </div>
         </div>
       </div>
