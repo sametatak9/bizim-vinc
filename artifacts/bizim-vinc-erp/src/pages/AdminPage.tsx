@@ -24,11 +24,14 @@ export const AdminPage: React.FC = () => {
     refreshFromDb,
     showToast,
     activeRole,
+    personnelTypes,
+    addPersonnelType,
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'database'>('users');
   const [auditSearch, setAuditSearch] = useState('');
   const [auditModuleFilter, setAuditModuleFilter] = useState('all');
+  const [newPersonnelType, setNewPersonnelType] = useState('');
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesModule = auditModuleFilter === 'all' || log.module === auditModuleFilter;
@@ -120,6 +123,11 @@ export const AdminPage: React.FC = () => {
       {/* TAB 1: USERS & ROLES */}
       {activeTab === 'users' && (
         <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-emerald-100 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div><div className="text-xs font-bold text-emerald-950">Dinamik Personel Türleri</div><div className="text-[11px] text-slate-500">Yeni türleri yalnız founder/admin ekleyebilir.</div></div>
+            <div className="flex gap-2"><input value={newPersonnelType} onChange={(e) => setNewPersonnelType(e.target.value)} placeholder="Örn. İSG Uzmanı" className="px-3 py-2 border border-emerald-200 rounded-lg text-xs" /><button onClick={async () => { if (!newPersonnelType.trim()) return; await addPersonnelType(newPersonnelType); setNewPersonnelType(''); }} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Tür Ekle</button></div>
+          </div>
+          <div className="px-4 py-2 flex flex-wrap gap-2">{personnelTypes.map((type) => <span key={type.id} className="px-2 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-800">{type.name}</span>)}</div>
           <div className="p-4 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
             <div className="text-xs text-slate-600">
               Sistemde tanımlı yetkili kullanıcılar ve erişim seviyeleri

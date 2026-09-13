@@ -41,6 +41,7 @@ export interface Person {
   email?: string;
   address?: string;
   kind: PersonKind;
+  personnelTypeId?: string;
   status: PersonStatus;
   poolStatus: PoolStatus;
   department?: string;
@@ -58,6 +59,25 @@ export interface Person {
   userId?: string; // linked user profile
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type PersonnelDocumentType = 'isg' | 'myk' | 'ehliyet' | 'src' | 'saglik' | 'adli_sicil' | 'diger';
+
+export interface PersonnelDocument {
+  id: string;
+  personnelId: string;
+  documentType: PersonnelDocumentType;
+  fileName: string;
+  storagePath: string;
+  expiresAt?: string;
+  isSensitive: boolean;
+  createdAt: string;
+}
+
+export interface PersonnelType {
+  id: string;
+  name: string;
+  isActive: boolean;
 }
 
 export type CraneStatus = 'sahada' | 'musait' | 'bakimda' | 'arizali' | 'pasif';
