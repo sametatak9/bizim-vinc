@@ -2421,6 +2421,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) return { success: false, message: 'Supabase bağlantısı yok. Üyelik başvurusu gönderilemedi.' };
+    const { error: membershipError } = await sb.from('memberships').insert({
+      id,
+      user_id: newMem.userId,
+      user_email: newMem.userEmail,
+      user_full_name: newMem.userFullName,
+      personnel_id: newMem.personnelId || null,
+      tc_hash_or_no: newMem.tcHashOrNo,
+      status: 'pending',
+      requested_role: newMem.requestedRole,
+    });
+    if (membershipError) return { success: false, message: `Üyelik başvurusu kaydedilemedi: ${membershipError.message}` };
+
     setMemberships((prev) => {
       const next = [newMem, ...prev];
       saveStored('bv_memberships', next);
@@ -2445,6 +2459,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const approveMembership = async (id: string) => {
     const mem = memberships.find((m) => m.id === id);
     if (!mem) return;
+    if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik onayı yalnızca founder veya admin tarafından yapılabilir.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error: membershipError } = await sb.from('memberships').update({ status: 'approved', approved_by: currentUser.id, approved_at: new Date().toISOString() }).eq('id', id);
+    if (membershipError) throw membershipError;
+    const { error: profileError } = await sb.from('profiles').update({ role: mem.requestedRole, status: 'aktif', personnel_id: mem.personnelId || null, updated_at: new Date().toISOString() }).eq('id', mem.userId);
+    if (profileError) throw profileError;
 
     setMemberships((prev) => {
       const next = prev.map((m) =>
@@ -2490,6 +2511,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectMembership = async (id: string, reason: string) => {
+    if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik reddi yalnızca founder veya admin tarafından yapılabilir.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error: membershipError } = await sb.from('memberships').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
+    if (membershipError) throw membershipError;
     setMemberships((prev) => {
       const next = prev.map((m) =>
         m.id === id
