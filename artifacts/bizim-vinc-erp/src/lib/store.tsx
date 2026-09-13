@@ -50,6 +50,7 @@ interface ERPContextType {
   addPerson: (person: Omit<Person, 'id'>) => Promise<void>;
   updatePerson: (id: string, updates: Partial<Person>) => Promise<void>;
   deletePerson: (id: string, soft?: boolean) => Promise<void>;
+  exitPerson: (id: string, reason: string) => Promise<void>;
 
   // Üyelik & Eşleştirme
   memberships: Membership[];
@@ -1192,19 +1193,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    setPersonnel((prev) => {
-      const next = [newPerson, ...prev];
-      saveStored('bv_personnel', next);
-      return next;
-    });
-
-    logAction('PERSONEL_EKLENDİ', 'Personel', id, `${newPerson.fullName} (${newPerson.employeeNo}) eklendi.`);
-    showToast(`✓ Personel başarıyla eklendi: ${newPerson.fullName}`);
-
     const sb = getSupabase();
-    if (sb) {
-      try {
-        await sb.from('personnel').insert([
+    if (!sb) throw new Error('Supabase bağlantısı yok. Personel yalnızca remote veritabanına kaydedilebilir.');
+    const { error: insertError } = await sb.from('personnel').insert([
           {
             id: newPerson.id,
             employee_no: newPerson.employeeNo,
@@ -1228,38 +1219,43 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             notes: newPerson.notes,
           },
         ]);
-      } catch (e) {
-        console.error('Remote insert error:', e);
-      }
+    if (insertError) {
+      showToast(`Personel kaydedilemedi: ${insertError.message}`);
+      throw insertError;
     }
-  };
-
-  const updatePerson = async (id: string, updates: Partial<Person>) => {
     setPersonnel((prev) => {
-      const next = prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+      const next = [newPerson, ...prev];
       saveStored('bv_personnel', next);
       return next;
     });
+    logAction('PERSONEL_EKLENDİ', 'Personel', id, `${newPerson.fullName} (${newPerson.employeeNo}) eklendi.`);
+    showToast(`✓ Personel başarıyla eklendi: ${newPerson.fullName}`);
+  };
 
-    logAction('PERSONEL_GÜNCELLENDİ', 'Personel', id, `Personel kaydı güncellendi.`);
-    showToast('✓ Personel bilgileri güncellendi.');
-
+  const updatePerson = async (id: string, updates: Partial<Person>) => {
     const sb = getSupabase();
-    if (sb) {
-      try {
-        const payload: any = { updated_at: new Date().toISOString() };
+    if (!sb) throw new Error('Supabase bağlantısı yok. Personel yalnızca remote veritabanında güncellenebilir.');
+    const payload: any = { updated_at: new Date().toISOString() };
         if (updates.fullName) payload.full_name = updates.fullName;
         if (updates.phone) payload.phone = updates.phone;
         if (updates.status) payload.status = updates.status;
         if (updates.poolStatus) payload.pool_status = updates.poolStatus;
         if (updates.salary !== undefined) payload.salary = updates.salary;
         if (updates.title) payload.title = updates.title;
+        if (updates.endDate) payload.end_date = updates.endDate;
         if (updates.notes !== undefined) payload.notes = updates.notes;
-        await sb.from('personnel').update(payload).eq('id', id);
-      } catch (e) {
-        console.error('Remote update error:', e);
-      }
+    const { error: updateError } = await sb.from('personnel').update(payload).eq('id', id);
+    if (updateError) {
+      showToast(`Personel güncellenemedi: ${updateError.message}`);
+      throw updateError;
     }
+    setPersonnel((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+      saveStored('bv_personnel', next);
+      return next;
+    });
+    logAction('PERSONEL_GÜNCELLENDİ', 'Personel', id, `Personel kaydı güncellendi.`);
+    showToast('✓ Personel bilgileri güncellendi.');
   };
 
   const deletePerson = async (id: string, soft = true) => {
@@ -1267,6 +1263,17 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updatePerson(id, { status: 'pasif', poolStatus: 'havuzda' });
       showToast('Personel pasife alındı (Arşivlendi).');
     } else {
+      if (!['founder', 'admin'].includes(currentUser.role)) {
+        showToast('Kalıcı silme yalnızca founder veya admin tarafından yapılabilir.');
+        throw new Error('Hard delete requires founder or admin role');
+      }
+      const sb = getSupabase();
+      if (!sb) throw new Error('Supabase bağlantısı yok. Personel yalnızca remote veritabanından silinebilir.');
+      const { error: deleteError } = await sb.from('personnel').delete().eq('id', id);
+      if (deleteError) {
+        showToast(`Personel silinemedi: ${deleteError.message}`);
+        throw deleteError;
+      }
       setPersonnel((prev) => {
         const next = prev.filter((p) => p.id !== id);
         saveStored('bv_personnel', next);
@@ -1275,15 +1282,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logAction('PERSONEL_SİLİNDİ', 'Personel', id, 'Personel kalıcı olarak silindi.');
       showToast('Personel sistemden kaldırıldı.');
 
-      const sb = getSupabase();
-      if (sb) {
-        try {
-          await sb.from('personnel').delete().eq('id', id);
-        } catch (e) {
-          console.error('Remote delete error:', e);
-        }
-      }
     }
+  };
+
+  const exitPerson = async (id: string, reason: string) => {
+    if (!reason.trim()) throw new Error('İşten çıkış nedeni zorunludur.');
+    const exitDate = new Date().toISOString().slice(0, 10);
+    await updatePerson(id, { status: 'pasif', poolStatus: 'havuzda', endDate: exitDate, notes: reason.trim() });
+    await logAction('PERSONEL_İŞTEN_ÇIKIŞ', 'Personel', id, `${exitDate}: ${reason.trim()}`);
+    showToast('Personel işten çıkarıldı ve arşivlendi.');
   };
 
   // Vinç CRUD
@@ -2414,6 +2421,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
+    const sb = getSupabase();
+    if (!sb) return { success: false, message: 'Supabase bağlantısı yok. Üyelik başvurusu gönderilemedi.' };
+    const { error: membershipError } = await sb.from('memberships').insert({
+      id,
+      user_id: newMem.userId,
+      user_email: newMem.userEmail,
+      user_full_name: newMem.userFullName,
+      personnel_id: newMem.personnelId || null,
+      tc_hash_or_no: newMem.tcHashOrNo,
+      status: 'pending',
+      requested_role: newMem.requestedRole,
+    });
+    if (membershipError) return { success: false, message: `Üyelik başvurusu kaydedilemedi: ${membershipError.message}` };
+
     setMemberships((prev) => {
       const next = [newMem, ...prev];
       saveStored('bv_memberships', next);
@@ -2438,6 +2459,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const approveMembership = async (id: string) => {
     const mem = memberships.find((m) => m.id === id);
     if (!mem) return;
+    if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik onayı yalnızca founder veya admin tarafından yapılabilir.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error: membershipError } = await sb.from('memberships').update({ status: 'approved', approved_by: currentUser.id, approved_at: new Date().toISOString() }).eq('id', id);
+    if (membershipError) throw membershipError;
+    const { error: profileError } = await sb.from('profiles').update({ role: mem.requestedRole, status: 'aktif', personnel_id: mem.personnelId || null, updated_at: new Date().toISOString() }).eq('id', mem.userId);
+    if (profileError) throw profileError;
 
     setMemberships((prev) => {
       const next = prev.map((m) =>
@@ -2483,6 +2511,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectMembership = async (id: string, reason: string) => {
+    if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik reddi yalnızca founder veya admin tarafından yapılabilir.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { error: membershipError } = await sb.from('memberships').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
+    if (membershipError) throw membershipError;
     setMemberships((prev) => {
       const next = prev.map((m) =>
         m.id === id
@@ -2751,6 +2784,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addPerson,
         updatePerson,
         deletePerson,
+        exitPerson,
         memberships,
         requestMembership,
         approveMembership,
