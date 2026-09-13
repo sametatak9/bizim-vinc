@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 45 33% 97%;
+    --foreground: 163 27% 15%;
+    --border: 42 19% 87%;
+    --input: 42 19% 87%;
+    --card: 0 0% 100%;
+    --card-foreground: 163 27% 15%;
+    --card-border: 42 19% 87%;
+    --primary: 157 39% 25%;
+    --primary-foreground: 45 33% 97%;
+    --secondary: 45 28% 92%;
+    --secondary-foreground: 163 27% 20%;
+    --muted: 45 24% 94%;
+    --muted-foreground: 163 10% 45%;
+    --accent: 36 77% 56%;
+    --destructive: 4 68% 48%;
+    --radius: 0.75rem;
+    --app-font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --app-font-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, monospace;
+    --cmd-bg: #F0FDF4;
+    --cmd-primary: #22C55E;
+    --cmd-dark: #14532D;
+    --cmd-card: #ffffff;
+  }
+
+  body {
+    background-color: #f0fdf4;
+    color: #14532d;
+    font-family: var(--app-font-sans);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+.dashboard-shell {
+  background: #f0fdf4 !important;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #dcfce7;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: 0 2px 8px rgba(20, 83, 45, 0.04);
+}
+
+.topbar-inner {
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-mark-logo {
+  background: transparent !important;
+  box-shadow: none !important;
+  width: 42px !important;
+  height: 42px !important;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-name {
+  color: #14532d !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.brand-tagline {
+  color: #6b7280 !important;
+  font-size: 11px;
+}
+
+.nav-scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.nav-link:hover {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.nav-link.active {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+/* === P1-C mobile overflow guards === */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.dashboard-shell,
+main,
+.topbar-inner {
+  max-width: 100%;
+}
+
+.table-wrap,
+.overflow-x-auto {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .topbar-inner {
+    padding-left: 12px;
+    padding-right: 12px;
+    gap: 8px;
+  }
+  .nav-scroll {
+    max-width: 100%;
+  }
+  table {
+    font-size: 12px;
+  }
+}
+
+.fixed.inset-0 > div {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
