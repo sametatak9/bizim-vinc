@@ -55,7 +55,9 @@ export const OperatorPage: React.FC = () => {
 
   const [activeModal, setActiveModal] = useState<'none' | 'avans' | 'izin' | 'mesai' | 'makbuz' | 'masraf'>('none');
   const [busy, setBusy] = useState(false);
-  const [jobHours, setJobHours] = useState(0);
+  const [jobSite, setJobSite] = useState('');
+  const [jobStart, setJobStart] = useState('08:00');
+  const [jobEnd, setJobEnd] = useState('17:00');
   const [jobDescription, setJobDescription] = useState('');
   const [jobCustomerId, setJobCustomerId] = useState('');
   const [jobCraneId, setJobCraneId] = useState('');
@@ -184,31 +186,41 @@ export const OperatorPage: React.FC = () => {
   const handleSendJobReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!myPerson) return;
-    const customer = customers.find((c) => c.id === jobCustomerId) || customers[0];
-    const crane = cranes.find((c) => c.id === jobCraneId) || cranes[0];
-    if (!customer || !crane || jobHours <= 0) {
-      showToast('Makbuz için cari, vinç ve geçerli çalışma saati gerekir.');
+    const customer = customers.find((c) => c.id === jobCustomerId);
+    const crane = cranes.find((c) => c.id === jobCraneId);
+    if (!customer || !crane || !jobSite.trim() || !jobStart || !jobEnd) {
+      showToast('Makbuz için cari, şantiye, vinç ve saat aralığı gerekir.');
       return;
     }
+    const [sh, sm] = jobStart.split(':').map(Number);
+    const [eh, em] = jobEnd.split(':').map(Number);
+    const calculatedHours = Math.max(0, ((eh * 60 + em) - (sh * 60 + sm)) / 60);
+    if (calculatedHours <= 0) return showToast('Bitiş saati başlangıçtan sonra olmalıdır.');
     await runSafe(async () => {
       await addJobReceipt({
         customerId: customer.id,
         customerName: customer.title,
+        siteName: jobSite.trim(),
         craneCode: crane.code,
         craneId: crane.id,
         operatorId: myPerson.id,
         operatorName: myPerson.fullName,
         date: new Date().toISOString().slice(0, 10),
-        workingHours: jobHours,
+        startTime: jobStart,
+        endTime: jobEnd,
+        workingHours: calculatedHours,
+        hoursWorked: calculatedHours,
         amount: 0,
         status: 'pending_approval',
         invoiced: false,
         description: jobDescription || 'Saha işi',
       });
-      setJobHours(0);
+      setJobSite('');
+      setJobStart('08:00');
+      setJobEnd('17:00');
       setJobDescription('');
       setActiveModal('none');
-    }, '✓ İş makbuzu onaya gönderildi', { kind: 'receipt', payload: { customerId: customer.id, customerName: customer.title, craneCode: crane.code, craneId: crane.id, operatorId: myPerson.id, operatorName: myPerson.fullName, date: new Date().toISOString().slice(0, 10), workingHours: jobHours, amount: 0, status: 'pending_approval', invoiced: false, description: jobDescription || 'Saha işi' } });
+    }, '✓ İş makbuzu onaya gönderildi', { kind: 'receipt', payload: { customerId: customer.id, customerName: customer.title, siteName: jobSite.trim(), craneCode: crane.code, craneId: crane.id, operatorId: myPerson.id, operatorName: myPerson.fullName, date: new Date().toISOString().slice(0, 10), startTime: jobStart, endTime: jobEnd, workingHours: calculatedHours, hoursWorked: calculatedHours, amount: 0, status: 'pending_approval', invoiced: false, description: jobDescription || 'Saha işi' } });
   };
 
   const handleSendExpense = async (e: React.FormEvent) => {
@@ -443,9 +455,13 @@ export const OperatorPage: React.FC = () => {
             {activeModal === 'makbuz' && (
               <form onSubmit={handleSendJobReceipt} className="space-y-3">
                 <div>
+                  <label className="block text-xs text-emerald-900 mb-1">Çalışma alanı / şantiye *</label>
+                  <input required value={jobSite} onChange={(e) => setJobSite(e.target.value)} placeholder="Şantiye" className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
+                </div>
+                <div>
                   <label className="block text-xs text-emerald-900 mb-1">Cari</label>
                   <select value={jobCustomerId} onChange={(e) => setJobCustomerId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                    <option value="">İlk cari (varsayılan)</option>
+                    <option value="">Cari seçin *</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>{c.title}</option>
                     ))}
@@ -454,15 +470,15 @@ export const OperatorPage: React.FC = () => {
                 <div>
                   <label className="block text-xs text-emerald-900 mb-1">Vinç</label>
                   <select value={jobCraneId} onChange={(e) => setJobCraneId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                    <option value="">İlk vinç (varsayılan)</option>
+                    <option value="">Vinç seçin *</option>
                     {cranes.map((c) => (
                       <option key={c.id} value={c.id}>{c.code} {c.type || ''}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-emerald-900 mb-1">Çalışma Saati</label>
-                  <input type="number" min="0.25" step="0.25" required value={jobHours || ''} onChange={(e) => setJobHours(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
+                  <label className="block text-xs text-emerald-900 mb-1">Başlangıç / bitiş saati *</label>
+                  <div className="grid grid-cols-2 gap-2"><input type="time" required value={jobStart} onChange={(e) => setJobStart(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" /><input type="time" required value={jobEnd} onChange={(e) => setJobEnd(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" /></div>
                 </div>
                 <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="İş açıklaması" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
                 <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">

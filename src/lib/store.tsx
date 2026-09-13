@@ -59,7 +59,9 @@ interface ERPContextType {
   loginWithCredentials: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
   registerUser: (email: string, pass: string, fullName: string, phone?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
-  updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
+  updateUserProfile: (id: string, updates: Partial<UserProfile>) => Promise<void>;
+  changePassword: (password: string) => Promise<void>;
+  uploadProfileAvatar: (file: File) => Promise<void>;
 
   // Personel
   personnel: Person[];
@@ -703,7 +705,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const { data: profileRow, error: profileError } = await sb
       .from('profiles')
-      .select('id,email,full_name,role,phone,status,personnel_id,created_at,updated_at')
+      .select('id,email,full_name,role,phone,status,personnel_id,avatar_url,created_at,updated_at')
       .eq('id', data.user.id)
       .maybeSingle();
     if (profileError || !profileRow) {
@@ -721,6 +723,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       role: profileRow.role as AppRole,
       phone: profileRow.phone || undefined,
       personnelId: profileRow.personnel_id || undefined,
+      avatarUrl: profileRow.avatar_url || undefined,
       status: profileRow.status as UserProfile['status'],
       createdAt: profileRow.created_at || data.user.created_at,
       updatedAt: profileRow.updated_at || undefined,
@@ -758,7 +761,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Oturum kapatıldı.');
   }, [showToast]);
 
-  const updateUserProfile = useCallback((id: string, updates: Partial<UserProfile>) => {
+  const updateUserProfile = useCallback(async (id: string, updates: Partial<UserProfile>) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const payload: Record<string, unknown> = {};
+    if (updates.fullName !== undefined) payload.full_name = updates.fullName;
+    if (updates.email !== undefined) payload.email = updates.email;
+    if (updates.phone !== undefined) payload.phone = updates.phone || null;
+    if (updates.department !== undefined) payload.department = updates.department || null;
+    if (updates.title !== undefined) payload.title = updates.title || null;
+    if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl || null;
+    if (Object.keys(payload).length) {
+      const { error } = await sb.from('profiles').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+    }
+    if (id === currentUser.id && updates.email && updates.email !== currentUser.email) {
+      const { error } = await sb.auth.updateUser({ email: updates.email });
+      if (error) throw error;
+    }
     setUserProfiles((prev) => {
       const next = prev.map((u) => (u.id === id ? { ...u, ...updates, updatedAt: new Date().toISOString() } : u));
       saveStored('bv_user_profiles', next);
@@ -772,7 +792,28 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
     showToast('Kullanıcı profili güncellendi.');
-  }, [currentUser.id, showToast]);
+  }, [currentUser.id, currentUser.email, showToast]);
+
+  const changePassword = useCallback(async (password: string) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    if (password.length < 8) throw new Error('Şifre en az 8 karakter olmalıdır.');
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) throw error;
+    showToast('✓ Şifreniz güncellendi.');
+  }, [showToast]);
+
+  const uploadProfileAvatar = useCallback(async (file: File) => {
+    const sb = getSupabase();
+    if (!sb || currentUser.id === 'guest') throw new Error('Aktif Supabase oturumu gerekli.');
+    if (!file.type.startsWith('image/')) throw new Error('Yalnızca görsel dosyası yükleyebilirsiniz.');
+    const path = `${currentUser.id}/avatar-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+    const { error: uploadError } = await sb.storage.from('profile-avatars').upload(path, file, { upsert: false });
+    if (uploadError) throw uploadError;
+    const avatarUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/authenticated/profile-avatars/${path}`;
+    await updateUserProfile(currentUser.id, { avatarUrl });
+    showToast('✓ Profil fotoğrafı güncellendi.');
+  }, [currentUser.id, showToast, updateUserProfile]);
 
   // Personel CRUD
   const addPerson = async (personData: Omit<Person, 'id'>) => {
@@ -1722,6 +1763,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newRec: JobReceipt = {
       ...receiptData,
+      amount: 0,
+      hourlyRate: undefined,
       id,
       receiptNo,
       status: 'pending_approval',
@@ -1729,41 +1772,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    setJobReceipts((prev) => {
-      const next = [newRec, ...prev];
-      saveStored('bv_job_receipts', next);
-      return next;
-    });
-
-    // Otomatik onay talebi düşür
-    await addApproval({
-      kind: 'makbuz_onay',
-      status: 'pending',
-      title: `İş Makbuzu Onayı: ${receiptNo} (${newRec.customerName})`,
-      personName: newRec.operatorName,
-      amount: newRec.amount,
-      note: `${newRec.workingHours} Saat | ${newRec.craneCode} | ${newRec.description}`,
-      requestedDate: newRec.date,
-    });
-
-    logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz operatörce düzenlendi.`);
-    showToast(`✓ Makbuz Kesildi (${receiptNo}) - Yönetici Onayına Sunuldu`);
-
     try {
         const { error: insertError } = await sb.from('job_receipts').insert([
           {
             id: newRec.id,
             receipt_no: newRec.receiptNo,
             customer_id: newRec.customerId,
+            customer_name: newRec.customerName,
             site_id: newRec.siteId,
+            site_name: newRec.siteName,
             crane_code: newRec.craneCode,
             operator_id: newRec.operatorId,
+            operator_name: newRec.operatorName,
             date: newRec.date,
             start_time: newRec.startTime,
             end_time: newRec.endTime,
             working_hours: newRec.workingHours,
             description: newRec.description,
-            amount: newRec.amount,
+            amount: 0,
             status: newRec.status,
             invoiced: false,
           },
@@ -1772,6 +1798,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (err: any) {
         throw new Error(`Makbuz remote kaydı başarısız: ${err.message}`);
       }
+
+    setJobReceipts((prev) => { const next = [newRec, ...prev]; saveStored('bv_job_receipts', next); return next; });
+    await addApproval({
+      kind: 'makbuz_onay', status: 'pending', title: `İş Makbuzu Onayı: ${receiptNo} (${newRec.customerName})`,
+      personName: newRec.operatorName, amount: 0,
+      note: `${newRec.workingHours || 0} Saat | ${newRec.craneCode} | ${newRec.description || ''}`, requestedDate: newRec.date,
+    });
+    logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz oluşturuldu.`);
+    showToast(`✓ İş makbuzu oluşturuldu (${receiptNo}) - Yönetici Onayına Sunuldu`);
 
     return newRec;
   };
@@ -2520,6 +2555,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerUser,
         logout,
         updateUserProfile,
+        changePassword,
+        uploadProfileAvatar,
         personnel,
         addPerson,
         updatePerson,

@@ -28,6 +28,7 @@ export const InvoiceReceiptPage: React.FC = () => {
     invoices,
     customers,
     cranes,
+    personnel,
     currentUser,
     addJobReceipt,
     addCustomer,
@@ -59,7 +60,10 @@ export const InvoiceReceiptPage: React.FC = () => {
   const [step, setStep] = useState(1);
   const [wCustomer, setWCustomer] = useState('');
   const [wCrane, setWCrane] = useState('');
-  const [wAmount, setWAmount] = useState(0);
+  const [wOperator, setWOperator] = useState(currentUser.personnelId || '');
+  const [wSite, setWSite] = useState('');
+  const [wStart, setWStart] = useState('08:00');
+  const [wEnd, setWEnd] = useState('17:00');
   const [wHours, setWHours] = useState(8);
   const [wNote, setWNote] = useState('');
   const [wFrom, setWFrom] = useState('');
@@ -146,37 +150,52 @@ export const InvoiceReceiptPage: React.FC = () => {
   const total = subtotal + kdv;
 
   const createMakbuz = async () => {
-    if (!wCustomer || busy) return;
+    if (!wCustomer || !wCrane || !wOperator || !wSite.trim() || !wStart || !wEnd || busy) {
+      showToast('Makbuz için cari, şantiye, başlangıç/bitiş saati, operatör ve vinç zorunludur.');
+      return;
+    }
     setBusy(true);
     try {
       const cust = customers.find((c) => c.id === wCustomer);
       const crane = cranes.find((c) => c.id === wCrane);
-      const amount = wAmount > 0 ? wAmount : wHours * 2500;
+      const operator = personnel.find((p) => p.id === wOperator);
+      const [startHour, startMinute] = wStart.split(':').map(Number);
+      const [endHour, endMinute] = wEnd.split(':').map(Number);
+      const calculatedHours = Math.max(0, ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60);
+      if (!operator || !crane || calculatedHours <= 0) {
+        showToast('Operatör, vinç ve geçerli saat aralığı seçilmelidir.');
+        return;
+      }
       await addJobReceipt({
         customerId: wCustomer,
         customerName: cust?.title || cust?.name || 'Müşteri',
+        siteName: wSite.trim(),
         craneId: wCrane || undefined,
-        craneCode: crane?.code || 'V-GENEL',
-        operatorId: currentUser.id,
-        operatorName: currentUser.fullName,
+        craneCode: crane.code,
+        operatorId: operator.id,
+        operatorName: operator.fullName,
         date: new Date().toISOString().slice(0, 10),
-        hoursWorked: wHours,
-        hourlyRate: 2500,
-        amount,
+        startTime: wStart,
+        endTime: wEnd,
+        workingHours: calculatedHours,
+        hoursWorked: calculatedHours,
+        amount: 0,
         status: 'pending',
         invoiced: false,
-        signedByCustomer: true,
         note:
           tab === 'irsaliye'
             ? `İrsaliye: ${wFrom || '-'} → ${wTo || '-'} | ${wNote}`
-            : wNote || (tab === 'fatura' ? 'Fatura kalemi' : 'Saha işi'),
+            : wNote || 'Çalışma/puantaj evrakı',
       });
       showToast(tab === 'irsaliye' ? '✓ İrsaliye kaydı oluşturuldu' : '✓ İş makbuzu oluşturuldu');
       setWizardOpen(false);
       setStep(1);
       setWCustomer('');
       setWCrane('');
-      setWAmount(0);
+      setWOperator(currentUser.personnelId || '');
+      setWSite('');
+      setWStart('08:00');
+      setWEnd('17:00');
       setWHours(8);
       setWNote('');
       setWFrom('');
@@ -325,8 +344,10 @@ export const InvoiceReceiptPage: React.FC = () => {
                   <th className="p-3">No</th>
                   <th className="p-3">Tarih</th>
                   <th className="p-3">Müşteri</th>
+                  <th className="p-3">Şantiye</th>
+                  <th className="p-3">Operatör</th>
                   <th className="p-3">Vinç</th>
-                  <th className="p-3 text-right">Tutar</th>
+                  <th className="p-3">Çalışma</th>
                   <th className="p-3 text-center">Durum</th>
                   <th className="p-3 text-right">İşlem</th>
                 </tr>
@@ -334,7 +355,7 @@ export const InvoiceReceiptPage: React.FC = () => {
               <tbody className="divide-y divide-emerald-50">
                 {filteredReceipts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400">
+                    <td colSpan={9} className="p-8 text-center text-slate-400">
                       Kayıt yok
                     </td>
                   </tr>
@@ -344,10 +365,10 @@ export const InvoiceReceiptPage: React.FC = () => {
                       <td className="p-3 font-mono font-bold text-emerald-900">{r.receiptNo}</td>
                       <td className="p-3">{r.date}</td>
                       <td className="p-3 font-medium">{r.customerName}</td>
+                      <td className="p-3">{r.siteName || '—'}</td>
+                      <td className="p-3">{r.operatorName || '—'}</td>
                       <td className="p-3">{r.craneCode}</td>
-                      <td className="p-3 text-right font-mono font-bold">
-                        {(r.amount || 0).toLocaleString('tr-TR')} ₺
-                      </td>
+                      <td className="p-3 font-mono">{r.startTime || '—'}–{r.endTime || '—'}<br /><span className="text-[10px] text-slate-500">{r.workingHours || r.hoursWorked || 0} sa</span></td>
                       <td className="p-3 text-center">
                         {r.invoiced ? (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100">Faturalı</span>
@@ -502,7 +523,7 @@ export const InvoiceReceiptPage: React.FC = () => {
                   <tr className="border-b border-slate-200 text-left">
                     <th className="py-2">Açıklama</th>
                     <th className="py-2">Miktar</th>
-                    <th className="py-2 text-right">Tutar</th>
+                    {preview.type === 'fatura' && <th className="py-2 text-right">Tutar</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -510,16 +531,16 @@ export const InvoiceReceiptPage: React.FC = () => {
                     <tr key={i} className="border-b border-slate-100">
                       <td className="py-2">{l.label}</td>
                       <td className="py-2">{l.qty || '—'}</td>
-                      <td className="py-2 text-right font-mono">{l.amount.toLocaleString('tr-TR')} ₺</td>
+                      {preview.type === 'fatura' && <td className="py-2 text-right font-mono">{l.amount.toLocaleString('tr-TR')} ₺</td>}
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="flex justify-end text-sm space-y-1 flex-col items-end">
+              {preview.type === 'fatura' && <div className="flex justify-end text-sm space-y-1 flex-col items-end">
                 <div>Ara toplam: <strong className="font-mono">{subtotal.toLocaleString('tr-TR')} ₺</strong></div>
                 <div>KDV %{preview.kdvRate}: <strong className="font-mono">{kdv.toLocaleString('tr-TR')} ₺</strong></div>
                 <div className="text-base font-black text-emerald-900">Genel toplam: {total.toLocaleString('tr-TR')} ₺</div>
-              </div>
+              </div>}
               {preview.note && <p className="mt-4 text-xs text-slate-500 border-t pt-2">Not: {preview.note}</p>}
               <p className="mt-6 text-[10px] text-slate-400 text-center">{COMPANY.taxLabel}</p>
             </div>
@@ -545,9 +566,16 @@ export const InvoiceReceiptPage: React.FC = () => {
                 </select>
                 <button type="button" onClick={() => setNewCustomerOpen((value) => !value)} className="text-xs font-bold text-emerald-700">+ Yeni cari oluştur</button>
                 {newCustomerOpen && <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2"><input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Cari / firma ünvanı *" className="w-full border border-emerald-200 rounded-lg px-3 py-2 text-sm" /><input value={newCustomerTaxNo} onChange={(e) => setNewCustomerTaxNo(e.target.value)} placeholder="Vergi no (opsiyonel)" className="w-full border border-emerald-200 rounded-lg px-3 py-2 text-sm" /><button type="button" onClick={createCustomerForDocument} className="w-full rounded-lg bg-emerald-600 text-white py-2 text-xs font-bold">Cariyi Kaydet ve Seç</button></div>}
-                <label className="block text-xs font-semibold">Vinç (opsiyonel)</label>
-                <select value={wCrane} onChange={(e) => setWCrane(e.target.value)} className="w-full border border-emerald-200 rounded-xl px-3 py-2.5 text-sm">
-                  <option value="">Genel</option>
+                <label className="block text-xs font-semibold">Çalışma alanı / şantiye *</label>
+                <input required value={wSite} onChange={(e) => setWSite(e.target.value)} placeholder="Şantiye veya çalışma alanı" className="w-full border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" />
+                <label className="block text-xs font-semibold">Operatör *</label>
+                <select required value={wOperator} onChange={(e) => setWOperator(e.target.value)} className="w-full border border-emerald-200 rounded-xl px-3 py-2.5 text-sm">
+                  <option value="">Personel seçin...</option>
+                  {personnel.filter((p) => p.status !== 'pasif').map((p) => <option key={p.id} value={p.id}>{p.fullName} · {p.title}</option>)}
+                </select>
+                <label className="block text-xs font-semibold">Vinç *</label>
+                <select required value={wCrane} onChange={(e) => setWCrane(e.target.value)} className="w-full border border-emerald-200 rounded-xl px-3 py-2.5 text-sm">
+                  <option value="">Vinç seçin...</option>
                   {cranes.map((c) => (
                     <option key={c.id} value={c.id}>{c.code}</option>
                   ))}
@@ -559,11 +587,8 @@ export const InvoiceReceiptPage: React.FC = () => {
             )}
             {step === 2 && (
               <div className="space-y-3">
-                <label className="block text-xs font-semibold">Saat / Tutar</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" value={wHours} onChange={(e) => setWHours(Number(e.target.value))} className="border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Saat" />
-                  <input type="number" value={wAmount || ''} onChange={(e) => setWAmount(Number(e.target.value))} className="border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Tutar ₺" />
-                </div>
+                <label className="block text-xs font-semibold">Çalışma saatleri *</label>
+                <div className="grid grid-cols-2 gap-2"><input type="time" required value={wStart} onChange={(e) => setWStart(e.target.value)} className="border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" /><input type="time" required value={wEnd} onChange={(e) => setWEnd(e.target.value)} className="border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" /></div>
                 {tab === 'irsaliye' && (
                   <div className="grid grid-cols-2 gap-2">
                     <input value={wFrom} onChange={(e) => setWFrom(e.target.value)} placeholder="Nereden" className="border border-emerald-200 rounded-xl px-3 py-2.5 text-sm" />
@@ -581,7 +606,7 @@ export const InvoiceReceiptPage: React.FC = () => {
               <div className="space-y-3">
                 <p className="text-sm text-slate-600">
                   <strong>{customers.find((c) => c.id === wCustomer)?.title || customers.find((c) => c.id === wCustomer)?.name}</strong>
-                  {' · '}{wHours} sa · {(wAmount || wHours * 2500).toLocaleString('tr-TR')} ₺
+                  {' · '}{wSite} · {personnel.find((p) => p.id === wOperator)?.fullName || 'Operatör'} · {wStart}–{wEnd}
                 </p>
                 <div className="flex gap-2">
                   <button type="button" className="flex-1 min-h-11 rounded-xl border border-emerald-200 text-sm font-semibold" onClick={() => setStep(2)}>Geri</button>
