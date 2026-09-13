@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useERP } from '../lib/store';
 import { Truck, CheckCircle, Clock, MapPin, Activity } from 'lucide-react';
+import { CraneMap } from '../components/CraneMap';
 
 export const TvBoardPage: React.FC = () => {
   const { cranes, approvals, stats } = useERP();
@@ -79,8 +80,12 @@ export const TvBoardPage: React.FC = () => {
 
       {/* Main TV Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100 shadow-md min-h-[360px]">
+          <h2 className="text-xl font-bold text-emerald-950 mb-4 flex items-center gap-2"><MapPin className="text-emerald-700" size={24} /> Canlı Vinç Haritası</h2>
+          <div className="h-[300px] sm:h-[420px]"><CraneMap cranes={cranes} /></div>
+        </div>
         {/* Left 2 Cols: Active Cranes on Site */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100 shadow-md flex flex-col">
+        <div className="lg:col-span-1 bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100 shadow-md flex flex-col">
           <h2 className="text-xl font-bold text-emerald-950 mb-4 flex items-center gap-2">
             <Truck className="text-emerald-700" size={24} />
             Sahadaki Vinçler ve Görev Noktaları

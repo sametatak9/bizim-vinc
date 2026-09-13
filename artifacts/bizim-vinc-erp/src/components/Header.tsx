@@ -61,12 +61,6 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Cari & Şantiyeler', path: '/cariler', icon: Building2 },
     { label: 'Personel & Maaş', path: '/personel', icon: Users },
     { label: 'Puantaj', path: '/puantaj', icon: Calendar },
-    {
-      label: 'Onay Merkezi',
-      path: '/onay',
-      icon: CheckSquare,
-      badge: stats.pendingApprovalsCount > 0 ? stats.pendingApprovalsCount : undefined,
-    },
     { label: 'Filo', path: '/filo', icon: Truck },
     { label: 'Personel Talepleri', path: '/operator', icon: Smartphone },
     { label: 'Finans', path: '/finans', icon: DollarSign },
@@ -85,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-3 cursor-pointer select-none shrink-0"
           onClick={() => onNavigate('/')}
         >
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-white border-2 border-emerald-400 flex items-center justify-center text-emerald-700 shadow-lg shadow-emerald-900/30">
             <svg viewBox="0 0 64 64" width="28" height="28" fill="none">
               <path
                 d="M20 54h24M24 54l4-8h8l4 8M28 46h8"

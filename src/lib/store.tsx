@@ -170,7 +170,7 @@ interface ERPContextType {
   auditLogs: AuditLog[];
   logAction: (action: string, module: string, recordId?: string, details?: string, oldData?: any, newData?: any) => Promise<void>;
   notifications: NotificationItem[];
-  markNotificationRead: (id: string) => void;
+  markNotificationRead: (id: string) => Promise<void>;
   markNotificationAsRead: (id: string) => void;
   sendNotification: (title: string, message: string, type: NotificationItem['type'], userId?: string) => void;
 
@@ -219,13 +219,10 @@ const ERPContext = createContext<ERPContextType | null>(null);
 
 // LocalStorage Yardımcısı
 function loadStored<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+  // Supabase is canonical; localStorage is write-through cache only and is never
+  // trusted as an initial data source after a full page reload.
+  void key;
+  return fallback;
 }
 
 function saveStored<T>(key: string, val: T): void {
@@ -242,13 +239,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>(() =>
     loadStored('bv_user_profiles', [])
   );
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
-    Boolean(loadStored<UserProfile | null>('bv_current_user', null))
-  );
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const saved = loadStored<UserProfile | null>('bv_current_user', null);
-    return saved || GUEST_PROFILE;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(GUEST_PROFILE);
   const [activeRole, setActiveRole] = useState<AppRole>(currentUser.role);
 
   // 2. Ana Veri Setleri
@@ -414,12 +406,14 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [showToast]
   );
 
-  const markNotificationRead = useCallback((id: string) => {
+  const markNotificationRead = useCallback(async (id: string) => {
     setNotifications((prev) => {
       const next = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
       saveStored('bv_notifications', next);
       return next;
     });
+    const sb = getSupabase();
+    if (sb) await sb.from('notifications').update({ is_read: true }).eq('id', id);
   }, []);
 
   // Supabase'den Verileri Tazele
@@ -555,6 +549,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveStored('bv_approvals', mapped);
       }
 
+      const { data: notificationData, error: notificationError } = await sb.from('notifications').select('id,user_id,title,message,type,is_read,related_url,created_at').or(`user_id.is.null,user_id.eq.${currentUser.id}`).order('created_at', { ascending: false }).limit(100);
+      if (notificationError) throw notificationError;
+      const mappedNotifications: NotificationItem[] = (notificationData || []).map((d: any) => ({ id: d.id, userId: d.user_id, title: d.title, message: d.message, type: d.type, isRead: Boolean(d.is_read), relatedUrl: d.related_url, createdAt: d.created_at }));
+      setNotifications(mappedNotifications); saveStored('bv_notifications', mappedNotifications);
+
       // 4. Makbuzlar
       const { data: rData, error: receiptsError } = await sb.from('receipts').select('*').order('created_at', { ascending: false });
       if (receiptsError) throw receiptsError;
@@ -659,12 +658,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDbConnected(true);
     } catch (err) {
       console.error('Supabase fetch error:', err);
+      setDbError(err instanceof Error ? err.message : 'Supabase verileri yüklenemedi.');
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+  }, [currentUser.id]);
 
-  // Sayfa yüklendiğinde Supabase'i tara
+  // Sayfa yüklendiğinde gerçek Supabase Auth oturumunu geri yükle; localStorage yalnızca cache'tir.
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('bv_remote_source_v1')) {
       Object.keys(localStorage)
@@ -690,7 +690,26 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPayments([]);
       setMemberships([]);
     }
-    refreshFromDb();
+    const sb = getSupabase();
+    if (!sb) return;
+    let cancelled = false;
+    const restore = async () => {
+      const { data } = await sb.auth.getSession();
+      if (cancelled) return;
+      const authUser = data.session?.user;
+      if (!authUser) {
+        setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); return;
+      }
+      const { data: profileRow, error } = await sb.from('profiles').select('id,email,full_name,role,phone,status,personnel_id,avatar_url,created_at,updated_at').eq('id', authUser.id).maybeSingle();
+      if (error || !profileRow || profileRow.status !== 'aktif') {
+        await sb.auth.signOut(); setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); return;
+      }
+      const profile: UserProfile = { id: profileRow.id, email: profileRow.email || authUser.email || '', fullName: profileRow.full_name || authUser.email?.split('@')[0] || 'Kullanıcı', role: profileRow.role as AppRole, phone: profileRow.phone || undefined, personnelId: profileRow.personnel_id || undefined, avatarUrl: profileRow.avatar_url || undefined, status: profileRow.status, createdAt: profileRow.created_at || authUser.created_at, updatedAt: profileRow.updated_at || undefined };
+      setCurrentUser(profile); setIsAuthenticated(true); setActiveRole(profile.role); saveStored('bv_current_user', profile); await refreshFromDb();
+    };
+    void restore();
+    const { data: authListener } = sb.auth.onAuthStateChange((event, session) => { if (event === 'SIGNED_OUT' || !session) { setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); } });
+    return () => { cancelled = true; authListener.subscription.unsubscribe(); };
   }, [refreshFromDb]);
 
   // Auth & Kullanıcı Metotları
@@ -1666,6 +1685,20 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Cari yalnızca remote veritabanında güncellenebilir.');
+    const payload: Record<string, unknown> = {};
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.vknTckn !== undefined) payload.vkn_tckn = updates.vknTckn || null;
+    if (updates.taxOffice !== undefined) payload.tax_office = updates.taxOffice || null;
+    if (updates.authorizedPerson !== undefined) payload.authorized_person = updates.authorizedPerson || null;
+    if (updates.phone !== undefined) payload.phone = updates.phone;
+    if (updates.email !== undefined) payload.email = updates.email || null;
+    if (updates.address !== undefined) payload.address = updates.address || null;
+    if (updates.balance !== undefined) payload.balance = updates.balance;
+    if (updates.notes !== undefined) payload.notes = updates.notes || null;
+    const { error } = await sb.from('customers').update(payload).eq('id', id);
+    if (error) throw error;
     setCustomers((prev) => {
       const next = prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c));
       saveStored('bv_customers', next);
@@ -1675,6 +1708,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteCustomer = async (id: string) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Cari yalnızca remote veritabanından silinebilir.');
+    const { error } = await sb.from('customers').delete().eq('id', id);
+    if (error) throw error;
     setCustomers((prev) => {
       const next = prev.filter((c) => c.id !== id);
       saveStored('bv_customers', next);
