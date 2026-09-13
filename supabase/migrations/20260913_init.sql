@@ -83,7 +83,32 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. İNDEKSLER
+-- 7. EKSİK SÜTUNLARI TAMAMLAMA (Tablolar önceden oluşturulmuşsa garanti altına alma)
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS employee_no TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'operator';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aktif';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS pool_status TEXT DEFAULT 'musait';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS initials TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS card_slug TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS documents_ok BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS cert_expiring BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'Mobil Vinç';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'musait';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS capacity TEXT DEFAULT '50 ton';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS operator TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS site TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS last_service TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION DEFAULT 41.0100;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION DEFAULT 29.0000;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- 8. İNDEKSLER
 CREATE INDEX IF NOT EXISTS idx_personnel_employee_no ON public.personnel(employee_no);
 CREATE INDEX IF NOT EXISTS idx_personnel_status ON public.personnel(status);
 CREATE INDEX IF NOT EXISTS idx_cranes_code ON public.cranes(code);
@@ -93,54 +118,20 @@ CREATE INDEX IF NOT EXISTS idx_approvals_created ON public.approvals(created_at 
 CREATE INDEX IF NOT EXISTS idx_receipts_status ON public.receipts(status);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON public.expenses(category);
 
--- 8. ROW LEVEL SECURITY (RLS) POLİTİKALARI
-ALTER TABLE public.personnel ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cranes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.approvals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+-- 9. POSTGREST VE ANONİM ERİŞİM YETKİLERİ (GRANT)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 
--- Anonim / Yetkili okuma ve yazma politikaları (ERP kullanımına izin)
-DROP POLICY IF EXISTS "Allow public read access on personnel" ON public.personnel;
-DROP POLICY IF EXISTS "Allow public insert access on personnel" ON public.personnel;
-DROP POLICY IF EXISTS "Allow public update access on personnel" ON public.personnel;
-DROP POLICY IF EXISTS "Allow public delete access on personnel" ON public.personnel;
-CREATE POLICY "Allow public read access on personnel" ON public.personnel FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on personnel" ON public.personnel FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update access on personnel" ON public.personnel FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete access on personnel" ON public.personnel FOR DELETE USING (true);
+-- 10. ROW LEVEL SECURITY (RLS) - ERP Verilerine Doğrudan Erişim
+ALTER TABLE public.personnel DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cranes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.approvals DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow public read access on cranes" ON public.cranes;
-DROP POLICY IF EXISTS "Allow public insert access on cranes" ON public.cranes;
-DROP POLICY IF EXISTS "Allow public update access on cranes" ON public.cranes;
-DROP POLICY IF EXISTS "Allow public delete access on cranes" ON public.cranes;
-CREATE POLICY "Allow public read access on cranes" ON public.cranes FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on cranes" ON public.cranes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update access on cranes" ON public.cranes FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete access on cranes" ON public.cranes FOR DELETE USING (true);
-
-DROP POLICY IF EXISTS "Allow public read access on approvals" ON public.approvals;
-DROP POLICY IF EXISTS "Allow public insert access on approvals" ON public.approvals;
-DROP POLICY IF EXISTS "Allow public update access on approvals" ON public.approvals;
-DROP POLICY IF EXISTS "Allow public delete access on approvals" ON public.approvals;
-CREATE POLICY "Allow public read access on approvals" ON public.approvals FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on approvals" ON public.approvals FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update access on approvals" ON public.approvals FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete access on approvals" ON public.approvals FOR DELETE USING (true);
-
-DROP POLICY IF EXISTS "Allow public read access on receipts" ON public.receipts;
-DROP POLICY IF EXISTS "Allow public insert access on receipts" ON public.receipts;
-DROP POLICY IF EXISTS "Allow public update access on receipts" ON public.receipts;
-CREATE POLICY "Allow public read access on receipts" ON public.receipts FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on receipts" ON public.receipts FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update access on receipts" ON public.receipts FOR UPDATE USING (true);
-
-DROP POLICY IF EXISTS "Allow public read access on expenses" ON public.expenses;
-DROP POLICY IF EXISTS "Allow public insert access on expenses" ON public.expenses;
-DROP POLICY IF EXISTS "Allow public update access on expenses" ON public.expenses;
-CREATE POLICY "Allow public read access on expenses" ON public.expenses FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on expenses" ON public.expenses FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update access on expenses" ON public.expenses FOR UPDATE USING (true);
+-- PostgREST şema önbelleğini anında yenile
+NOTIFY pgrst, 'reload schema';
 
 -- 9. BAŞLANGIÇ GERÇEKÇİ VERİLERİ (SEED DATA)
 INSERT INTO public.personnel (id, employee_no, full_name, phone, kind, status, pool_status, title, initials, card_slug, documents_ok, cert_expiring)
@@ -165,7 +156,7 @@ VALUES
 ('c-008', 'V-198', 'Teleskopik', 'sahada', '100 ton', 'Burak Yıldız', 'Maltepe Konut Şantiyesi', '2026-08-22', 40.9300, 29.1400)
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO public.approvals (id, kind, status, title, person_name, person_initials, related_label, note, createdAt)
+INSERT INTO public.approvals (id, kind, status, title, person_name, person_initials, related_label, note, created_at)
 VALUES
 ('a-001', 'mesai_kaldi', 'pending', 'Fazla mesai talebi (3 saat)', 'Mehmet Kaya', 'MK', '3 saat · V-204 · Ataşehir', 'Saha beton dökümü gecikmesi nedeniyle ekstra süre gerekti.', NOW() - INTERVAL '1 hour'),
 ('a-002', 'vinc_hareket', 'pending', 'Filo bakım onay talebi', 'Bakım Şefi Rıza', 'RŞ', 'V-155 Hidrolik Değişimi', 'Planlı 250 saatlik hidrolik hortum ve keçe revizyonu onayı.', NOW() - INTERVAL '3 hours'),

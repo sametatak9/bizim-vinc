@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { Person, Crane, Approval, Receipt, Expense, CraneStatus, ApprovalStatus, ApprovalKind } from '../types';
-import { getSupabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 
 const INITIAL_PERSONNEL: Person[] = [
   {
@@ -511,7 +511,6 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } else {
             // Seed initial personnel to Supabase
             const seedPayload = INITIAL_PERSONNEL.map((p) => ({
-              id: p.id,
               employee_no: p.employeeNo,
               full_name: p.fullName,
               phone: p.phone,
@@ -550,7 +549,6 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } else {
             // Seed initial cranes to Supabase
             const seedPayload = INITIAL_CRANES.map((c) => ({
-              id: c.id,
               code: c.code,
               type: c.type,
               status: c.status,
@@ -645,7 +643,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cardSlug = data.fullName.toLowerCase().replace(/\s+/g, '-');
     const newPerson: Person = {
       ...data,
-      id: `p-${Date.now()}`,
+      id: generateUuid(),
       initials,
       cardSlug,
       createdAt: new Date().toISOString(),
@@ -729,7 +727,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addCrane = (data: Omit<Crane, 'id'>) => {
     const newCrane: Crane = {
       ...data,
-      id: `c-${Date.now()}`,
+      id: generateUuid(),
       createdAt: new Date().toISOString(),
     };
     setCranes((prev) => [newCrane, ...prev]);
@@ -808,7 +806,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const opInitials = operatorInitials || op.initials;
 
     const newApproval: Approval = {
-      id: `a-${Date.now()}`,
+      id: generateUuid(),
       kind,
       status: 'pending',
       title,
@@ -866,7 +864,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addReceipt = (data: Omit<Receipt, 'id' | 'createdAt'>) => {
     const newRec: Receipt = {
       ...data,
-      id: `r-${Date.now()}`,
+      id: generateUuid(),
       createdAt: new Date().toISOString(),
     };
     setReceipts((prev) => [newRec, ...prev]);
@@ -892,7 +890,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addExpense = (data: Omit<Expense, 'id' | 'createdAt'>) => {
     const newExp: Expense = {
       ...data,
-      id: `e-${Date.now()}`,
+      id: generateUuid(),
       createdAt: new Date().toISOString(),
     };
     setExpenses((prev) => [newExp, ...prev]);

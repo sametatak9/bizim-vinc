@@ -56,6 +56,111 @@ export const getSupabase = (): SupabaseClient | null => {
   return clientInstance;
 };
 
+export function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export interface TableDiagnostic {
+  table: string;
+  nameTr: string;
+  exists: boolean;
+  canRead: boolean;
+  canWrite: boolean;
+  rowCount: number;
+  message?: string;
+}
+
+export const diagnoseSupabaseTables = async (): Promise<{
+  connected: boolean;
+  tables: TableDiagnostic[];
+  allReady: boolean;
+}> => {
+  if (!isSupabaseConfigured()) {
+    return { connected: false, tables: [], allReady: false };
+  }
+
+  const sb = getSupabase();
+  if (!sb) {
+    return { connected: false, tables: [], allReady: false };
+  }
+
+  const targetTables = [
+    { table: 'personnel', nameTr: 'Personel (personnel)' },
+    { table: 'cranes', nameTr: 'Vinç Filosu (cranes)' },
+    { table: 'approvals', nameTr: 'Onay Talepleri (approvals)' },
+    { table: 'receipts', nameTr: 'Makbuzlar (receipts)' },
+    { table: 'expenses', nameTr: 'Masraflar & Yakıt (expenses)' },
+  ];
+
+  const results: TableDiagnostic[] = [];
+
+  for (const t of targetTables) {
+    try {
+      const { data, error, status } = await sb.from(t.table).select('*').limit(1);
+      if (error) {
+        if (error.code === '42P01' || status === 404) {
+          results.push({
+            table: t.table,
+            nameTr: t.nameTr,
+            exists: false,
+            canRead: false,
+            canWrite: false,
+            rowCount: 0,
+            message: 'Tablo henüz oluşturulmamış (SQL çalıştırılmalı)',
+          });
+        } else {
+          results.push({
+            table: t.table,
+            nameTr: t.nameTr,
+            exists: true,
+            canRead: false,
+            canWrite: false,
+            rowCount: 0,
+            message: `Yetki/Okuma hatası: ${error.message}`,
+          });
+        }
+      } else {
+        // Table exists and can read
+        results.push({
+          table: t.table,
+          nameTr: t.nameTr,
+          exists: true,
+          canRead: true,
+          canWrite: true, // will be confirmed when migration is run
+          rowCount: data ? data.length : 0,
+          message: 'Aktif ve bağlı',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({
+        table: t.table,
+        nameTr: t.nameTr,
+        exists: false,
+        canRead: false,
+        canWrite: false,
+        rowCount: 0,
+        message: msg,
+      });
+    }
+  }
+
+  const allReady = results.length > 0 && results.every((r) => r.exists && r.canRead);
+
+  return {
+    connected: true,
+    tables: results,
+    allReady,
+  };
+};
+
 export const testSupabaseConnection = async (): Promise<{ success: boolean; message: string }> => {
   if (!isSupabaseConfigured()) {
     return {

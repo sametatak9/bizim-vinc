@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Copy, Check, Database, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
-import { testSupabaseConnection, isSupabaseConfigured } from '../lib/supabase';
+import React, { useState, useEffect } from 'react';
+import { X, Copy, Check, Database, RefreshCw, CheckCircle, AlertTriangle, Table } from 'lucide-react';
+import { testSupabaseConnection, isSupabaseConfigured, diagnoseSupabaseTables, TableDiagnostic } from '../lib/supabase';
 import { useERP } from '../lib/store';
 
 interface SupabaseModalProps {
@@ -9,12 +9,15 @@ interface SupabaseModalProps {
 }
 
 const SQL_MIGRATION_SNIPPET = `-- BİZİM VİNÇ ERP - SUPABASE SQL SCHEMA (Tam Kurulum)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. Tabloları Oluştur
 CREATE TABLE IF NOT EXISTS public.personnel (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     employee_no TEXT UNIQUE NOT NULL,
     full_name TEXT NOT NULL,
     phone TEXT,
-    kind TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'operator',
     status TEXT NOT NULL DEFAULT 'aktif',
     pool_status TEXT NOT NULL DEFAULT 'musait',
     title TEXT,
@@ -28,9 +31,9 @@ CREATE TABLE IF NOT EXISTS public.personnel (
 CREATE TABLE IF NOT EXISTS public.cranes (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     code TEXT UNIQUE NOT NULL,
-    type TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'Mobil Vinç',
     status TEXT NOT NULL DEFAULT 'musait',
-    capacity TEXT NOT NULL,
+    capacity TEXT NOT NULL DEFAULT '50 ton',
     operator TEXT,
     site TEXT,
     last_service TEXT,
@@ -77,18 +80,55 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- RLS İzinleri (ERP'nin veri yazabilmesi için)
+-- 2. Eksik Sütunları Tamamlama (Önceden oluşturulmuş tablolar için)
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS employee_no TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'operator';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'aktif';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS pool_status TEXT DEFAULT 'musait';
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS initials TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS card_slug TEXT;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS documents_ok BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.personnel ADD COLUMN IF NOT EXISTS cert_expiring BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'Mobil Vinç';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'musait';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS capacity TEXT DEFAULT '50 ton';
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS operator TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS site TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS last_service TEXT;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION DEFAULT 41.0100;
+ALTER TABLE public.cranes ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION DEFAULT 29.0000;
+
+-- 3. Yetkiler ve RLS İzinleri (ERP'nin veri okuyup yazabilmesi için)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
 ALTER TABLE public.personnel DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cranes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.approvals DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.receipts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
+
+-- 4. PostgREST şema önbelleğini anında yenile
+NOTIFY pgrst, 'reload schema';`;
 
 export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose }) => {
   const { isSupabaseOnline, showToast } = useERP();
   const [copied, setCopied] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [tableStatus, setTableStatus] = useState<TableDiagnostic[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      handleTestConnection();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -102,8 +142,12 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
   const handleTestConnection = async () => {
     setTesting(true);
     setTestResult(null);
-    const res = await testSupabaseConnection();
-    setTestResult(res);
+    const [connRes, diagRes] = await Promise.all([
+      testSupabaseConnection(),
+      diagnoseSupabaseTables(),
+    ]);
+    setTestResult(connRes);
+    setTableStatus(diagRes.tables);
     setTesting(false);
   };
 
@@ -189,6 +233,47 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
               }`}
             >
               {testResult.message}
+            </div>
+          )}
+
+          {/* Table Breakdown Diagnostics */}
+          {tableStatus.length > 0 && (
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Table size={14} className="text-emerald-700" />
+                  Supabase Tablo Durumları ({tableStatus.filter((t) => t.exists).length}/5 Aktif)
+                </span>
+                <span className="text-[10px] text-gray-500">Canlı Denetim</span>
+              </div>
+              <div className="space-y-1.5">
+                {tableStatus.map((t) => (
+                  <div
+                    key={t.table}
+                    className={`flex items-center justify-between p-2 rounded-lg text-xs border ${
+                      t.exists
+                        ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
+                        : 'bg-amber-50/50 border-amber-200 text-amber-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {t.exists ? (
+                        <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                      ) : (
+                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                      )}
+                      <span className="font-semibold">{t.nameTr}</span>
+                    </div>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        t.exists ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {t.exists ? 'Bağlı (200 OK)' : 'SQL Bekleniyor'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
