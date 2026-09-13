@@ -41,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -133,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Navigation - Tablet (More compact) */}
         <nav className="hidden md:flex xl:hidden items-center gap-1" aria-label="Tablet menü">
-          {navItems.slice(0, 6).map((item) => {
+          {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.path;
             return (
@@ -156,6 +157,41 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             );
           })}
+          {/* Diğer Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1 text-neutral-300 hover:text-white hover:bg-neutral-800 transition"
+            >
+              <span>Diğer</span>
+              <ChevronDown size={12} className={`transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {moreMenuOpen && (
+              <div className="absolute left-0 mt-2 w-48 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-1.5 z-50">
+                {navItems.slice(5).map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPath === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => {
+                        onNavigate(item.path);
+                        setMoreMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                        isActive
+                          ? 'bg-amber-500/10 text-amber-400 font-bold'
+                          : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                      }`}
+                    >
+                      <Icon size={14} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Actions / Right Controls */}
