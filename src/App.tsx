@@ -23,7 +23,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage, dbError, refreshFromDb } = useERP();
+  const { toastMessage, dbError, refreshFromDb, isAuthenticated } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -66,6 +66,20 @@ function AppContent() {
           </button>
         </div>
         <TvBoardPage />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F0FDF4] text-slate-800 flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="mb-6">
+            <div className="text-2xl font-black tracking-tight text-emerald-950">BİZİM VİNÇ <span className="text-sm px-2 py-1 bg-emerald-100 text-emerald-800 rounded-md">ERP</span></div>
+            <p className="text-sm text-emerald-700 mt-2">En derinden, en yükseklere</p>
+          </div>
+          <AuthModal isOpen onClose={() => undefined} />
+        </div>
       </div>
     );
   }

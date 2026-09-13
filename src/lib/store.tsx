@@ -36,12 +36,12 @@ import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 interface ERPContextType {
   // Auth & Roles
   currentUser: UserProfile;
+  isAuthenticated: boolean;
   userProfiles: UserProfile[];
   activeRole: AppRole;
   setActiveRole: (role: AppRole) => void;
-  switchUser: (userId: string) => void;
   loginWithCredentials: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
-  registerUser: (email: string, pass: string, fullName: string, role: AppRole, phone?: string) => Promise<{ success: boolean; message: string }>;
+  registerUser: (email: string, pass: string, fullName: string, phone?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
 
@@ -236,6 +236,15 @@ const INITIAL_PROFILES: UserProfile[] = [
     createdAt: new Date().toISOString(),
   },
 ];
+
+const GUEST_PROFILE: UserProfile = {
+  id: 'guest',
+  email: '',
+  fullName: 'Giriş gerekli',
+  role: 'personel',
+  status: 'pasif',
+  createdAt: new Date(0).toISOString(),
+};
 
 // Başlangıç Personel Listesi
 const INITIAL_PERSONNEL: Person[] = [
@@ -745,9 +754,12 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>(() =>
     loadStored('bv_user_profiles', INITIAL_PROFILES)
   );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
+    Boolean(loadStored<UserProfile | null>('bv_current_user', null))
+  );
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
     const saved = loadStored<UserProfile | null>('bv_current_user', null);
-    return saved || userProfiles[0];
+    return saved || GUEST_PROFILE;
   });
   const [activeRole, setActiveRole] = useState<AppRole>(currentUser.role);
 
@@ -1084,118 +1096,42 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [refreshFromDb]);
 
   // Auth & Kullanıcı Metotları
-  const switchUser = useCallback((userId: string) => {
-    const found = userProfiles.find((u) => u.id === userId);
-    if (found) {
-      setCurrentUser(found);
-      setActiveRole(found.role);
-      saveStored('bv_current_user', found);
-      showToast(`Aktif kullanıcı değiştirildi: ${found.fullName} (${found.role.toUpperCase()})`);
-    }
-  }, [userProfiles, showToast]);
-
   const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
-    // 1. Supabase Auth denemesi
     const sb = getSupabase();
-    if (sb) {
-      try {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-        if (error) {
-          // Eğer Supabase'de kullanıcı yoksa veya demo modundaysa yerel kontrol yap
-          console.warn('Supabase auth sign in notice:', error.message);
-        } else if (data.user) {
-          const profile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email || email,
-            fullName: data.user.user_metadata?.full_name || email.split('@')[0],
-            role: (data.user.user_metadata?.role as AppRole) || 'admin',
-            status: 'aktif',
-            createdAt: data.user.created_at,
-          };
-          setCurrentUser(profile);
-          setActiveRole(profile.role);
-          saveStored('bv_current_user', profile);
-          logAction('GİRİŞ_YAPILDI', 'Auth', data.user.id, 'Supabase Auth ile oturum açıldı.');
-          return { success: true, message: `Hoş geldiniz, ${profile.fullName}!` };
-        }
-      } catch (err) {
-        console.warn('Supabase auth err:', err);
-      }
+    if (!sb) {
+      return { success: false, message: 'Supabase bağlantısı yapılandırılmamış. Giriş şu anda kullanılamıyor.' };
     }
-
-    // 2. Yerel Profil Kontrolü
-    const matched = userProfiles.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (matched) {
-      setCurrentUser(matched);
-      setActiveRole(matched.role);
-      saveStored('bv_current_user', matched);
-      logAction('GİRİŞ_YAPILDI', 'Auth', matched.id, 'Yerel hesap ile oturum açıldı.');
-      return { success: true, message: `Hoş geldiniz, ${matched.fullName}!` };
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error || !data.user) {
+      return { success: false, message: error?.message || 'Giriş başarısız.' };
     }
-
-    // 3. Otomatik Hızlı Hesap (Eğer bilinmeyen bir e-posta ile giriş istenirse)
-    const newProfile: UserProfile = {
-      id: generateUuid(),
-      email,
-      fullName: email.split('@')[0],
-      role: email.includes('admin') ? 'admin' : email.includes('op') ? 'operator' : 'personel',
+    const profile: UserProfile = {
+      id: data.user.id,
+      email: data.user.email || email,
+      fullName: data.user.user_metadata?.full_name || email.split('@')[0],
+      role: 'personel',
       status: 'aktif',
-      createdAt: new Date().toISOString(),
+      createdAt: data.user.created_at,
     };
-    setUserProfiles((prev) => {
-      const next = [newProfile, ...prev];
-      saveStored('bv_user_profiles', next);
-      return next;
-    });
-    setCurrentUser(newProfile);
-    setActiveRole(newProfile.role);
-    saveStored('bv_current_user', newProfile);
-    logAction('YENİ_KULLANICI_GİRİŞİ', 'Auth', newProfile.id, 'Yeni profil oluşturularak giriş yapıldı.');
-    return { success: true, message: `Giriş başarılı! Rolünüz: ${newProfile.role.toUpperCase()}` };
+    setCurrentUser(profile);
+    setIsAuthenticated(true);
+    setActiveRole(profile.role);
+    saveStored('bv_current_user', profile);
+    logAction('GİRİŞ_YAPILDI', 'Auth', data.user.id, 'Supabase Auth ile oturum açıldı.');
+    return { success: true, message: `Hoş geldiniz, ${profile.fullName}!` };
   };
 
-  const registerUser = async (email: string, pass: string, fullName: string, role: AppRole, phone?: string): Promise<{ success: boolean; message: string }> => {
+  const registerUser = async (email: string, pass: string, fullName: string, phone?: string): Promise<{ success: boolean; message: string }> => {
     const sb = getSupabase();
-    let userId = generateUuid();
-    if (sb) {
-      try {
-        const { data, error } = await sb.auth.signUp({
-          email,
-          password: pass,
-          options: {
-            data: { full_name: fullName, role, phone },
-          },
-        });
-        if (error) {
-          console.warn('Supabase register notice:', error.message);
-        } else if (data.user) {
-          userId = data.user.id;
-        }
-      } catch (err) {
-        console.warn('Supabase register error:', err);
-      }
+    if (!sb) {
+      return { success: false, message: 'Supabase bağlantısı yapılandırılmamış. Üyelik başvurusu gönderilemiyor.' };
     }
-
-    const newProfile: UserProfile = {
-      id: userId,
-      email,
-      fullName,
-      role,
-      phone,
-      status: 'aktif',
-      createdAt: new Date().toISOString(),
-    };
-
-    setUserProfiles((prev) => {
-      const updated = [newProfile, ...prev.filter((u) => u.email !== email)];
-      saveStored('bv_user_profiles', updated);
-      return updated;
-    });
-    setCurrentUser(newProfile);
-    setActiveRole(role);
-    saveStored('bv_current_user', newProfile);
-    logAction('KULLANICI_KAYIT', 'Auth', userId, `${fullName} yeni kullanıcı olarak kaydoldu.`);
-    return { success: true, message: `Kayıt başarılı! ${fullName} olarak oturum açıldı.` };
+    const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: fullName, phone } } });
+    if (error || !data.user) {
+      return { success: false, message: error?.message || 'Üyelik başvurusu oluşturulamadı.' };
+    }
+    if (data.session) await sb.auth.signOut();
+    return { success: true, message: 'Başvurunuz alındı. Kurucu onayından sonra giriş yapabilirsiniz.' };
   };
 
   const logout = useCallback(() => {
@@ -1203,13 +1139,12 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sb) {
       sb.auth.signOut().catch(() => {});
     }
-    // Varsayılan yöneticiye dön
-    const def = userProfiles[0];
-    setCurrentUser(def);
-    setActiveRole(def.role);
-    saveStored('bv_current_user', def);
+    setCurrentUser(GUEST_PROFILE);
+    setIsAuthenticated(false);
+    setActiveRole(GUEST_PROFILE.role);
+    localStorage.removeItem('bv_current_user');
     showToast('Oturum kapatıldı.');
-  }, [userProfiles, showToast]);
+  }, [showToast]);
 
   const updateUserProfile = useCallback((id: string, updates: Partial<UserProfile>) => {
     setUserProfiles((prev) => {
@@ -2788,10 +2723,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <ERPContext.Provider
       value={{
         currentUser,
+        isAuthenticated,
         userProfiles,
         activeRole,
         setActiveRole,
-        switchUser,
         loginWithCredentials,
         registerUser,
         logout,
