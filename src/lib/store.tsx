@@ -35,6 +35,15 @@ import {
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 
+const GUEST_PROFILE: UserProfile = {
+  id: 'guest', email: '', fullName: 'Giriş gerekli', role: 'personel', status: 'pasif', createdAt: new Date(0).toISOString(),
+};
+
+const EMPTY_PERSON: Person = {
+  id: '', employeeNo: '', fullName: '', phone: '', kind: 'operator', status: 'pasif',
+  poolStatus: 'musait', title: '', initials: '', documentsOk: false, certExpiring: false,
+};
+
 interface ERPContextType {
   // Auth & Roles
   currentUser: UserProfile;
@@ -195,547 +204,6 @@ interface ERPContextType {
 
 const ERPContext = createContext<ERPContextType | null>(null);
 
-// Başlangıç Kullanıcı Profilleri
-const INITIAL_PROFILES: UserProfile[] = [
-  {
-    id: 'usr-admin-01',
-    email: 'admin@bizimvinc.com',
-    fullName: 'Ahmet Yılmaz',
-    role: 'admin',
-    phone: '+90 532 100 00 01',
-    department: 'Genel Yönetim',
-    title: 'Genel Müdür / Sistem Yöneticisi',
-    status: 'aktif',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'usr-op-01',
-    email: 'mehmet.kaya@bizimvinc.com',
-    fullName: 'Mehmet Kaya',
-    role: 'operator',
-    phone: '+90 532 200 00 02',
-    department: 'Saha Filosu',
-    title: 'Kule Vinç Baş Operatörü',
-    personnelId: 'p-1',
-    status: 'aktif',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'usr-muh-01',
-    email: 'muhasebe@bizimvinc.com',
-    fullName: 'Canan Demir',
-    role: 'muhasebe',
-    phone: '+90 532 300 00 03',
-    department: 'Finans & Muhasebe',
-    title: 'Mali İşler Sorumlusu',
-    status: 'aktif',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'usr-puan-01',
-    email: 'puantor@bizimvinc.com',
-    fullName: 'Murat Arslan',
-    role: 'puantor',
-    phone: '+90 532 400 00 04',
-    department: 'İnsan Kaynakları',
-    title: 'Saha Puantörü & Vardiya Amiri',
-    status: 'aktif',
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const GUEST_PROFILE: UserProfile = {
-  id: 'guest',
-  email: '',
-  fullName: 'Giriş gerekli',
-  role: 'personel',
-  status: 'pasif',
-  createdAt: new Date(0).toISOString(),
-};
-
-// Başlangıç Personel Listesi
-const INITIAL_PERSONNEL: Person[] = [
-  {
-    id: 'p-1',
-    employeeNo: 'OP-204',
-    fullName: 'Mehmet Kaya',
-    tcNo: '12345678901',
-    phone: '+90 532 200 00 02',
-    email: 'mehmet.kaya@bizimvinc.com',
-    address: 'Ataşehir, İstanbul',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    department: 'Saha Operasyon',
-    salary: 45000,
-    iban: 'TR330006100511123456789001',
-    startDate: '2023-04-15',
-    title: 'Kule Vinç Baş Operatörü',
-    initials: 'MK',
-    cardSlug: 'mehmet-kaya',
-    documentsOk: true,
-    certExpiring: false,
-    userId: 'usr-op-01',
-    createdAt: '2023-04-15T08:00:00Z',
-  },
-  {
-    id: 'p-2',
-    employeeNo: 'OP-118',
-    fullName: 'Ali Demir',
-    tcNo: '23456789012',
-    phone: '+90 533 300 00 02',
-    email: 'ali.demir@bizimvinc.com',
-    address: 'Kartal, İstanbul',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    department: 'Saha Operasyon',
-    salary: 42000,
-    iban: 'TR330006100511123456789002',
-    startDate: '2023-06-01',
-    title: 'Mobil Vinç Operatörü',
-    initials: 'AD',
-    cardSlug: 'ali-demir',
-    documentsOk: true,
-    certExpiring: false,
-    createdAt: '2023-06-01T08:00:00Z',
-  },
-  {
-    id: 'p-3',
-    employeeNo: 'OP-302',
-    fullName: 'Hasan Yılmaz',
-    tcNo: '34567890123',
-    phone: '+90 535 400 00 03',
-    email: 'hasan.yilmaz@bizimvinc.com',
-    kind: 'operator',
-    status: 'aktif',
-    poolStatus: 'musait',
-    department: 'Saha Operasyon',
-    salary: 40000,
-    startDate: '2023-08-10',
-    title: 'Hiyap Vinç Operatörü',
-    initials: 'HY',
-    cardSlug: 'hasan-yilmaz',
-    documentsOk: true,
-    certExpiring: true,
-    createdAt: '2023-08-10T08:00:00Z',
-  },
-  {
-    id: 'p-4',
-    employeeNo: 'YD-101',
-    fullName: 'Burak Can',
-    tcNo: '45678901234',
-    phone: '+90 536 500 00 04',
-    kind: 'yardimci',
-    status: 'aktif',
-    poolStatus: 'gorevli',
-    department: 'Saha Destek',
-    salary: 28000,
-    startDate: '2024-01-10',
-    title: 'Sapan & Rigger Görevlisi',
-    initials: 'BC',
-    cardSlug: 'burak-can',
-    documentsOk: true,
-    certExpiring: false,
-    createdAt: '2024-01-10T08:00:00Z',
-  },
-];
-
-// Başlangıç Vinç Filosu
-const INITIAL_CRANES: Crane[] = [
-  {
-    id: 'cr-1',
-    code: 'V-204',
-    type: 'Mobil Vinç (Liebherr LTM 1100)',
-    status: 'sahada',
-    capacity: '100 ton',
-    operator: 'Mehmet Kaya',
-    site: 'Ataşehir Metro Şantiyesi',
-    lastService: '2026-08-15',
-    lat: 41.0025,
-    lng: 29.1123,
-    createdAt: '2023-01-01T00:00:00Z',
-  },
-  {
-    id: 'cr-2',
-    code: 'V-118',
-    type: 'Paletli Vinç (Tadano GT-750)',
-    status: 'sahada',
-    capacity: '75 ton',
-    operator: 'Ali Demir',
-    site: 'Başakşehir Şehir Hastanesi',
-    lastService: '2026-08-28',
-    lat: 41.0991,
-    lng: 28.7758,
-    createdAt: '2023-02-10T00:00:00Z',
-  },
-  {
-    id: 'cr-3',
-    code: 'V-302',
-    type: 'Hiyap Teleskopik Kamyon Üstü',
-    status: 'musait',
-    capacity: '45 ton',
-    operator: 'Hasan Yılmaz',
-    site: 'Merkez Garaj / İkitelli',
-    lastService: '2026-09-02',
-    lat: 41.0543,
-    lng: 28.7892,
-    createdAt: '2023-03-05T00:00:00Z',
-  },
-  {
-    id: 'cr-4',
-    code: 'V-405',
-    type: 'Kule Vinç (Potain MDT 219)',
-    status: 'bakimda',
-    capacity: '10 ton',
-    operator: 'Atanmadı',
-    site: 'Tuzla Tersane Sahası',
-    lastService: '2026-09-10',
-    lat: 40.8521,
-    lng: 29.2941,
-    createdAt: '2023-04-12T00:00:00Z',
-  },
-];
-
-// Başlangıç Onay Talepleri
-const INITIAL_APPROVALS: Approval[] = [
-  {
-    id: 'ap-1',
-    kind: 'avans',
-    status: 'pending',
-    title: 'Şantiye Yol Masrafı Avansı',
-    personId: 'p-1',
-    personName: 'Mehmet Kaya',
-    personInitials: 'MK',
-    amount: 3500,
-    requestedDate: '2026-09-12',
-    note: 'Ataşehir şantiyesinde gece dökümü için acil yakıt ve konaklama avansı.',
-    createdAt: '2026-09-12T14:30:00Z',
-  },
-  {
-    id: 'ap-2',
-    kind: 'izin',
-    status: 'pending',
-    title: 'Yıllık İzin Talebi',
-    personId: 'p-2',
-    personName: 'Ali Demir',
-    personInitials: 'AD',
-    startDate: '2026-09-20',
-    endDate: '2026-09-24',
-    note: 'Memleket ziyareti için 4 gün izin talep ediyorum.',
-    createdAt: '2026-09-12T16:00:00Z',
-  },
-  {
-    id: 'ap-3',
-    kind: 'mesai',
-    status: 'approved',
-    title: 'Gece Beton Dökümü Mesaisi',
-    personId: 'p-1',
-    personName: 'Mehmet Kaya',
-    personInitials: 'MK',
-    hours: 3.5,
-    note: 'Saat 18:00 - 21:30 arası kalındı. Şantiye şefi teyitli.',
-    approvedBy: 'Ahmet Yılmaz',
-    approvedAt: '2026-09-11T19:00:00Z',
-    createdAt: '2026-09-11T17:45:00Z',
-  },
-];
-
-// Başlangıç Makbuzlar
-const INITIAL_RECEIPTS: Receipt[] = [
-  {
-    id: 'rc-1',
-    receiptNo: 'MK-2026-0891',
-    company: 'Enka İnşaat A.Ş.',
-    amount: 85000,
-    status: 'kesildi',
-    craneCode: 'V-204',
-    site: 'Ataşehir Metro',
-    daysPending: 0,
-    createdAt: '2026-09-10T11:00:00Z',
-  },
-  {
-    id: 'rc-2',
-    receiptNo: 'MK-2026-0892',
-    company: 'Kalyon Altyapı',
-    amount: 140000,
-    status: 'bekliyor',
-    craneCode: 'V-118',
-    site: 'Başakşehir Şehir Hastanesi',
-    daysPending: 3,
-    createdAt: '2026-09-08T15:20:00Z',
-  },
-];
-
-// Başlangıç Masraflar
-const INITIAL_EXPENSES: Expense[] = [
-  {
-    id: 'ex-1',
-    category: 'yakit',
-    title: 'Euro Dizel Yakıt Dolumu (250 Litre)',
-    amount: 11250,
-    craneCode: 'V-204',
-    personName: 'Mehmet Kaya',
-    stationOrSupplier: 'Shell Ataşehir İstasyonu',
-    status: 'aktif',
-    createdAt: '2026-09-12T09:15:00Z',
-  },
-  {
-    id: 'ex-2',
-    category: 'masraf',
-    title: 'Halat & Kanca Yağlama Kiti',
-    amount: 4500,
-    craneCode: 'V-302',
-    personName: 'Hasan Yılmaz',
-    stationOrSupplier: 'Tuzla Hırdavat Ltd.',
-    status: 'aktif',
-    createdAt: '2026-09-11T14:20:00Z',
-  },
-];
-
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'cust-1',
-    title: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    vknTckn: '4920194812',
-    authorizedPerson: 'Mustafa Yıldırım',
-    phone: '+90 212 555 10 20',
-    email: 'muhasebe@kalyon.com',
-    address: 'Ümraniye Finans Merkezi Şantiyesi, İstanbul',
-    taxOffice: 'Kozyatağı V.D.',
-    balance: 185000,
-    createdAt: '2026-08-01T09:00:00Z',
-  },
-  {
-    id: 'cust-2',
-    title: 'Limak İnşaat A.Ş.',
-    vknTckn: '6080219482',
-    authorizedPerson: 'Serdar Kaya',
-    phone: '+90 216 444 30 40',
-    email: 'finans@limak.com.tr',
-    address: 'Sabiha Gökçen Metro Uzatma Şantiyesi, Pendik',
-    taxOffice: 'Kadıköy V.D.',
-    balance: 92000,
-    createdAt: '2026-08-10T10:30:00Z',
-  },
-  {
-    id: 'cust-3',
-    title: 'Tekfen İnşaat ve Tesisat A.Ş.',
-    vknTckn: '8360182741',
-    authorizedPerson: 'Engin Vural',
-    phone: '+90 212 359 00 00',
-    email: 'saha@tekfen.com.tr',
-    address: 'Tuzla Tersane Genişletme Projesi, İstanbul',
-    taxOffice: 'Tuzla V.D.',
-    balance: 45000,
-    createdAt: '2026-08-20T11:00:00Z',
-  },
-];
-
-const INITIAL_SITES: Site[] = [
-  {
-    id: 'site-1',
-    name: 'Finans Merkezi Kule 3',
-    customerId: 'cust-1',
-    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    location: 'Ataşehir / İstanbul',
-    contactPerson: 'Cemil Şantiye Şefi',
-    phone: '+90 532 999 11 22',
-    status: 'aktif',
-    createdAt: '2026-08-01T09:00:00Z',
-  },
-  {
-    id: 'site-2',
-    name: 'Pendik Metro İstasyon Kazısı',
-    customerId: 'cust-2',
-    customerName: 'Limak İnşaat A.Ş.',
-    location: 'Pendik / İstanbul',
-    contactPerson: 'Hakan Şef',
-    phone: '+90 533 888 22 33',
-    status: 'aktif',
-    createdAt: '2026-08-10T10:30:00Z',
-  },
-  {
-    id: 'site-3',
-    name: 'Tuzla Tersane Rıhtım 2',
-    customerId: 'cust-3',
-    customerName: 'Tekfen İnşaat ve Tesisat A.Ş.',
-    location: 'Tuzla / İstanbul',
-    contactPerson: 'Levent Mühendis',
-    phone: '+90 535 777 33 44',
-    status: 'aktif',
-    createdAt: '2026-08-20T11:00:00Z',
-  },
-];
-
-const INITIAL_JOB_RECEIPTS: JobReceipt[] = [
-  {
-    id: 'jrec-1',
-    receiptNo: 'MB-2026-0001',
-    customerId: 'cust-1',
-    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    siteId: 'site-1',
-    siteName: 'Finans Merkezi Kule 3',
-    craneCode: 'V-204',
-    operatorId: 'p-1',
-    operatorName: 'Mehmet Kaya',
-    date: '2026-09-11',
-    startTime: '08:00',
-    endTime: '18:00',
-    workingHours: 10,
-    description: '35 tonluk prefabrik kolon montajı ve çelik kiriş yerleşimi',
-    amount: 38000,
-    status: 'approved',
-    invoiced: false,
-    approvedBy: 'Ahmet Yılmaz',
-    approvedAt: '2026-09-11T19:00:00Z',
-    createdAt: '2026-09-11T18:15:00Z',
-  },
-  {
-    id: 'jrec-2',
-    receiptNo: 'MB-2026-0002',
-    customerId: 'cust-2',
-    customerName: 'Limak İnşaat A.Ş.',
-    siteId: 'site-2',
-    siteName: 'Pendik Metro İstasyon Kazısı',
-    craneCode: 'V-118',
-    operatorId: 'p-2',
-    operatorName: 'Ali Demir',
-    date: '2026-09-12',
-    startTime: '09:00',
-    endTime: '17:00',
-    workingHours: 8,
-    description: 'TBM tünel segmenti indirme ve ağır pompa montajı',
-    amount: 32000,
-    status: 'approved',
-    invoiced: false,
-    approvedBy: 'Ahmet Yılmaz',
-    approvedAt: '2026-09-12T18:00:00Z',
-    createdAt: '2026-09-12T17:30:00Z',
-  },
-  {
-    id: 'jrec-3',
-    receiptNo: 'MB-2026-0003',
-    customerId: 'cust-3',
-    customerName: 'Tekfen İnşaat ve Tesisat A.Ş.',
-    siteId: 'site-3',
-    siteName: 'Tuzla Tersane Rıhtım 2',
-    craneCode: 'V-302',
-    operatorId: 'p-3',
-    operatorName: 'Hasan Yılmaz',
-    date: '2026-09-13',
-    startTime: '08:30',
-    endTime: '16:30',
-    workingHours: 8,
-    description: 'Gemi sacı ve jeneratör bloğu yükleme operasyonu',
-    amount: 24000,
-    status: 'pending_approval',
-    invoiced: false,
-    createdAt: '2026-09-13T06:45:00Z',
-  },
-  {
-    id: 'jrec-4',
-    receiptNo: 'MB-2026-0004',
-    customerId: 'cust-1',
-    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    siteId: 'site-1',
-    siteName: 'Finans Merkezi Kule 3',
-    craneCode: 'V-204',
-    operatorId: 'p-1',
-    operatorName: 'Mehmet Kaya',
-    date: '2026-09-08',
-    startTime: '08:00',
-    endTime: '20:00',
-    workingHours: 12,
-    description: 'Kule vinç bom uzatması ve çelik halat gerdirme mesaisi',
-    amount: 46000,
-    status: 'invoiced',
-    invoiced: true,
-    invoiceId: 'inv-1',
-    invoiceNo: 'FT-2026-0001',
-    approvedBy: 'Ahmet Yılmaz',
-    approvedAt: '2026-09-08T21:00:00Z',
-    createdAt: '2026-09-08T20:30:00Z',
-  },
-];
-
-const INITIAL_INVOICES: Invoice[] = [
-  {
-    id: 'inv-1',
-    invoiceNo: 'FT-2026-0001',
-    customerId: 'cust-1',
-    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    receiptIds: ['jrec-4'],
-    issueDate: '2026-09-09',
-    dueDate: '2026-09-24',
-    subtotal: 46000,
-    taxRate: 20,
-    taxAmount: 9200,
-    totalAmount: 55200,
-    paidAmount: 0,
-    status: 'issued',
-    notes: 'Kule 3 montaj hizmet bedeli faturası',
-    createdAt: '2026-09-09T10:00:00Z',
-  },
-];
-
-const INITIAL_COLLECTIONS: Collection[] = [
-  {
-    id: 'col-1',
-    customerId: 'cust-1',
-    customerName: 'Kalyon İnşaat San. ve Tic. A.Ş.',
-    invoiceId: 'inv-1',
-    invoiceNo: 'FT-2026-0001',
-    amount: 55200,
-    dueDate: '2026-09-24',
-    date: '2026-09-24',
-    paymentMethod: 'havale',
-    status: 'bekliyor',
-    notes: 'Vadesi 24 Eylül olan fatura tahsilatı',
-    createdAt: '2026-09-09T10:05:00Z',
-  },
-];
-
-const INITIAL_PAYMENTS: Payment[] = [
-  {
-    id: 'pay-1',
-    recipientType: 'tedarikci',
-    recipientName: 'Opet Petrolcülük A.Ş.',
-    category: 'yakit',
-    amount: 28500,
-    dueDate: '2026-09-20',
-    paymentMethod: 'havale',
-    status: 'bekliyor',
-    notes: 'Aylık filo mazot cari faturası',
-    createdAt: '2026-09-10T11:00:00Z',
-  },
-  {
-    id: 'pay-2',
-    recipientType: 'tedarikci',
-    recipientName: 'Borusan Cat Servis',
-    category: 'bakim',
-    amount: 14000,
-    dueDate: '2026-09-18',
-    paymentMethod: 'havale',
-    status: 'bekliyor',
-    notes: 'V-118 500 saat periyodik hidrolik bakımı',
-    createdAt: '2026-09-11T15:00:00Z',
-  },
-];
-
-const INITIAL_MEMBERSHIPS: Membership[] = [
-  {
-    id: 'mem-1',
-    userId: 'usr-new-01',
-    userEmail: 'kemal.usta@gmail.com',
-    userFullName: 'Kemal Usta',
-    requestedRole: 'operator',
-    tcHashOrNo: '45678901234',
-    status: 'pending',
-    createdAt: '2026-09-12T14:30:00Z',
-  },
-];
-
 // LocalStorage Yardımcısı
 function loadStored<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -759,7 +227,7 @@ function saveStored<T>(key: string, val: T): void {
 export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Kullanıcı & Auth
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>(() =>
-    loadStored('bv_user_profiles', INITIAL_PROFILES)
+    loadStored('bv_user_profiles', [])
   );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
     Boolean(loadStored<UserProfile | null>('bv_current_user', null))
@@ -772,44 +240,44 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 2. Ana Veri Setleri
   const [personnel, setPersonnel] = useState<Person[]>(() =>
-    loadStored('bv_personnel', INITIAL_PERSONNEL)
+    loadStored('bv_personnel', [])
   );
   const [cranes, setCranes] = useState<Crane[]>(() =>
-    loadStored('bv_cranes', INITIAL_CRANES)
+    loadStored('bv_cranes', [])
   );
   const [approvals, setApprovals] = useState<Approval[]>(() =>
-    loadStored('bv_approvals', INITIAL_APPROVALS)
+    loadStored('bv_approvals', [])
   );
   const [receipts, setReceipts] = useState<Receipt[]>(() =>
-    loadStored('bv_receipts', INITIAL_RECEIPTS)
+    loadStored('bv_receipts', [])
   );
   const [expenses, setExpenses] = useState<Expense[]>(() =>
-    loadStored('bv_expenses', INITIAL_EXPENSES)
+    loadStored('bv_expenses', [])
   );
 
   // 2.1 Cari, Şantiye, Makbuz & Fatura Hattı
   const [customers, setCustomers] = useState<Customer[]>(() =>
-    loadStored('bv_customers', INITIAL_CUSTOMERS)
+    loadStored('bv_customers', [])
   );
   const [sites, setSites] = useState<Site[]>(() =>
-    loadStored('bv_sites', INITIAL_SITES)
+    loadStored('bv_sites', [])
   );
   const [quotes, setQuotes] = useState<Quote[]>(() => loadStored('bv_quotes', []));
   const [contracts, setContracts] = useState<Contract[]>(() => loadStored('bv_contracts', []));
   const [jobReceipts, setJobReceipts] = useState<JobReceipt[]>(() =>
-    loadStored('bv_job_receipts', INITIAL_JOB_RECEIPTS)
+    loadStored('bv_job_receipts', [])
   );
   const [invoices, setInvoices] = useState<Invoice[]>(() =>
-    loadStored('bv_invoices', INITIAL_INVOICES)
+    loadStored('bv_invoices', [])
   );
   const [collections, setCollections] = useState<Collection[]>(() =>
-    loadStored('bv_collections', INITIAL_COLLECTIONS)
+    loadStored('bv_collections', [])
   );
   const [payments, setPayments] = useState<Payment[]>(() =>
-    loadStored('bv_payments', INITIAL_PAYMENTS)
+    loadStored('bv_payments', [])
   );
   const [memberships, setMemberships] = useState<Membership[]>(() =>
-    loadStored('bv_memberships', INITIAL_MEMBERSHIPS)
+    loadStored('bv_memberships', [])
   );
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>(() =>
     loadStored('bv_payroll_runs', [])
@@ -841,33 +309,14 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 4. Denetim & Bildirimler
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() =>
-    loadStored('bv_audit_logs', [
-      {
-        id: 'aud-1',
-        userName: 'Sistem Yöneticisi',
-        userRole: 'admin',
-        action: 'SİSTEM_BAŞLATILDI',
-        module: 'Sistem',
-        details: 'Bizim Vinç ERP üretim çekirdeği devreye alındı.',
-        createdAt: new Date().toISOString(),
-      },
-    ])
+    loadStored('bv_audit_logs', [])
   );
   const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
-    loadStored('bv_notifications', [
-      {
-        id: 'notif-1',
-        title: 'Hoş Geldiniz',
-        message: 'Bizim Vinç ERP operasyon paneline bağlandınız.',
-        type: 'info',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      },
-    ])
+    loadStored('bv_notifications', [])
   );
 
   // UI Durumları
-  const [currentOperatorId, setCurrentOperatorId] = useState<string>('p-1');
+  const [currentOperatorId, setCurrentOperatorId] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
@@ -967,9 +416,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsSyncing(true);
     try {
       // 1. Personel
-      const { data: pData } = await sb.from('personnel').select('*');
-      if (pData && pData.length > 0) {
-        const mapped: Person[] = pData.map((d: any) => ({
+      const { data: pData, error: personnelError } = await sb.from('personnel').select('*');
+      if (personnelError) throw personnelError;
+      {
+        const mapped: Person[] = (pData || []).map((d: any) => ({
           id: d.id,
           employeeNo: d.employee_no || 'OP-000',
           fullName: d.full_name,
@@ -1000,19 +450,25 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 2. Vinçler
-      const { data: cData } = await sb.from('cranes').select('*');
-      if (cData && cData.length > 0) {
-        const mapped: Crane[] = cData.map((d: any) => ({
+      const { data: cData, error: cranesError } = await sb.from('cranes').select('*');
+      if (cranesError) throw cranesError;
+      {
+        const mapped: Crane[] = (cData || []).map((d: any) => ({
           id: d.id,
           code: d.code,
-          type: d.type,
+          type: d.type || d.crane_type || '',
           status: d.status,
           capacity: d.capacity,
-          operator: d.operator,
-          site: d.site,
+          operator: d.operator || d.operator_name,
+          site: d.site || d.site_label,
           lastService: d.last_service || '2026-08-01',
           lat: d.lat || 41.01,
           lng: d.lng || 29.0,
+          meterHours: Number(d.meter_hours) || 0,
+          nextServiceHours: d.next_service_hours,
+          nextServiceDate: d.next_service_date,
+          telemetryProvider: d.telemetry_provider || 'manual',
+          telemetryLastSeen: d.telemetry_last_seen,
           notes: d.notes,
           createdAt: d.created_at,
           updatedAt: d.updated_at,
@@ -1022,9 +478,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 3. Onaylar
-      const { data: aData } = await sb.from('approvals').select('*').order('created_at', { ascending: false });
-      if (aData && aData.length > 0) {
-        const mapped: Approval[] = aData.map((d: any) => ({
+      const { data: aData, error: approvalsError } = await sb.from('approvals').select('*').order('created_at', { ascending: false });
+      if (approvalsError) throw approvalsError;
+      {
+        const mapped: Approval[] = (aData || []).map((d: any) => ({
           id: d.id,
           kind: d.kind,
           status: d.status,
@@ -1053,9 +510,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 4. Makbuzlar
-      const { data: rData } = await sb.from('receipts').select('*').order('created_at', { ascending: false });
-      if (rData && rData.length > 0) {
-        const mapped: Receipt[] = rData.map((d: any) => ({
+      const { data: rData, error: receiptsError } = await sb.from('receipts').select('*').order('created_at', { ascending: false });
+      if (receiptsError) throw receiptsError;
+      {
+        const mapped: Receipt[] = (rData || []).map((d: any) => ({
           id: d.id,
           receiptNo: d.receipt_no,
           company: d.company,
@@ -1072,9 +530,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 5. Masraflar
-      const { data: eData } = await sb.from('expenses').select('*').order('created_at', { ascending: false });
-      if (eData && eData.length > 0) {
-        const mapped: Expense[] = eData.map((d: any) => ({
+      const { data: eData, error: expensesError } = await sb.from('expenses').select('*').order('created_at', { ascending: false });
+      if (expensesError) throw expensesError;
+      {
+        const mapped: Expense[] = (eData || []).map((d: any) => ({
           id: d.id,
           category: d.category,
           title: d.title,
@@ -1091,6 +550,66 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveStored('bv_expenses', mapped);
       }
 
+      const { data: customerData, error: customersError } = await sb.from('customers').select('*').order('created_at', { ascending: false });
+      if (customersError) throw customersError;
+      const mappedCustomers: Customer[] = (customerData || []).map((d: any) => ({
+        id: d.id, title: d.title, name: d.title, vknTckn: d.vkn_tckn, taxNo: d.vkn_tckn,
+        authorizedPerson: d.authorized_person, contactName: d.authorized_person, phone: d.phone || '', email: d.email,
+        address: d.address, taxOffice: d.tax_office, balance: Number(d.balance) || 0, notes: d.notes,
+        createdAt: d.created_at, updatedAt: d.updated_at,
+      }));
+      setCustomers(mappedCustomers); saveStored('bv_customers', mappedCustomers);
+
+      const { data: siteData, error: sitesError } = await sb.from('sites').select('*').order('created_at', { ascending: false });
+      if (sitesError) throw sitesError;
+      const mappedSites: Site[] = (siteData || []).map((d: any) => ({
+        id: d.id, name: d.name, customerId: d.customer_id, customerName: d.customer_name, location: d.location,
+        contactPerson: d.contact_person, contactPhone: d.phone, phone: d.phone, status: d.status, createdAt: d.created_at,
+      }));
+      setSites(mappedSites); saveStored('bv_sites', mappedSites);
+
+      const { data: jobReceiptData, error: jobReceiptsError } = await sb.from('job_receipts').select('*').order('created_at', { ascending: false });
+      if (jobReceiptsError) throw jobReceiptsError;
+      const mappedJobReceipts: JobReceipt[] = (jobReceiptData || []).map((d: any) => ({
+        id: d.id, receiptNo: d.receipt_no, customerId: d.customer_id, customerName: d.customer_name, siteId: d.site_id,
+        siteName: d.site_name, craneCode: d.crane_code, operatorId: d.operator_id, operatorName: d.operator_name,
+        date: d.date, startTime: d.start_time, endTime: d.end_time, workingHours: Number(d.working_hours) || 0,
+        description: d.description, lines: d.lines || [], amount: Number(d.amount) || 0, status: d.status,
+        invoiced: Boolean(d.invoiced), invoiceId: d.invoice_id, invoiceNo: d.invoice_no, approvedBy: d.approved_by,
+        approvedAt: d.approved_at, rejectedBy: d.rejected_by, rejectedAt: d.rejected_at, rejectionReason: d.rejection_reason,
+        note: d.note, createdAt: d.created_at, updatedAt: d.updated_at,
+      }));
+      setJobReceipts(mappedJobReceipts); saveStored('bv_job_receipts', mappedJobReceipts);
+
+      const { data: invoiceData, error: invoicesError } = await sb.from('invoices').select('*').order('created_at', { ascending: false });
+      if (invoicesError) throw invoicesError;
+      const mappedInvoices: Invoice[] = (invoiceData || []).map((d: any) => ({
+        id: d.id, invoiceNo: d.invoice_no, customerId: d.customer_id, customerName: d.customer_name,
+        receiptIds: d.receipt_ids || [], issueDate: d.issue_date, dueDate: d.due_date, subtotal: Number(d.subtotal) || 0,
+        taxRate: Number(d.tax_rate) || 20, taxAmount: Number(d.tax_amount) || 0, totalAmount: Number(d.total_amount) || 0,
+        paidAmount: Number(d.paid_amount) || 0, status: d.status, notes: d.notes, createdAt: d.created_at, updatedAt: d.updated_at,
+      }));
+      setInvoices(mappedInvoices); saveStored('bv_invoices', mappedInvoices);
+
+      const { data: collectionData, error: collectionsError } = await sb.from('collections').select('*').order('created_at', { ascending: false });
+      if (collectionsError) throw collectionsError;
+      const mappedCollections: Collection[] = (collectionData || []).map((d: any) => ({
+        id: d.id, customerId: d.customer_id, customerName: d.customer_name, invoiceId: d.invoice_id, invoiceNo: d.invoice_no,
+        amount: Number(d.amount) || 0, dueDate: d.due_date, date: d.date, paymentMethod: d.payment_method,
+        status: d.status, notes: d.notes, createdAt: d.created_at,
+      }));
+      setCollections(mappedCollections); saveStored('bv_collections', mappedCollections);
+
+      const { data: paymentData, error: paymentsError } = await sb.from('payments').select('*').order('created_at', { ascending: false });
+      if (paymentsError) throw paymentsError;
+      const mappedPayments: Payment[] = (paymentData || []).map((d: any) => ({
+        id: d.id, recipientType: d.recipient_type, recipientId: d.recipient_id, recipientName: d.recipient_name,
+        category: d.category, amount: Number(d.amount) || 0, dueDate: d.due_date, paidDate: d.paid_date,
+        paymentDate: d.payment_date, paymentMethod: d.payment_method, status: d.status, payrollItemId: d.payroll_item_id,
+        notes: d.notes, createdAt: d.created_at,
+      }));
+      setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
+
       setDbConnected(true);
     } catch (err) {
       console.error('Supabase fetch error:', err);
@@ -1101,6 +620,12 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sayfa yüklendiğinde Supabase'i tara
   useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('bv_remote_source_v1')) {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('bv_'))
+        .forEach((key) => localStorage.removeItem(key));
+      localStorage.setItem('bv_remote_source_v1', '1');
+    }
     refreshFromDb();
   }, [refreshFromDb]);
 
@@ -1322,14 +847,16 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const sb = getSupabase();
     if (sb) {
       try {
-        await sb.from('cranes').insert([
+        const { error } = await sb.from('cranes').insert([
           {
             id: newCrane.id,
             code: newCrane.code,
+            crane_type: newCrane.type,
             type: newCrane.type,
             status: newCrane.status,
             capacity: newCrane.capacity,
             operator: newCrane.operator,
+            site_label: newCrane.site,
             site: newCrane.site,
             last_service: newCrane.lastService,
             lat: newCrane.lat,
@@ -1337,6 +864,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             notes: newCrane.notes,
           },
         ]);
+        if (error) throw error;
       } catch (e) {
         console.error('Remote crane insert error:', e);
       }
@@ -1362,7 +890,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (updates.site) payload.site = updates.site;
         if (updates.lat) payload.lat = updates.lat;
         if (updates.lng) payload.lng = updates.lng;
-        await sb.from('cranes').update(payload).eq('id', id);
+        if (updates.type) { payload.type = updates.type; payload.crane_type = updates.type; }
+        if (updates.site) payload.site_label = updates.site;
+        const { error } = await sb.from('cranes').update(payload).eq('id', id);
+        if (error) throw error;
       } catch (e) {
         console.error('Remote crane update error:', e);
       }
@@ -2799,7 +2330,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cranes]);
 
   const currentOperator = useMemo(
-    () => personnel.find((p) => p.id === currentOperatorId) || personnel[0] || INITIAL_PERSONNEL[0],
+    () => personnel.find((p) => p.id === currentOperatorId) || personnel[0] || EMPTY_PERSON,
     [personnel, currentOperatorId]
   );
 
