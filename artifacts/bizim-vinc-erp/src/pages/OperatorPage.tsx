@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
 import {
   CheckCircle,
@@ -25,6 +25,8 @@ function formatErr(e: unknown): string {
   }
   return any.message || any.details || 'İşlem başarısız';
 }
+
+type OfflineAction = { id: string; kind: 'attendance' | 'advance' | 'leave' | 'overtime' | 'receipt' | 'expense'; payload: any; createdAt: string };
 
 export const OperatorPage: React.FC = () => {
   const {
@@ -73,12 +75,42 @@ export const OperatorPage: React.FC = () => {
   const [overtimeType, setOvertimeType] = useState<OvertimeType>('hafta_ici');
   const [overtimeDesc, setOvertimeDesc] = useState('');
 
+  const enqueueOffline = (action: Omit<OfflineAction, 'id' | 'createdAt'>) => {
+    const queue: OfflineAction[] = JSON.parse(localStorage.getItem('bv_offline_queue') || '[]');
+    queue.push({ ...action, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+    localStorage.setItem('bv_offline_queue', JSON.stringify(queue));
+    showToast('Bağlantı yok; talep cihazda kuyruğa alındı, bağlantı gelince tekrar denenecek.');
+  };
+
+  useEffect(() => {
+    if (!myPerson) return;
+    const queue: OfflineAction[] = JSON.parse(localStorage.getItem('bv_offline_queue') || '[]');
+    if (!queue.length) return;
+    let cancelled = false;
+    const replay = async () => {
+      const remaining: OfflineAction[] = [];
+      for (const action of queue) {
+        try {
+          if (action.kind === 'attendance') await (recordAttendance as any)(...action.payload);
+          if (action.kind === 'advance') await (createAdvanceRequest as any)(...action.payload);
+          if (action.kind === 'leave') await (createLeaveRequest as any)(...action.payload);
+          if (action.kind === 'overtime') await (createOvertimeRequest as any)(...action.payload);
+          if (action.kind === 'receipt') await addJobReceipt(action.payload);
+          if (action.kind === 'expense') await addExpense(action.payload);
+        } catch { remaining.push(action); }
+      }
+      if (!cancelled) localStorage.setItem('bv_offline_queue', JSON.stringify(remaining));
+    };
+    void replay();
+    return () => { cancelled = true; };
+  }, [myPerson, recordAttendance, createAdvanceRequest, createLeaveRequest, createOvertimeRequest, addJobReceipt, addExpense]);
+
   const myApprovals = useMemo(() => {
     if (!myPerson) return [];
     return approvals.filter((a) => a.personId === myPerson.id || a.personName === myPerson.fullName);
   }, [approvals, myPerson]);
 
-  const runSafe = async (fn: () => Promise<void>, okMsg?: string) => {
+  const runSafe = async (fn: () => Promise<void>, okMsg?: string, offlineAction?: Omit<OfflineAction, 'id' | 'createdAt'>) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -86,6 +118,7 @@ export const OperatorPage: React.FC = () => {
       if (okMsg) showToast(okMsg);
     } catch (e) {
       console.error(e);
+      if (offlineAction && (e as any)?.message?.toLowerCase().match(/network|fetch|bağlantı|supabase/)) enqueueOffline(offlineAction);
       showToast(`✕ ${formatErr(e)}`);
     } finally {
       setBusy(false);
@@ -97,7 +130,8 @@ export const OperatorPage: React.FC = () => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     await runSafe(
       () => recordAttendance(myPerson.id, status, time),
-      status === 'geldi' ? '✓ Yoklama: Geldi kaydedildi' : '✓ Yoklama: İzinli kaydedildi'
+      status === 'geldi' ? '✓ Yoklama: Geldi kaydedildi' : '✓ Yoklama: İzinli kaydedildi',
+      { kind: 'attendance', payload: [myPerson.id, status, time] }
     );
   };
 
@@ -112,7 +146,7 @@ export const OperatorPage: React.FC = () => {
       await createAdvanceRequest(myPerson.id, advanceAmount, new Date().toISOString().split('T')[0], advanceNote);
       setActiveModal('none');
       setAdvanceNote('');
-    });
+    }, undefined, { kind: 'advance', payload: [myPerson.id, advanceAmount, new Date().toISOString().split('T')[0], advanceNote] });
   };
 
   const handleSendLeave = async (e: React.FormEvent) => {
@@ -126,7 +160,7 @@ export const OperatorPage: React.FC = () => {
       await createLeaveRequest(myPerson.id, leaveType, leaveStart, leaveEnd, leaveDays, leaveDesc);
       setActiveModal('none');
       setLeaveDesc('');
-    });
+    }, undefined, { kind: 'leave', payload: [myPerson.id, leaveType, leaveStart, leaveEnd, leaveDays, leaveDesc] });
   };
 
   const handleSendOvertime = async (e: React.FormEvent) => {
@@ -144,7 +178,7 @@ export const OperatorPage: React.FC = () => {
       );
       setActiveModal('none');
       setOvertimeDesc('');
-    });
+    }, undefined, { kind: 'overtime', payload: [myPerson.id, overtimeDate, overtimeStart, overtimeEnd, overtimeHours, overtimeType, overtimeDesc] });
   };
 
   const handleSendJobReceipt = async (e: React.FormEvent) => {
@@ -174,7 +208,7 @@ export const OperatorPage: React.FC = () => {
       setJobHours(0);
       setJobDescription('');
       setActiveModal('none');
-    }, '✓ İş makbuzu onaya gönderildi');
+    }, '✓ İş makbuzu onaya gönderildi', { kind: 'receipt', payload: { customerId: customer.id, customerName: customer.title, craneCode: crane.code, craneId: crane.id, operatorId: myPerson.id, operatorName: myPerson.fullName, date: new Date().toISOString().slice(0, 10), workingHours: jobHours, amount: 0, status: 'pending_approval', invoiced: false, description: jobDescription || 'Saha işi' } });
   };
 
   const handleSendExpense = async (e: React.FormEvent) => {
@@ -197,7 +231,7 @@ export const OperatorPage: React.FC = () => {
       setExpenseAmount(0);
       setExpenseDetail('');
       setActiveModal('none');
-    }, '✓ Masraf kaydı gönderildi');
+    }, '✓ Masraf kaydı gönderildi', { kind: 'expense', payload: { category: 'masraf', title: 'Operatör saha masrafı', detail: expenseDetail || 'Saha masrafı', amount: expenseAmount, craneCode: cranes[0]?.code, personName: myPerson.fullName, stationOrSupplier: myPerson.fullName } });
   };
 
   if (!myPerson) {
