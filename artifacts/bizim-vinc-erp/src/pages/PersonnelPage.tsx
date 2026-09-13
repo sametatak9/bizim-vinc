@@ -21,6 +21,8 @@ import {
   FileSpreadsheet,
   ArrowRight,
   CreditCard,
+  History,
+  Printer,
   Building2,
   Check,
   X,
@@ -41,9 +43,12 @@ export const PersonnelPage: React.FC = () => {
     payPayrollRun,
     currentUser,
     advances,
+    leaves,
+    approvals,
+    jobReceipts,
   } = useERP();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'attendance' | 'payroll' | 'payments'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'card' | 'attendance' | 'payroll' | 'payments'>('list');
   const [search, setSearch] = useState('');
   const [kindFilter, setKindFilter] = useState<'hepsi' | PersonKind>('hepsi');
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
@@ -60,6 +65,7 @@ export const PersonnelPage: React.FC = () => {
   });
 
   const [isCalculating, setIsCalculating] = useState(false);
+  const [cardPersonId, setCardPersonId] = useState('');
 
   const filtered = personnel.filter((p) => {
     const matchesSearch =
@@ -120,6 +126,18 @@ export const PersonnelPage: React.FC = () => {
   const currentRunItems = currentRun
     ? payrollItems.filter((item) => item.runId === currentRun.id || item.payrollRunId === currentRun.id)
     : [];
+  const selectedCardPerson = personnel.find((p) => p.id === cardPersonId) || personnel[0];
+  const cardHistory = selectedCardPerson ? [
+    ...attendance.filter((item) => item.personId === selectedCardPerson.id).map((item) => ({ date: item.date, type: 'Yoklama', text: item.status, detail: item.note || '' })),
+    ...leaves.filter((item) => item.personId === selectedCardPerson.id).map((item) => ({ date: item.startDate, type: 'İzin', text: `${item.leaveType} (${item.status})`, detail: item.description || '' })),
+    ...advances.filter((item) => item.personId === selectedCardPerson.id).map((item) => ({ date: item.requestDate, type: 'Avans', text: `₺${item.amount.toLocaleString('tr-TR')} (${item.status})`, detail: item.description || '' })),
+    ...overtimes.filter((item) => item.personId === selectedCardPerson.id).map((item) => ({ date: item.date, type: 'Mesai', text: `${item.totalHours} saat (${item.status})`, detail: item.description || '' })),
+    ...approvals.filter((item) => item.personId === selectedCardPerson.id).map((item) => ({ date: item.createdAt.slice(0, 10), type: 'Onay', text: `${item.title} (${item.status})`, detail: item.note || '' })),
+    ...jobReceipts.filter((item) => item.operatorId === selectedCardPerson.id).map((item) => ({ date: item.date, type: 'Makbuz', text: `${item.workingHours} saat · ${item.status}`, detail: item.description || '' })),
+    ...payrollItems.filter((item) => (item.personId || item.personnelId) === selectedCardPerson.id).map((item) => ({ date: item.month || '', type: 'Bordro', text: `₺${item.netSalary.toLocaleString('tr-TR')}`, detail: 'Aylık hakediş' })),
+  ].sort((a, b) => b.date.localeCompare(a.date)) : [];
+
+  const printPersonnelCard = () => window.print();
 
   return (
     <main className="space-y-6 animate-in fade-in duration-150" id="personnel-page">
@@ -161,6 +179,18 @@ export const PersonnelPage: React.FC = () => {
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white">
               {personnel.length}
             </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('card')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              activeTab === 'card'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-emerald-50 border border-emerald-100'
+            }`}
+          >
+            <History size={14} />
+            <span>Personel Kart</span>
           </button>
 
           <button
@@ -404,6 +434,29 @@ export const PersonnelPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: PERSONEL KART ARŞİVİ */}
+      {activeTab === 'card' && (
+        <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs p-5 space-y-5 print:shadow-none print:border-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-100 pb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Personel Kartı — Kronolojik Arşiv</h2>
+              <p className="text-xs text-slate-500 mt-1">İzin, yoklama, mesai, avans, onay, makbuz ve bordro hareketleri.</p>
+            </div>
+            <button onClick={printPersonnelCard} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold print:hidden"><Printer size={14} /> PDF / HTML yazdır</button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select value={cardPersonId || selectedCardPerson?.id || ''} onChange={(e) => setCardPersonId(e.target.value)} className="flex-1 px-3 py-2 border border-emerald-200 rounded-xl text-sm">
+              {personnel.map((person) => <option key={person.id} value={person.id}>{person.fullName} — {person.status === 'aktif' ? 'Aktif' : 'Pasif'}</option>)}
+            </select>
+            <div className="flex items-center gap-2 text-xs text-slate-500"><span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">Aktif: {personnel.filter((p) => p.status === 'aktif').length}</span><span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600">Pasif: {personnel.filter((p) => p.status === 'pasif').length}</span></div>
+          </div>
+          {selectedCardPerson && <div className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4"><div className="font-bold text-emerald-950">{selectedCardPerson.fullName}</div><div className="text-xs text-slate-600 mt-1">{selectedCardPerson.title} · {selectedCardPerson.employeeNo} · Maaş: ₺{(selectedCardPerson.salary || 0).toLocaleString('tr-TR')}</div></div>}
+          <div className="space-y-2">
+            {cardHistory.length === 0 ? <div className="p-8 text-center text-xs text-slate-500">Bu personel için henüz kayıtlı geçmiş yok.</div> : cardHistory.map((entry, index) => <div key={`${entry.type}-${entry.date}-${index}`} className="flex gap-3 border-l-2 border-emerald-200 pl-4 py-2"><div className="w-20 shrink-0 text-[11px] font-mono text-slate-500">{entry.date}</div><div><div className="text-xs font-bold text-emerald-800">{entry.type}</div><div className="text-sm text-slate-800">{entry.text}</div>{entry.detail && <div className="text-xs text-slate-500">{entry.detail}</div>}</div></div>)}
           </div>
         </div>
       )}
