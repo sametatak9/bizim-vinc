@@ -2,12 +2,9 @@ services:
   - type: web
     name: bizim-vinc-erp
     runtime: static
-    buildCommand: npm --prefix artifacts/bizim-vinc-erp install --legacy-peer-deps && npm --prefix artifacts/bizim-vinc-erp run build
+    buildCommand: cd artifacts/bizim-vinc-erp && npm install --legacy-peer-deps && npm run build
     staticPublishPath: artifacts/bizim-vinc-erp/dist/public
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    envVars:
-      - key: VITE_SUPABASE_URL
-        value: https://jimywfjufmrpgnjynhkx.supabase.co
