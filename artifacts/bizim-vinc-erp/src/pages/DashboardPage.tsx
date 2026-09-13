@@ -128,18 +128,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       </div>
 
       {/* 6 Top KPIs */}
-      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" aria-label="Operasyonel Özet">
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" aria-label="Operasyonel Özet">
         <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-xs" id="kpi-revenue">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">Bugünkü Ciro</span>
           <strong className="text-xl font-mono font-black text-emerald-950 mt-1 block">
             {stats.todayRevenue.toLocaleString('tr-TR')} ₺
-          </strong>
-        </div>
-
-        <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-xs" id="kpi-cut-receipts">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block">Kesilen Makbuz</span>
-          <strong className="text-xl font-mono font-black text-slate-900 mt-1 block">
-            {stats.cutReceiptsCount} adet
           </strong>
         </div>
 

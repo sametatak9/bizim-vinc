@@ -30,6 +30,7 @@ export const InvoiceReceiptPage: React.FC = () => {
     cranes,
     currentUser,
     addJobReceipt,
+    addCustomer,
     approveJobReceipt,
     rejectJobReceipt,
     createInvoiceFromReceipts,
@@ -64,6 +65,19 @@ export const InvoiceReceiptPage: React.FC = () => {
   const [wFrom, setWFrom] = useState('');
   const [wTo, setWTo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [newCustomerOpen, setNewCustomerOpen] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerTaxNo, setNewCustomerTaxNo] = useState('');
+
+  const createCustomerForDocument = async () => {
+    if (!newCustomerName.trim()) return showToast('Cari ünvanı zorunludur.');
+    try {
+      const customer = await addCustomer({ title: newCustomerName.trim(), name: newCustomerName.trim(), vknTckn: newCustomerTaxNo.trim() || undefined, taxNo: newCustomerTaxNo.trim() || undefined, phone: '', type: 'musteri', balance: 0 });
+      setWCustomer(customer.id);
+      setNewCustomerName(''); setNewCustomerTaxNo(''); setNewCustomerOpen(false);
+      showToast('✓ Cari oluşturuldu ve belgeye seçildi.');
+    } catch (error) { showToast(`Cari oluşturulamadı: ${error instanceof Error ? error.message : 'Supabase hatası'}`); }
+  };
 
   const filteredReceipts = useMemo(() => {
     let list = [...jobReceipts];
@@ -529,6 +543,8 @@ export const InvoiceReceiptPage: React.FC = () => {
                     <option key={c.id} value={c.id}>{c.title || c.name}</option>
                   ))}
                 </select>
+                <button type="button" onClick={() => setNewCustomerOpen((value) => !value)} className="text-xs font-bold text-emerald-700">+ Yeni cari oluştur</button>
+                {newCustomerOpen && <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2"><input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Cari / firma ünvanı *" className="w-full border border-emerald-200 rounded-lg px-3 py-2 text-sm" /><input value={newCustomerTaxNo} onChange={(e) => setNewCustomerTaxNo(e.target.value)} placeholder="Vergi no (opsiyonel)" className="w-full border border-emerald-200 rounded-lg px-3 py-2 text-sm" /><button type="button" onClick={createCustomerForDocument} className="w-full rounded-lg bg-emerald-600 text-white py-2 text-xs font-bold">Cariyi Kaydet ve Seç</button></div>}
                 <label className="block text-xs font-semibold">Vinç (opsiyonel)</label>
                 <select value={wCrane} onChange={(e) => setWCrane(e.target.value)} className="w-full border border-emerald-200 rounded-xl px-3 py-2.5 text-sm">
                   <option value="">Genel</option>
