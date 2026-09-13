@@ -15,6 +15,11 @@ export default defineConfig({
     outDir: 'dist/public',
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext',
+    },
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',
