@@ -789,12 +789,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!sb) throw new Error('Supabase bağlantısı yok. Personel yalnızca remote veritabanında güncellenebilir.');
     const payload: any = { updated_at: new Date().toISOString() };
         if (updates.fullName) payload.full_name = updates.fullName;
+        if (updates.employeeNo) payload.employee_no = updates.employeeNo;
         if (updates.phone) payload.phone = updates.phone;
+        if (updates.kind) payload.kind = updates.kind;
         if (updates.status) payload.status = updates.status;
         if (updates.poolStatus) payload.pool_status = updates.poolStatus;
         if (updates.salary !== undefined) payload.salary = updates.salary;
+        if (updates.startDate !== undefined) payload.start_date = updates.startDate || null;
         if (updates.title) payload.title = updates.title;
-        if (updates.endDate) payload.end_date = updates.endDate;
+        if (updates.endDate !== undefined) payload.end_date = updates.endDate || null;
         if (updates.notes !== undefined) payload.notes = updates.notes;
     const { error: updateError } = await sb.from('personnel').update(payload).eq('id', id);
     if (updateError) {
