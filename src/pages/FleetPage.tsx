@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useERP } from '../lib/store';
 import { Crane, CraneStatus } from '../types';
 import { CraneModal } from '../components/CraneModal';
-import { Plus, Search, Truck, MapPin, User, Wrench, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Truck, MapPin, User, Wrench, AlertTriangle, History, Printer } from 'lucide-react';
 
 export const FleetPage: React.FC = () => {
-  const { cranes, updateCraneStatus } = useERP();
+  const { cranes, updateCraneStatus, jobReceipts, expenses, approvals } = useERP();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'hepsi' | CraneStatus>('hepsi');
   const [selectedCrane, setSelectedCrane] = useState<Crane | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [historyCraneId, setHistoryCraneId] = useState<string | null>(null);
 
   const filtered = cranes.filter((c) => {
     const matchesSearch =
@@ -40,6 +41,14 @@ export const FleetPage: React.FC = () => {
   const handleQuickStatusChange = (id: string, newStatus: CraneStatus) => {
     updateCraneStatus(id, newStatus);
   };
+
+  const selectedHistoryCrane = cranes.find((crane) => crane.id === historyCraneId);
+  const craneHistory = selectedHistoryCrane ? [
+    ...jobReceipts.filter((item) => item.craneId === selectedHistoryCrane.id || item.craneCode === selectedHistoryCrane.code).map((item) => ({ date: item.date, type: 'İş Makbuzu', text: `${item.workingHours} saat · ${item.status}`, detail: item.description || item.customerName })),
+    ...expenses.filter((item) => item.craneCode === selectedHistoryCrane.code).map((item) => ({ date: item.createdAt.slice(0, 10), type: item.category === 'yakit' ? 'Yakıt' : 'Masraf', text: `₺${item.amount.toLocaleString('tr-TR')}`, detail: item.detail || item.title })),
+    ...approvals.filter((item) => item.relatedLabel?.includes(selectedHistoryCrane.code)).map((item) => ({ date: item.createdAt.slice(0, 10), type: 'Onay', text: `${item.title} (${item.status})`, detail: item.note || '' })),
+    { date: selectedHistoryCrane.lastService, type: 'Bakım', text: 'Son periyodik bakım', detail: selectedHistoryCrane.status },
+  ].sort((a, b) => b.date.localeCompare(a.date)) : [];
 
   return (
     <main className="cmd-page" id="fleet-page">
@@ -200,12 +209,13 @@ export const FleetPage: React.FC = () => {
 
                   {/* Actions */}
                   <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => handleEdit(crane)}
+                        <button
+                          onClick={() => handleEdit(crane)}
                       className="px-3 py-1.5 border border-emerald-200 text-emerald-800 hover:bg-emerald-50 rounded-lg text-xs font-bold transition"
-                    >
-                      Düzenle
-                    </button>
+                        >
+                          Düzenle
+                        </button>
+                        <button onClick={() => setHistoryCraneId(crane.id)} className="ml-1 px-3 py-1.5 border border-sky-200 text-sky-800 hover:bg-sky-50 rounded-lg text-xs font-bold transition">Geçmiş</button>
                   </td>
                 </tr>
               ))}
@@ -221,6 +231,16 @@ export const FleetPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {selectedHistoryCrane && (
+        <section className="bg-white border border-sky-100 rounded-2xl shadow-xs p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-sky-100 pb-3">
+            <div><h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><History size={17} className="text-sky-700" /> {selectedHistoryCrane.code} Operasyon Geçmişi</h2><p className="text-xs text-slate-500 mt-1">İş, yakıt, masraf, bakım ve onay kayıtları.</p></div>
+            <div className="flex gap-2"><button onClick={() => window.print()} className="p-2 rounded-lg bg-sky-50 text-sky-800 print:hidden" title="Yazdır / PDF"><Printer size={14} /></button><button onClick={() => setHistoryCraneId(null)} className="px-2 py-1 rounded-lg text-xs text-slate-500 print:hidden">Kapat</button></div>
+          </div>
+          {craneHistory.length === 0 ? <div className="p-8 text-center text-xs text-slate-500">Bu vinç için henüz operasyon geçmişi yok.</div> : <div className="space-y-2">{craneHistory.map((entry, index) => <div key={`${entry.type}-${entry.date}-${index}`} className="flex gap-3 border-l-2 border-sky-200 pl-4 py-2"><div className="w-20 shrink-0 text-[11px] font-mono text-slate-500">{entry.date}</div><div><div className="text-xs font-bold text-sky-800">{entry.type}</div><div className="text-sm text-slate-800">{entry.text}</div>{entry.detail && <div className="text-xs text-slate-500">{entry.detail}</div>}</div></div>)}</div>}
+        </section>
+      )}
 
       <CraneModal
         crane={selectedCrane}
