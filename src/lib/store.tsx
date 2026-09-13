@@ -625,6 +625,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .filter((key) => key.startsWith('bv_'))
         .forEach((key) => localStorage.removeItem(key));
       localStorage.setItem('bv_remote_source_v1', '1');
+      setUserProfiles([]);
+      setIsAuthenticated(false);
+      setCurrentUser(GUEST_PROFILE);
+      setActiveRole(GUEST_PROFILE.role);
+      setPersonnel([]);
+      setCranes([]);
+      setApprovals([]);
+      setReceipts([]);
+      setExpenses([]);
+      setCustomers([]);
+      setSites([]);
+      setQuotes([]);
+      setContracts([]);
+      setJobReceipts([]);
+      setInvoices([]);
+      setCollections([]);
+      setPayments([]);
+      setMemberships([]);
     }
     refreshFromDb();
   }, [refreshFromDb]);
