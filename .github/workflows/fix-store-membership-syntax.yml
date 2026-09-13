@@ -11,50 +11,26 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Patch requestMembership + sync OperatorPage to artifacts
+      - name: Patch store requestMembership
         run: |
           set -e
-          python3 << 'PY'
+          python3 -c '
           from pathlib import Path
           for sp in ["src/lib/store.tsx", "artifacts/bizim-vinc-erp/src/lib/store.tsx"]:
-              p = Path(sp)
-              if not p.exists():
-                  print("skip", sp)
-                  continue
-              t = p.read_text()
-              bad = """  ): Promise<{
-    // KVKK: never send plaintext TC
-    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;
- success: boolean; message: string }> => {
-    const id = generateUuid();
-
-    // Personel TC eşleştirmesi ara
-    let matchedPerson = personnel.find((p) => p.tcNo === tcNoOrHash || p.id === personnelId);"""
-              good = """  ): Promise<{ success: boolean; message: string }> => {
-    // KVKK: never send plaintext TC
-    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;
-    const id = generateUuid();
-
-    // Personel TC / id eşleştirmesi
-    let matchedPerson = personnel.find((p) => p.tcNo === tcNoOrHash || p.id === personnelId);"""
-              if bad in t:
-                  t = t.replace(bad, good, 1)
-                  print("FIXED", sp)
-              else:
-                  print("pattern miss", sp)
-              p.write_text(t)
-          src = Path("src/pages/OperatorPage.tsx")
-          if src.exists() and "PLACEHOLDER" not in src.read_text()[:30]:
-              dest = Path("artifacts/bizim-vinc-erp/src/pages/OperatorPage.tsx")
-              dest.parent.mkdir(parents=True, exist_ok=True)
-              dest.write_text(src.read_text())
-              print("synced OperatorPage to artifacts")
-          PY
+            p = Path(sp)
+            if not p.exists():
+              continue
+            t = p.read_text()
+            a = "): Promise<{\n    // KVKK: never send plaintext TC\n    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;\n success: boolean; message: string }> => {\n    const id = generateUuid();"
+            b = "): Promise<{ success: boolean; message: string }> => {\n    // KVKK: never send plaintext TC\n    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;\n    const id = generateUuid();"
+            if a in t:
+              p.write_text(t.replace(a, b, 1))
+              print("FIXED", sp)
+            else:
+              print("NOMATCH", sp)
+          '
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git status
-          git diff --staged --quiet || git commit -m "fix(store): requestMembership TC-hash sözdizimi + OperatorPage artifacts sync (P0-A)"
-          git push origin HEAD:main
+          git diff --staged --quiet || git commit -m "fix(store): requestMembership TC-hash syntax (P0-A)"
+          git push
