@@ -260,7 +260,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({ isOpen, onClose })
                       {t.exists ? (
                         <CheckCircle size={14} className="text-emerald-600 shrink-0" />
                       ) : (
-                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                        <AlertTriangle size={14} className="text-emerald-600 shrink-0" />
                       )}
                       <span className="font-semibold">{t.nameTr}</span>
                     </div>

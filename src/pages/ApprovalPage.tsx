@@ -83,16 +83,16 @@ export const ApprovalPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-100">Onay & Karar Merkezi</h1>
-                <p className="text-xs text-neutral-400">
+                <h1 className="text-xl font-bold text-emerald-950">Onay & Karar Merkezi</h1>
+                <p className="text-xs text-slate-600">
                   Avans, mesai, izin, yakıt ve saha teslimat taleplerinin tek ekrandan yönetimi
                 </p>
               </div>
@@ -102,7 +102,7 @@ export const ApprovalPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10"
             >
               <Plus className="w-4 h-4" />
               <span>Yeni Talep Aç</span>
@@ -116,23 +116,23 @@ export const ApprovalPage: React.FC = () => {
             onClick={() => setStatusFilter('pending')}
             className={`p-4 rounded-xl border text-left transition ${
               statusFilter === 'pending'
-                ? 'bg-amber-500/10 border-amber-500 text-neutral-100'
-                : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-950'
+                : 'bg-emerald-50 border-emerald-100 text-slate-600 hover:border-neutral-700'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold">Onay Bekleyenler</span>
-              <Clock className="w-4 h-4 text-amber-500" />
+              <Clock className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-bold text-amber-400 font-mono">{pendingCount}</div>
+            <div className="text-2xl font-bold text-emerald-600 font-mono">{pendingCount}</div>
           </button>
 
           <button
             onClick={() => setStatusFilter('approved')}
             className={`p-4 rounded-xl border text-left transition ${
               statusFilter === 'approved'
-                ? 'bg-emerald-500/10 border-emerald-500 text-neutral-100'
-                : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-950'
+                : 'bg-emerald-50 border-emerald-100 text-slate-600 hover:border-neutral-700'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
@@ -146,8 +146,8 @@ export const ApprovalPage: React.FC = () => {
             onClick={() => setStatusFilter('rejected')}
             className={`p-4 rounded-xl border text-left transition ${
               statusFilter === 'rejected'
-                ? 'bg-rose-500/10 border-rose-500 text-neutral-100'
-                : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                ? 'bg-rose-500/10 border-rose-500 text-emerald-950'
+                : 'bg-emerald-50 border-emerald-100 text-slate-600 hover:border-neutral-700'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
@@ -159,8 +159,8 @@ export const ApprovalPage: React.FC = () => {
         </div>
 
         {/* Kind Filters */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-neutral-800 text-xs">
-          <span className="text-neutral-500 flex items-center gap-1 mr-1">
+        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-emerald-100 text-xs">
+          <span className="text-slate-500 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5" /> Kategori:
           </span>
           {(['all', 'avans', 'izin', 'mesai', 'yoklama', 'makbuz', 'yakit', 'genel'] as const).map((k) => (
@@ -170,7 +170,7 @@ export const ApprovalPage: React.FC = () => {
               className={`px-3 py-1 rounded-lg font-medium transition capitalize ${
                 kindFilter === k
                   ? 'bg-neutral-100 text-neutral-900 font-bold'
-                  : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+                  : 'bg-emerald-50 text-slate-600 hover:text-emerald-950'
               }`}
             >
               {k === 'all' ? 'Tümü' : k}
@@ -182,7 +182,7 @@ export const ApprovalPage: React.FC = () => {
       {/* Approvals List */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-12 text-center text-xs text-neutral-400">
+          <div className="bg-white border border-emerald-100 rounded-2xl p-12 text-center text-xs text-slate-600">
             Filtreleme kriterlerinize uygun onay talebi bulunamadı.
           </div>
         ) : (
@@ -195,28 +195,28 @@ export const ApprovalPage: React.FC = () => {
               <div
                 key={item.id}
                 onClick={() => handleOpenReview(item)}
-                className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-4 transition cursor-pointer shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="bg-white border border-emerald-100 hover:border-neutral-700 rounded-2xl p-4 transition cursor-pointer shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-xs shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 font-bold flex items-center justify-center text-xs shrink-0">
                     {item.personInitials || 'OP'}
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-neutral-100">{item.title}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full uppercase font-mono font-bold bg-neutral-800 text-neutral-400">
+                      <span className="font-semibold text-sm text-emerald-950">{item.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full uppercase font-mono font-bold bg-emerald-50 text-slate-600">
                         {item.kind}
                       </span>
                     </div>
 
-                    <div className="text-xs text-neutral-400">
-                      Talep Eden: <strong className="text-neutral-300">{item.personName}</strong>
+                    <div className="text-xs text-slate-600">
+                      Talep Eden: <strong className="text-emerald-900">{item.personName}</strong>
                       {item.amount ? ` • ₺${item.amount.toLocaleString('tr-TR')}` : ''}
                       {item.hours ? ` • ${item.hours} Saat` : ''}
                       {item.startDate ? ` • ${item.startDate} - ${item.endDate}` : ''}
                     </div>
 
-                    {item.note && <div className="text-xs text-neutral-500">"{item.note}"</div>}
+                    {item.note && <div className="text-xs text-slate-500">"{item.note}"</div>}
 
                     {item.rejectionReason && (
                       <div className="text-xs text-rose-400 font-medium">
@@ -224,7 +224,7 @@ export const ApprovalPage: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="text-[11px] text-neutral-500">
+                    <div className="text-[11px] text-slate-500">
                       {new Date(item.createdAt).toLocaleString('tr-TR')}
                     </div>
                   </div>
@@ -281,15 +281,15 @@ export const ApprovalPage: React.FC = () => {
       {/* New Approval Request Modal */}
       {isNewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold">Yeni Onay Talebi Oluştur</h3>
             <form onSubmit={handleCreateNew} className="space-y-3.5">
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">Talep Türü *</label>
+                <label className="block text-xs text-emerald-900 mb-1">Talep Türü *</label>
                 <select
                   value={newKind}
                   onChange={(e) => setNewKind(e.target.value as ApprovalKind)}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-100 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-950 focus:outline-none"
                 >
                   <option value="avans">Avans</option>
                   <option value="izin">İzin</option>
@@ -301,11 +301,11 @@ export const ApprovalPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">İlgili Personel *</label>
+                <label className="block text-xs text-emerald-900 mb-1">İlgili Personel *</label>
                 <select
                   value={newPersonId}
                   onChange={(e) => setNewPersonId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-100 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-950 focus:outline-none"
                 >
                   {personnel.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -316,49 +316,49 @@ export const ApprovalPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">Başlık *</label>
+                <label className="block text-xs text-emerald-900 mb-1">Başlık *</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Örn: Şantiye Avans Talebi"
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-100 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-950 focus:outline-none"
                 />
               </div>
 
               {newKind === 'avans' && (
                 <div>
-                  <label className="block text-xs text-neutral-300 mb-1">Tutar (₺)</label>
+                  <label className="block text-xs text-emerald-900 mb-1">Tutar (₺)</label>
                   <input
                     type="number"
                     value={newAmount}
                     onChange={(e) => setNewAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs font-bold text-amber-400 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs font-bold text-emerald-600 focus:outline-none"
                   />
                 </div>
               )}
 
               {newKind === 'mesai' && (
                 <div>
-                  <label className="block text-xs text-neutral-300 mb-1">Mesai Saati</label>
+                  <label className="block text-xs text-emerald-900 mb-1">Mesai Saati</label>
                   <input
                     type="number"
                     step="0.5"
                     value={newHours}
                     onChange={(e) => setNewHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs font-bold text-amber-400 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs font-bold text-emerald-600 focus:outline-none"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">Açıklama / Not</label>
+                <label className="block text-xs text-emerald-900 mb-1">Açıklama / Not</label>
                 <textarea
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-100 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-950 focus:outline-none"
                 />
               </div>
 
@@ -366,13 +366,13 @@ export const ApprovalPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsNewModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-neutral-400 hover:text-neutral-200 bg-neutral-800 transition"
+                  className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:text-emerald-950 bg-emerald-50 transition"
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition"
                 >
                   Talebi Kaydet
                 </button>

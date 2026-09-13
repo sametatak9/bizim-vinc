@@ -92,16 +92,16 @@ export const PuantajPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header & Controls */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-100">Puantaj & Devam Takip Merkezi</h1>
-                <p className="text-xs text-neutral-400">
+                <h1 className="text-xl font-bold text-emerald-950">Puantaj & Devam Takip Merkezi</h1>
+                <p className="text-xs text-slate-600">
                   Yoklama, mesai ve izinlerin otomatik hakedişe dönüştürülmesi ve dönem kilitleme
                 </p>
               </div>
@@ -110,13 +110,13 @@ export const PuantajPage: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Month Selector */}
-            <div className="flex items-center bg-neutral-950 border border-neutral-800 rounded-xl px-2 py-1">
-              <span className="text-xs text-neutral-400 mr-2 pl-1">Dönem:</span>
+            <div className="flex items-center bg-emerald-50 border border-emerald-100 rounded-xl px-2 py-1">
+              <span className="text-xs text-slate-600 mr-2 pl-1">Dönem:</span>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-emerald-950 focus:outline-none cursor-pointer"
               />
             </div>
 
@@ -136,7 +136,7 @@ export const PuantajPage: React.FC = () => {
               {(activeRole === 'admin' || activeRole === 'muhasebe') && (
                 <button
                   onClick={() => setShowLockModal(true)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition border border-neutral-700 flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-neutral-700 text-emerald-950 transition border border-neutral-700 flex items-center gap-1"
                 >
                   {isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                   {isLocked ? 'Kilidi Aç' : 'Dönemi Kilitle'}
@@ -148,7 +148,7 @@ export const PuantajPage: React.FC = () => {
             <button
               onClick={handleAutoGenerate}
               disabled={isLocked}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10 disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-amber-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-amber-500/10 disabled:opacity-50"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Otomatik Puantajı Derle</span>
@@ -156,7 +156,7 @@ export const PuantajPage: React.FC = () => {
 
             <button
               onClick={exportCSV}
-              className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 transition"
+              className="p-2 rounded-xl bg-emerald-50 hover:bg-neutral-700 text-emerald-900 border border-neutral-700 transition"
               title="CSV İndir"
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -178,13 +178,13 @@ export const PuantajPage: React.FC = () => {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-800 mt-5 text-xs font-medium">
+        <div className="flex border-b border-emerald-100 mt-5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('puantaj')}
             className={`pb-2.5 px-4 transition border-b-2 ${
               activeTab === 'puantaj'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
             }`}
           >
             Aylık Puantaj Çetelesi ({currentMonthRecords.length || personnel.length})
@@ -193,8 +193,8 @@ export const PuantajPage: React.FC = () => {
             onClick={() => setActiveTab('yoklama')}
             className={`pb-2.5 px-4 transition border-b-2 ${
               activeTab === 'yoklama'
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
             }`}
           >
             Günlük Yoklama & Giriş-Çıkış
@@ -204,22 +204,22 @@ export const PuantajPage: React.FC = () => {
 
       {/* TAB 1: AYLIK PUANTAJ ÇETELESİ */}
       {activeTab === 'puantaj' && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/40">
-            <div className="text-xs text-neutral-400">
-              Personel Hakediş ve Mesai Tablosu — <strong className="text-neutral-200">{selectedMonth}</strong>
+        <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/40">
+            <div className="text-xs text-slate-600">
+              Personel Hakediş ve Mesai Tablosu — <strong className="text-emerald-950">{selectedMonth}</strong>
             </div>
-            <div className="text-xs text-neutral-400 flex items-center gap-4">
-              <span>Toplam Aktif Personel: <strong className="text-neutral-200">{personnel.filter((p) => p.status === 'aktif').length}</strong></span>
-              <span>Toplam Mesai Saati: <strong className="text-amber-400">
+            <div className="text-xs text-slate-600 flex items-center gap-4">
+              <span>Toplam Aktif Personel: <strong className="text-emerald-950">{personnel.filter((p) => p.status === 'aktif').length}</strong></span>
+              <span>Toplam Mesai Saati: <strong className="text-emerald-600">
                 {currentMonthRecords.reduce((sum, r) => sum + r.overtimeHours, 0)} sa
               </strong></span>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-300">
-              <thead className="bg-neutral-950 text-neutral-400 font-semibold border-b border-neutral-800 uppercase tracking-wider text-[11px]">
+            <table className="w-full text-left text-xs text-emerald-900">
+              <thead className="bg-emerald-50 text-slate-600 font-semibold border-b border-emerald-100 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Sicil & Personel</th>
                   <th className="py-3 px-4">Görev / Unvan</th>
@@ -247,56 +247,56 @@ export const PuantajPage: React.FC = () => {
                     const isEditing = editingRecordId === p.id;
 
                     return (
-                      <tr key={p.id} className="hover:bg-neutral-800/30 transition">
+                      <tr key={p.id} className="hover:bg-emerald-50/30 transition">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-neutral-800 text-neutral-300 font-bold flex items-center justify-center text-[10px]">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-900 font-bold flex items-center justify-center text-[10px]">
                               {p.initials}
                             </div>
                             <div>
-                              <div className="font-semibold text-neutral-100">{p.fullName}</div>
-                              <div className="text-[11px] text-neutral-500 font-mono">{p.employeeNo}</div>
+                              <div className="font-semibold text-emerald-950">{p.fullName}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">{p.employeeNo}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-neutral-400">{p.title}</td>
+                        <td className="py-3 px-4 text-slate-600">{p.title}</td>
                         <td className="py-3 px-3 text-center">
                           {isEditing ? (
                             <input
                               type="number"
                               value={editWorkDays}
                               onChange={(e) => setEditWorkDays(Number(e.target.value))}
-                              className="w-14 px-1.5 py-0.5 bg-neutral-950 border border-neutral-700 rounded text-center text-xs text-neutral-100"
+                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-neutral-700 rounded text-center text-xs text-emerald-950"
                             />
                           ) : (
-                            <span className="font-medium text-neutral-200">{workDays} gün</span>
+                            <span className="font-medium text-emerald-950">{workDays} gün</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center font-mono text-neutral-300">{normalHours} sa</td>
+                        <td className="py-3 px-3 text-center font-mono text-emerald-900">{normalHours} sa</td>
                         <td className="py-3 px-3 text-center">
                           {isEditing ? (
                             <input
                               type="number"
                               value={editOtHours}
                               onChange={(e) => setEditOtHours(Number(e.target.value))}
-                              className="w-14 px-1.5 py-0.5 bg-neutral-950 border border-neutral-700 rounded text-center text-xs text-amber-400"
+                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-neutral-700 rounded text-center text-xs text-emerald-600"
                             />
                           ) : otHours > 0 ? (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
                               +{otHours} sa
                             </span>
                           ) : (
-                            <span className="text-neutral-500">-</span>
+                            <span className="text-slate-500">-</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center text-neutral-400">
+                        <td className="py-3 px-3 text-center text-slate-600">
                           {leaveDays > 0 ? <span className="text-sky-400 font-semibold">{leaveDays} gün</span> : '-'}
                         </td>
-                        <td className="py-3 px-3 text-center text-neutral-400">
+                        <td className="py-3 px-3 text-center text-slate-600">
                           {sickDays > 0 ? <span className="text-rose-400 font-semibold">{sickDays} gün</span> : '-'}
                         </td>
-                        <td className="py-3 px-3 text-center text-neutral-400">
-                          {missingDays > 0 ? <span className="text-amber-400 font-semibold">{missingDays} gün</span> : '-'}
+                        <td className="py-3 px-3 text-center text-slate-600">
+                          {missingDays > 0 ? <span className="text-emerald-600 font-semibold">{missingDays} gün</span> : '-'}
                         </td>
                         <td className="py-3 px-4 text-right">
                           {isEditing ? (
@@ -310,13 +310,13 @@ export const PuantajPage: React.FC = () => {
                                   });
                                   setEditingRecordId(null);
                                 }}
-                                className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-[11px]"
+                                className="px-2 py-1 rounded bg-emerald-500 hover:bg-amber-400 text-neutral-950 font-bold text-[11px]"
                               >
                                 Kaydet
                               </button>
                               <button
                                 onClick={() => setEditingRecordId(null)}
-                                className="px-2 py-1 rounded bg-neutral-800 text-neutral-400 hover:text-neutral-200 text-[11px]"
+                                className="px-2 py-1 rounded bg-emerald-50 text-slate-600 hover:text-emerald-950 text-[11px]"
                               >
                                 İptal
                               </button>
@@ -329,7 +329,7 @@ export const PuantajPage: React.FC = () => {
                                 setEditWorkDays(workDays);
                                 setEditOtHours(otHours);
                               }}
-                              className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition disabled:opacity-30"
+                              className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-neutral-700 text-emerald-900 transition disabled:opacity-30"
                             >
                               Düzenle
                             </button>
@@ -347,11 +347,11 @@ export const PuantajPage: React.FC = () => {
       {/* TAB 2: GÜNLÜK YOKLAMA VE GİRİŞ-ÇIKIŞ */}
       {activeTab === 'yoklama' && (
         <div className="space-y-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white border border-emerald-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-500" />
-              <span className="text-xs text-neutral-300">
-                Bugünün Tarihi: <strong className="text-neutral-100">{todayStr}</strong>
+              <Clock className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-emerald-900">
+                Bugünün Tarihi: <strong className="text-emerald-950">{todayStr}</strong>
               </span>
             </div>
 
@@ -374,29 +374,29 @@ export const PuantajPage: React.FC = () => {
                 return (
                   <div
                     key={p.id}
-                    className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 hover:border-neutral-700 transition"
+                    className="bg-white border border-emerald-100 rounded-2xl p-4 hover:border-neutral-700 transition"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-xs">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 font-bold flex items-center justify-center text-xs">
                           {p.initials}
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-neutral-100">{p.fullName}</div>
-                          <div className="text-[11px] text-neutral-400 font-mono">{p.employeeNo} • {p.title}</div>
+                          <div className="text-sm font-semibold text-emerald-950">{p.fullName}</div>
+                          <div className="text-[11px] text-slate-600 font-mono">{p.employeeNo} • {p.title}</div>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-[11px] text-neutral-400">Durum Seçimi:</div>
+                      <div className="text-[11px] text-slate-600">Durum Seçimi:</div>
                       <div className="grid grid-cols-3 gap-1.5 text-xs">
                         <button
                           onClick={() => recordAttendance(p.id, 'geldi', '08:00', '17:00')}
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'geldi'
                               ? 'bg-emerald-500 text-neutral-950 font-bold'
-                              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
                           }`}
                         >
                           Geldi
@@ -406,7 +406,7 @@ export const PuantajPage: React.FC = () => {
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'izinli'
                               ? 'bg-sky-500 text-neutral-950 font-bold'
-                              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
                           }`}
                         >
                           İzinli
@@ -416,14 +416,14 @@ export const PuantajPage: React.FC = () => {
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'raporlu'
                               ? 'bg-rose-500 text-neutral-950 font-bold'
-                              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
                           }`}
                         >
                           Raporlu
                         </button>
                       </div>
                       {todayRecord && (
-                        <div className="text-[11px] text-neutral-400 flex items-center justify-between pt-1 border-t border-neutral-800">
+                        <div className="text-[11px] text-slate-600 flex items-center justify-between pt-1 border-t border-emerald-100">
                           <span>Giriş: {todayRecord.checkInTime || '-'}</span>
                           <span>Çıkış: {todayRecord.checkOutTime || '-'}</span>
                         </div>
@@ -439,40 +439,40 @@ export const PuantajPage: React.FC = () => {
       {/* Lock Period Confirmation Modal */}
       {showLockModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
                 {isLocked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               </div>
               <div>
-                <h3 className="text-base font-bold text-neutral-100">
+                <h3 className="text-base font-bold text-emerald-950">
                   {isLocked ? 'Puantaj Kilidini Kaldır' : 'Puantaj Dönemini Kilitle'}
                 </h3>
-                <p className="text-xs text-neutral-400">Dönem: {selectedMonth}</p>
+                <p className="text-xs text-slate-600">Dönem: {selectedMonth}</p>
               </div>
             </div>
 
-            <p className="text-xs text-neutral-300">
+            <p className="text-xs text-emerald-900">
               {isLocked
                 ? 'Bu dönemin kilidini açtığınızda puantaj tablosu yeniden düzenlenebilir ve hesaplanabilir hale gelecektir. İşlem denetim günlüğüne (audit log) kaydedilecektir.'
                 : 'Bu dönemi kilitlediğinizde muhasebe dışındaki personeller puantaj veya mesai değişikliği yapamaz. Bordro aktarımı öncesinde kilit önerilir.'}
             </p>
 
             <div>
-              <label className="block text-xs text-neutral-300 mb-1">İşlem Gerekçesi / Not</label>
+              <label className="block text-xs text-emerald-900 mb-1">İşlem Gerekçesi / Not</label>
               <textarea
                 value={lockNote}
                 onChange={(e) => setLockNote(e.target.value)}
                 placeholder="Örn: 2026 Eylül bordrosu hazırlandı, kilitleme yapıldı."
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-950 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowLockModal(false)}
-                className="px-4 py-2 rounded-xl text-xs text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 transition"
+                className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:text-emerald-950 bg-emerald-50 hover:bg-neutral-700 transition"
               >
                 Vazgeç
               </button>
