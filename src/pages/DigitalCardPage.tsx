@@ -1,24 +1,64 @@
-import React, { useState } from 'react';
-import { useERP } from '../lib/store';
-import { ShieldCheck, Copy, Check, ArrowLeft, QrCode } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Copy, Check, ArrowLeft, QrCode, Loader2 } from 'lucide-react';
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface DigitalCardPageProps {
   token: string;
   onNavigateHome: () => void;
 }
 
-/** Public card — minimal fields only (KVKK). No phone, TC, salary, IBAN. */
+type PublicCard = {
+  full_name: string;
+  title: string;
+  employee_no: string;
+  initials: string;
+  documents_ok: boolean;
+  cert_expiring: boolean;
+  card_slug: string | null;
+};
+
+/** Public card — fetches via SECURITY DEFINER RPC; never uses full personnel context. */
 export const DigitalCardPage: React.FC<DigitalCardPageProps> = ({ token, onNavigateHome }) => {
-  const { personnel, showToast } = useERP();
+  const [card, setCard] = useState<PublicCard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const person = personnel.find(
-    (p) =>
-      p.cardSlug === token ||
-      p.employeeNo.toLowerCase() === token.toLowerCase() ||
-      p.id === token
-  );
-  // NEVER fall back to personnel[0]
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      setCard(null);
+      try {
+        if (!isSupabaseConfigured()) {
+          throw new Error('Supabase yapılandırılmamış');
+        }
+        const sb = getSupabase();
+        if (!sb) throw new Error('Supabase istemcisi yok');
+        const { data, error: rpcError } = await sb.rpc('get_public_personnel_card', {
+          p_token: token,
+        });
+        if (rpcError) throw rpcError;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!cancelled) {
+          if (row && row.full_name) setCard(row as PublicCard);
+          else setCard(null);
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!cancelled) {
+          setError(msg);
+          setCard(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const cardUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -26,19 +66,33 @@ export const DigitalCardPage: React.FC<DigitalCardPageProps> = ({ token, onNavig
     if (!cardUrl) return;
     navigator.clipboard.writeText(cardUrl);
     setCopied(true);
-    showToast('Dijital kart bağlantısı panoya kopyalandı.');
     setTimeout(() => setCopied(false), 2500);
   };
 
-  if (!person) {
+  if (loading) {
+    return (
+      <div className="card-public-shell">
+        <div className="card-public" style={{ padding: 40, textAlign: 'center' }}>
+          <Loader2 className="mx-auto animate-spin text-emerald-600" size={28} />
+          <p className="mt-3 text-sm text-emerald-800">Kart yükleniyor…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!card) {
     return (
       <div className="card-public-shell">
         <div className="card-public" style={{ padding: 32, textAlign: 'center' }}>
           <h1 style={{ color: '#14532D', fontSize: 18 }}>Kart bulunamadı</h1>
           <p style={{ color: '#166534', marginTop: 8 }}>
             Bu bağlantı geçersiz veya personel kaydı yayında değil.
+            {error ? ` (${error})` : ''}
           </p>
-          <button onClick={onNavigateHome} className="mt-4 inline-flex items-center gap-1 text-emerald-800 font-semibold">
+          <p className="text-xs text-emerald-800/70 mt-2">
+            Yönetici Supabase’de get_public_personnel_card fonksiyonunu çalıştırmış olmalı.
+          </p>
+          <button type="button" onClick={onNavigateHome} className="mt-4 inline-flex items-center gap-1 text-emerald-800 font-semibold">
             <ArrowLeft size={14} /> Ana sayfa
           </button>
         </div>
@@ -63,32 +117,32 @@ export const DigitalCardPage: React.FC<DigitalCardPageProps> = ({ token, onNavig
         </div>
         <div className="card-public-body">
           <div className="card-public-avatar" aria-hidden>
-            {(person.initials || person.fullName.slice(0, 2)).toUpperCase()}
+            {(card.initials || card.full_name.slice(0, 2)).toUpperCase()}
           </div>
-          <h1 className="card-public-name">{person.fullName}</h1>
-          <p className="card-public-title">{person.title || 'Saha personeli'}</p>
-          <p className="text-sm text-emerald-900/70 mt-1">Sicil: {person.employeeNo}</p>
+          <h1 className="card-public-name">{card.full_name}</h1>
+          <p className="card-public-title">{card.title || 'Saha personeli'}</p>
+          <p className="text-sm text-emerald-900/70 mt-1">Sicil: {card.employee_no}</p>
           <ul className="card-public-docs mt-4">
             <li>
               <ShieldCheck size={16} className="text-emerald-600" />
               <span>Belgeler</span>
-              <span className={person.documentsOk ? 'ok' : 'warn'}>{person.documentsOk ? 'TAMAM' : 'EKSİK'}</span>
+              <span className={card.documents_ok ? 'ok' : 'warn'}>{card.documents_ok ? 'TAMAM' : 'EKSİK'}</span>
             </li>
             <li>
               <ShieldCheck size={16} className="text-emerald-600" />
               <span>Sertifika</span>
-              <span className={person.certExpiring ? 'warn' : 'ok'}>{person.certExpiring ? 'YENİLEME YAKIN' : 'ONAYLI'}</span>
+              <span className={card.cert_expiring ? 'warn' : 'ok'}>{card.cert_expiring ? 'YENİLEME YAKIN' : 'ONAYLI'}</span>
             </li>
           </ul>
           <p className="card-public-note">
-            Bu kart yalnızca kimlik doğrulama ve belge durumu içindir. Kişisel iletişim veya mali bilgi içermez.
+            Bu kart yalnızca kimlik doğrulama ve belge durumu içindir. Telefon, TC veya mali bilgi içermez.
           </p>
         </div>
         <div className="card-public-foot">
-          <button onClick={onNavigateHome} className="flex items-center gap-1 text-gray-600 hover:text-emerald-900 font-semibold cursor-pointer">
-            <ArrowLeft size={14} /> ERP Paneline Dön
+          <button type="button" onClick={onNavigateHome} className="flex items-center gap-1 text-gray-600 hover:text-emerald-900 font-semibold cursor-pointer min-h-11">
+            <ArrowLeft size={14} /> Ana sayfa
           </button>
-          <button onClick={handleCopyLink} className="flex items-center gap-1 text-emerald-800 font-semibold cursor-pointer">
+          <button type="button" onClick={handleCopyLink} className="flex items-center gap-1 text-emerald-800 font-semibold cursor-pointer min-h-11">
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Kopyalandı' : 'Bağlantıyı kopyala'}
           </button>
