@@ -8,6 +8,7 @@ export const isSupabaseConfigured = (): boolean => {
     supabaseUrl &&
       supabaseUrl.trim() !== '' &&
       !supabaseUrl.includes('placeholder') &&
+      (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://')) &&
       supabaseAnonKey &&
       supabaseAnonKey.trim() !== ''
   );
@@ -20,21 +21,32 @@ export const getSupabase = (): SupabaseClient | null => {
     return null;
   }
   if (!clientInstance) {
-    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
+    try {
+      clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      });
+    } catch {
+      return null;
+    }
   }
   return clientInstance;
 };
 
 export const testSupabaseConnection = async (): Promise<{ success: boolean; message: string }> => {
-  if (!isSupabaseConfigured()) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return {
       success: false,
-      message: 'Supabase URL veya Anon Key henüz .env veya Settings panelinde tanımlanmamış.',
+      message: 'Supabase URL veya Anon Key henüz tanımlanmamış.',
+    };
+  }
+
+  if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+    return {
+      success: false,
+      message: `Geçersiz URL: VITE_SUPABASE_URL değeri "${supabaseUrl.slice(0, 15)}..." olarak girilmiş. Buraya 'https://xyz.supabase.co' formatındaki Project URL girilmelidir (Secret key yapıştırılmış olabilir).`,
     };
   }
 
