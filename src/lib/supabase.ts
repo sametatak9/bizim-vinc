@@ -18,8 +18,14 @@ function normalizeSupabaseUrl(rawUrl?: string): string {
   return clean;
 }
 
-const rawEnvUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const rawEnvKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const rawEnvUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
+  '';
+const rawEnvKey =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
+  '';
 
 export const supabaseUrl = normalizeSupabaseUrl(rawEnvUrl);
 export const supabaseAnonKey = rawEnvKey || '';
