@@ -53,7 +53,7 @@ export const FinancePage: React.FC = () => {
       detail: expenseDetail || 'Saha harcaması',
       amount: parseFloat(expenseAmount),
       craneCode,
-      personName: personnel[0]?.fullName || 'Mehmet Kaya',
+      personName: personnel[0]?.fullName || 'Atanmamış personel',
       stationOrSupplier: station,
     });
 
