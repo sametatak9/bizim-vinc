@@ -185,7 +185,9 @@ export const InvoiceReceiptPage: React.FC = () => {
 
   const handleReject = async (id: string) => {
     try {
-      await rejectJobReceipt(id);
+      const reason = window.prompt('Red gerekçesi:');
+      if (!reason?.trim()) return;
+      await rejectJobReceipt(id, reason.trim());
       showToast('Makbuz reddedildi');
     } catch (e) {
       showToast('Red hatası');
@@ -224,14 +226,14 @@ export const InvoiceReceiptPage: React.FC = () => {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
-      <style>{\`
+      <style>{`
         @media print {
           body * { visibility: hidden !important; }
           .print-document, .print-document * { visibility: visible !important; }
           .print-document { position: absolute; left: 0; top: 0; width: 210mm; padding: 12mm; background: white; }
           .no-print { display: none !important; }
         }
-      \`}</style>
+      `}</style>
 
       <header className="no-print flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>

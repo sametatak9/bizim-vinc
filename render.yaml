@@ -2,7 +2,10 @@ services:
   - type: web
     name: bizim-vinc-erp
     runtime: static
-    buildCommand: cd artifacts/bizim-vinc-erp && npm install --legacy-peer-deps && npm run build
+    repo: https://github.com/sametatak9/bizim-vinc
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install --legacy-peer-deps && npm run build
     staticPublishPath: artifacts/bizim-vinc-erp/dist/public
     routes:
       - type: rewrite
