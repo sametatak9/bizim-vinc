@@ -63,6 +63,9 @@ export const getSupabase = (): SupabaseClient | null => {
   if (!clientInstance) {
     try {
       clientInstance = createClient(url, key, {
+        db: {
+          schema: 'public',
+        },
         auth: {
           persistSession: true,
           autoRefreshToken: true,
