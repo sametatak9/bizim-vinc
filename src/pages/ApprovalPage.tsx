@@ -158,12 +158,11 @@ export const ApprovalPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Kind Filters */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-emerald-100 text-xs">
-          <span className="text-slate-500 flex items-center gap-1 mr-1">
-            <Filter className="w-3.5 h-3.5" /> Kategori:
-          </span>
-          {(['all', 'avans', 'izin', 'mesai', 'yoklama', 'makbuz', 'yakit', 'genel'] as const).map((k) => (
+        {/* Separate request tabs */}
+        <div className="mt-4 pt-4 border-t border-emerald-100">
+          <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-emerald-950"><Filter className="w-3.5 h-3.5" /> Talep sekmeleri</div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+          {(['all', 'makbuz', 'avans', 'izin', 'mesai', 'yoklama', 'yakit', 'genel'] as const).map((k) => (
             <button
               key={k}
               onClick={() => setKindFilter(k)}
@@ -173,9 +172,10 @@ export const ApprovalPage: React.FC = () => {
                   : 'bg-emerald-50 text-slate-600 hover:text-emerald-950'
               }`}
             >
-              {k === 'all' ? 'Tümü' : k}
+              {k === 'all' ? 'Tümü' : k === 'makbuz' ? 'Makbuzlar' : k === 'avans' ? 'Avanslar' : k === 'izin' ? 'İzinler' : k === 'mesai' ? 'Mesailer' : k === 'yoklama' ? 'Yoklamalar' : k === 'yakit' ? 'Yakıt / Fiş' : 'Genel'}
             </button>
           ))}
+          </div>
         </div>
       </div>
 

@@ -53,7 +53,7 @@ export const OperatorPage: React.FC = () => {
 
   const [activeModal, setActiveModal] = useState<'none' | 'avans' | 'izin' | 'mesai' | 'makbuz' | 'masraf'>('none');
   const [busy, setBusy] = useState(false);
-  const [jobAmount, setJobAmount] = useState(0);
+  const [jobHours, setJobHours] = useState(0);
   const [jobDescription, setJobDescription] = useState('');
   const [jobCustomerId, setJobCustomerId] = useState('');
   const [jobCraneId, setJobCraneId] = useState('');
@@ -152,8 +152,8 @@ export const OperatorPage: React.FC = () => {
     if (!myPerson) return;
     const customer = customers.find((c) => c.id === jobCustomerId) || customers[0];
     const crane = cranes.find((c) => c.id === jobCraneId) || cranes[0];
-    if (!customer || !crane || jobAmount <= 0) {
-      showToast('Makbuz için cari, vinç ve geçerli tutar gerekir.');
+    if (!customer || !crane || jobHours <= 0) {
+      showToast('Makbuz için cari, vinç ve geçerli çalışma saati gerekir.');
       return;
     }
     await runSafe(async () => {
@@ -165,13 +165,13 @@ export const OperatorPage: React.FC = () => {
         operatorId: myPerson.id,
         operatorName: myPerson.fullName,
         date: new Date().toISOString().slice(0, 10),
-        workingHours: 0,
-        amount: jobAmount,
+        workingHours: jobHours,
+        amount: 0,
         status: 'pending_approval',
         invoiced: false,
         description: jobDescription || 'Saha işi',
       });
-      setJobAmount(0);
+      setJobHours(0);
       setJobDescription('');
       setActiveModal('none');
     }, '✓ İş makbuzu onaya gönderildi');
@@ -427,8 +427,8 @@ export const OperatorPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-emerald-900 mb-1">Tutar (₺)</label>
-                  <input type="number" value={jobAmount || ''} onChange={(e) => setJobAmount(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
+                  <label className="block text-xs text-emerald-900 mb-1">Çalışma Saati</label>
+                  <input type="number" min="0.25" step="0.25" required value={jobHours || ''} onChange={(e) => setJobHours(Number(e.target.value))} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold" />
                 </div>
                 <textarea value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="İş açıklaması" rows={2} className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
                 <button type="submit" disabled={busy} className="w-full min-h-11 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
