@@ -1,4 +1,5 @@
 export type AppRole =
+  | 'founder'
   | 'admin'
   | 'yonetici'
   | 'muhasebe'
@@ -521,4 +522,3 @@ export interface TelemetryPoint {
   operator?: string;
   site?: string;
 }
-

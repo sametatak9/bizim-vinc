@@ -1105,13 +1105,29 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (error || !data.user) {
       return { success: false, message: error?.message || 'Giriş başarısız.' };
     }
+    const { data: profileRow, error: profileError } = await sb
+      .from('profiles')
+      .select('id,email,full_name,role,phone,status,personnel_id,created_at,updated_at')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (profileError || !profileRow) {
+      await sb.auth.signOut();
+      return { success: false, message: 'Üyeliğiniz henüz kurucu tarafından onaylanmamış.' };
+    }
+    if (profileRow.status !== 'aktif') {
+      await sb.auth.signOut();
+      return { success: false, message: profileRow.status === 'pending' ? 'Üyeliğiniz onay bekliyor.' : 'Hesabınız pasif durumda.' };
+    }
     const profile: UserProfile = {
-      id: data.user.id,
-      email: data.user.email || email,
-      fullName: data.user.user_metadata?.full_name || email.split('@')[0],
-      role: 'personel',
-      status: 'aktif',
-      createdAt: data.user.created_at,
+      id: profileRow.id,
+      email: profileRow.email || data.user.email || email,
+      fullName: profileRow.full_name || email.split('@')[0],
+      role: profileRow.role as AppRole,
+      phone: profileRow.phone || undefined,
+      personnelId: profileRow.personnel_id || undefined,
+      status: profileRow.status as UserProfile['status'],
+      createdAt: profileRow.created_at || data.user.created_at,
+      updatedAt: profileRow.updated_at || undefined,
     };
     setCurrentUser(profile);
     setIsAuthenticated(true);
