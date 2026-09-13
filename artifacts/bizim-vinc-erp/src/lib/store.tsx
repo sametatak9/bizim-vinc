@@ -2000,10 +2000,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     tcNoOrHash: string,
     requestedRole: AppRole,
     personnelId?: string
-  ): Promise<{
+  ): Promise<{ success: boolean; message: string }> => {
     // KVKK: never send plaintext TC
     tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;
- success: boolean; message: string }> => {
     const id = generateUuid();
 
     // Personel TC eşleştirmesi ara
