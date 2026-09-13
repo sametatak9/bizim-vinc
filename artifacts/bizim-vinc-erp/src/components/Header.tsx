@@ -68,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'Filo', path: '/filo', icon: Truck },
     { label: 'Personel Talepleri', path: '/operator', icon: Smartphone },
     { label: 'Finans', path: '/finans', icon: DollarSign },
+    { label: 'Teklifler', path: '/teklifler', icon: FileText },
     { label: 'Yönetim', path: '/admin', icon: Shield },
   ];
   const visibleNavItems = isEmployeeSelfServiceRole(currentUser.role)
