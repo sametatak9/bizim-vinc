@@ -1,0 +1,23 @@
+name: restore-store
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/restore-store.yml'
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: grok-ui-db-20260913
+      - name: Copy store from artifacts
+        run: |
+          cp artifacts/bizim-vinc-erp/src/lib/store.tsx src/lib/store.tsx
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/lib/store.tsx
+          git diff --staged --quiet || git commit -m "fix(store): restore full store from artifacts copy"
+          git push origin HEAD:grok-ui-db-20260913

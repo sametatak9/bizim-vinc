@@ -34,6 +34,7 @@ import {
   PayrollStatus,
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
+import { hashTcIdentity } from './tcHash';
 
 const GUEST_PROFILE: UserProfile = {
   id: 'guest', email: '', fullName: 'Giriş gerekli', role: 'personel', status: 'pasif', createdAt: new Date(0).toISOString(),
@@ -1999,7 +2000,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     tcNoOrHash: string,
     requestedRole: AppRole,
     personnelId?: string
-  ): Promise<{ success: boolean; message: string }> => {
+  ): Promise<{
+    // KVKK: never send plaintext TC
+    tcNoOrHash = (await hashTcIdentity(tcNoOrHash)) || tcNoOrHash;
+ success: boolean; message: string }> => {
     const id = generateUuid();
 
     // Personel TC eşleştirmesi ara
