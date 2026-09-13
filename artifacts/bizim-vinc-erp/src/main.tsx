@@ -1,18 +1,10 @@
-import { createRoot } from 'react-dom/client';
-
-import App from './App';
-import { ErrorBoundary } from '@/components/error-boundary';
-
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
 import './index.css';
-import './styles/cmd-dashboard.css';
 
-createRoot(document.getElementById('root')!, {
-  // Keeps caught errors off reportError(), which would raise the dev overlay.
-  onCaughtError: (error, errorInfo) => {
-    console.error(error, errorInfo.componentStack);
-  },
-}).render(
-  <ErrorBoundary>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
     <App />
-  </ErrorBoundary>,
+  </StrictMode>,
 );
