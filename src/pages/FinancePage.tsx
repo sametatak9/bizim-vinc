@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useERP } from '../lib/store';
-import { Plus, DollarSign, Fuel, Receipt as ReceiptIcon, ArrowUpRight, CheckCircle2, Clock } from 'lucide-react';
+import { Fuel, Wrench, ClipboardCheck, Droplets, Search, FileSpreadsheet, FileText } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 export const FinancePage: React.FC = () => {
   const { receipts, expenses, stats, addReceipt, addExpense, cranes, personnel } = useERP();
-  const [activeTab, setActiveTab] = useState<'kesilen' | 'biriken' | 'yakit' | 'masraf'>('kesilen');
+  const [activeTab, setActiveTab] = useState<'yakit' | 'masraf' | 'servis' | 'muayene' | 'yag_bakimi'>('masraf');
 
   // Modal states
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -18,11 +19,14 @@ export const FinancePage: React.FC = () => {
   const [site, setSite] = useState('');
 
   // New expense form state
-  const [expenseCategory, setExpenseCategory] = useState<'yakit' | 'masraf'>('yakit');
+  const [expenseCategory, setExpenseCategory] = useState<'yakit' | 'masraf' | 'servis' | 'muayene' | 'yag_bakimi'>('masraf');
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseDetail, setExpenseDetail] = useState('');
   const [station, setStation] = useState('');
+  const [meterReading, setMeterReading] = useState('');
+  const [serviceDueDate, setServiceDueDate] = useState('');
+  const [search, setSearch] = useState('');
 
   const handleSaveReceipt = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,12 +59,15 @@ export const FinancePage: React.FC = () => {
       craneCode,
       personName: personnel[0]?.fullName || 'Atanmamış personel',
       stationOrSupplier: station,
+      meterReading: meterReading ? Number(meterReading) : undefined,
+      serviceDueDate: serviceDueDate || undefined,
     });
 
     setIsExpenseModalOpen(false);
     setExpenseTitle('');
     setExpenseAmount('');
     setExpenseDetail('');
+    setMeterReading(''); setServiceDueDate('');
   };
 
   return (
@@ -101,126 +108,29 @@ export const FinancePage: React.FC = () => {
       <div className="panel bg-white border border-emerald-200 rounded-2xl shadow-xs overflow-hidden">
         {/* Controls Bar */}
         <div className="p-4 border-b border-emerald-100 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          {/* Tabs */}
-          <div className="flex bg-gray-100 p-1 rounded-lg text-xs font-semibold">
-            <button
-              onClick={() => setActiveTab('kesilen')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                activeTab === 'kesilen'
-                  ? 'bg-white text-emerald-950 shadow-xs font-bold'
-                  : 'text-gray-600 hover:text-emerald-900'
-              }`}
-            >
-              Kesilen Makbuzlar ({receipts.filter((r) => r.status === 'kesildi').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('biriken')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                activeTab === 'biriken'
-                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                  : 'text-emerald-800 hover:text-emerald-950'
-              }`}
-            >
-              Biriken / Geciken ({receipts.filter((r) => r.status === 'birikti').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('yakit')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                activeTab === 'yakit'
-                  ? 'bg-white text-emerald-950 shadow-xs font-bold'
-                  : 'text-gray-600 hover:text-emerald-900'
-              }`}
-            >
-              Yakıt Fişleri ({expenses.filter((e) => e.category === 'yakit').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('masraf')}
-              className={`px-3 py-1.5 rounded-md transition ${
-                activeTab === 'masraf'
-                  ? 'bg-white text-emerald-950 shadow-xs font-bold'
-                  : 'text-gray-600 hover:text-emerald-900'
-              }`}
-            >
-              Masraflar ({expenses.filter((e) => e.category === 'masraf').length})
-            </button>
+          {/* Maintenance tabs */}
+          <div className="flex flex-wrap bg-emerald-50 p-1 rounded-lg text-xs font-semibold gap-1">
+            {([['masraf','Genel Masraf'],['yakit','Yakıt'],['servis','Servis'],['muayene','Muayene'],['yag_bakimi','Yağ Bakımı']] as const).map(([key,label]) => <button key={key} onClick={() => setActiveTab(key)} className={`px-3 py-1.5 rounded-md transition ${activeTab === key ? 'bg-white text-emerald-950 shadow-xs font-bold' : 'text-emerald-800 hover:text-emerald-950'}`}>{label}</button>)}
           </div>
-
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsExpenseModalOpen(true)}
               className="px-3.5 py-2 border border-emerald-200 text-emerald-900 hover:bg-emerald-50 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
             >
-              <Fuel size={14} /> Yeni Masraf / Yakıt
+              <Wrench size={14} /> Yeni Masraf / Bakım Fişi
             </button>
-            <button
-              onClick={() => setIsReceiptModalOpen(true)}
-              className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            >
-              <Plus size={14} /> Yeni Makbuz Kes
-            </button>
+
           </div>
         </div>
 
+        <div className="px-4 py-3 border-b border-emerald-100 flex flex-col sm:flex-row gap-2 justify-between">
+          <div className="relative flex-1"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Geçmiş masraf, servis veya tedarikçi ara" className="w-full rounded-xl border border-emerald-100 py-2 pl-9 pr-3 text-xs" /></div>
+          <div className="flex gap-1"><button onClick={() => downloadExcelReport(`bakim-arsiv-${activeTab}`, `Bizim Vinç ${activeTab} Arşivi`, [{key:'title',label:'Başlık'},{key:'supplier',label:'Tedarikçi'},{key:'amount',label:'Tutar'},{key:'meter',label:'Sayaç'},{key:'date',label:'Tarih'}], expenses.filter(e => e.category === activeTab).map(e => ({title:e.title,supplier:e.stationOrSupplier || '-',amount:`${e.amount} ₺`,meter:e.meterReading || '-',date:new Date(e.createdAt).toLocaleDateString('tr-TR')})))} className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold"><FileSpreadsheet size={12} className="inline mr-1"/>Excel</button><button onClick={() => downloadHtmlReport(`bakim-arsiv-${activeTab}`, `Bizim Vinç ${activeTab} Arşivi`, [{key:'title',label:'Başlık'},{key:'supplier',label:'Tedarikçi'},{key:'amount',label:'Tutar'},{key:'meter',label:'Sayaç'},{key:'date',label:'Tarih'}], expenses.filter(e => e.category === activeTab).map(e => ({title:e.title,supplier:e.stationOrSupplier || '-',amount:`${e.amount} ₺`,meter:e.meterReading || '-',date:new Date(e.createdAt).toLocaleDateString('tr-TR')})))} className="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold"><FileText size={12} className="inline mr-1"/>HTML</button></div>
+        </div>
+
         {/* Tables */}
-        {activeTab === 'kesilen' || activeTab === 'biriken' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-emerald-50/50 text-[11px] font-bold text-emerald-950 uppercase tracking-wider border-b border-emerald-100">
-                  <th className="py-3 px-4">Makbuz No</th>
-                  <th className="py-3 px-4">Müşteri / Firma</th>
-                  <th className="py-3 px-4">İlgili Vinç & Şantiye</th>
-                  <th className="py-3 px-4">Tutar</th>
-                  <th className="py-3 px-4">Durum</th>
-                  <th className="py-3 px-4">Tarih</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
-                {receipts
-                  .filter((r) => r.status === activeTab)
-                  .map((r) => (
-                    <tr key={r.id} className="hover:bg-emerald-50/30 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-gray-900">
-                        {r.receiptNo}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-emerald-950">
-                        {r.company}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {r.craneCode} · {r.site}
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-sm text-gray-900">
-                        {r.amount.toLocaleString('tr-TR')} ₺
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                            r.status === 'kesildi'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {r.status === 'kesildi' ? (
-                            <>
-                              <CheckCircle2 size={12} /> Kesildi
-                            </>
-                          ) : (
-                            <>
-                              <Clock size={12} /> {r.daysPending} gündür bekliyor
-                            </>
-                          )}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-gray-400 font-mono text-[11px]">
-                        {new Date(r.createdAt).toLocaleDateString('tr-TR')}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
+        {(
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -235,7 +145,7 @@ export const FinancePage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
                 {expenses
-                  .filter((e) => e.category === activeTab)
+                  .filter((e) => e.category === activeTab && (!search || `${e.title} ${e.stationOrSupplier || ''} ${e.detail || ''}`.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'))))
                   .map((e) => (
                     <tr key={e.id} className="hover:bg-emerald-50/30 transition-colors">
                       <td className="py-3 px-4 font-bold text-gray-900">
@@ -264,101 +174,11 @@ export const FinancePage: React.FC = () => {
         )}
       </div>
 
-      {/* New Receipt Modal */}
-      {isReceiptModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-emerald-200 shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-base font-bold text-emerald-950 mb-4">Yeni Makbuz Kes</h3>
-            <form onSubmit={handleSaveReceipt} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Müşteri / Şirket</label>
-                <input
-                  type="text"
-                  required
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Yapı Kredi Genel Müd."
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Tutar (TL)</label>
-                  <input
-                    type="number"
-                    required
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="25000"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Durum</label>
-                  <select
-                    value={receiptStatus}
-                    onChange={(e) => setReceiptStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  >
-                    <option value="kesildi">Kesildi (Tahsil Edildi)</option>
-                    <option value="birikti">Birikti (Geciken / Bekleyen)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Vinç</label>
-                  <select
-                    value={craneCode}
-                    onChange={(e) => setCraneCode(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  >
-                    {cranes.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code} ({c.type})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Şantiye</label>
-                  <input
-                    type="text"
-                    value={site}
-                    onChange={(e) => setSite(e.target.value)}
-                    placeholder="Ataşehir"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsReceiptModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg font-bold"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-700 text-white rounded-lg font-bold"
-                >
-                  Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* New Expense Modal */}
       {isExpenseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl border border-emerald-200 shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-base font-bold text-emerald-950 mb-4">Yeni Masraf / Yakıt Ekle</h3>
+            <h3 className="text-base font-bold text-emerald-950 mb-4">Masraf · Servis · Muayene Kaydı</h3>
             <form onSubmit={handleSaveExpense} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -368,8 +188,11 @@ export const FinancePage: React.FC = () => {
                     onChange={(e) => setExpenseCategory(e.target.value as any)}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   >
-                    <option value="yakit">Yakıt Dolumu</option>
-                    <option value="masraf">Bakım / Servis / HGS</option>
+                    <option value="masraf">Genel Masraf</option>
+                    <option value="yakit">Yakıt</option>
+                    <option value="servis">Servis Bakımı</option>
+                    <option value="muayene">Muayene</option>
+                    <option value="yag_bakimi">Yağ Bakımı</option>
                   </select>
                 </div>
                 <div>
@@ -392,7 +215,7 @@ export const FinancePage: React.FC = () => {
                   required
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
-                  placeholder="Dizel Yakıt Dolumu"
+                  placeholder="Periyodik bakım / muayene açıklaması"
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 />
               </div>
@@ -404,7 +227,7 @@ export const FinancePage: React.FC = () => {
                     type="text"
                     value={station}
                     onChange={(e) => setStation(e.target.value)}
-                    placeholder="Shell Ataşehir"
+                    placeholder="Servis / tedarikçi / istasyon"
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
                 </div>
@@ -423,6 +246,8 @@ export const FinancePage: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-2"><div><label className="block font-bold text-gray-700 mb-1">Sayaç / KM / Saat</label><input type="number" value={meterReading} onChange={(e) => setMeterReading(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" /></div><div><label className="block font-bold text-gray-700 mb-1">Sonraki takip tarihi</label><input type="date" value={serviceDueDate} onChange={(e) => setServiceDueDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" /></div></div>
 
               <div className="flex justify-end gap-2 pt-3">
                 <button

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
 import {
   FileText,
@@ -13,8 +13,10 @@ import {
   Building2,
 } from 'lucide-react';
 import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
+import { getSupabase } from '../lib/supabase';
 
 type DocTab = 'makbuz' | 'irsaliye' | 'fatura';
+type DeliveryNote = { id: string; deliveryNo: string; customerName: string; siteName?: string; craneCode?: string; operatorName?: string; deliveryDate: string; fromLocation?: string; toLocation?: string; description?: string; status: string };
 
 const COMPANY = {
   name: 'BİZİM VİNÇ',
@@ -73,6 +75,13 @@ export const InvoiceReceiptPage: React.FC = () => {
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerTaxNo, setNewCustomerTaxNo] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
+
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) return;
+    sb.from('delivery_notes').select('*').order('delivery_date', { ascending: false }).then(({ data }) => setDeliveryNotes((data || []).map((d: any) => ({ id: d.id, deliveryNo: d.delivery_no, customerName: d.customer_name, siteName: d.site_name, craneCode: d.crane_code, operatorName: d.operator_name, deliveryDate: d.delivery_date, fromLocation: d.from_location, toLocation: d.to_location, description: d.description, status: d.status }))));
+  }, []);
 
   const createCustomerForDocument = async () => {
     if (!newCustomerName.trim()) return showToast('Cari ünvanı zorunludur.');
@@ -167,7 +176,14 @@ export const InvoiceReceiptPage: React.FC = () => {
         showToast('Operatör, vinç ve geçerli saat aralığı seçilmelidir.');
         return;
       }
-      await addJobReceipt({
+      if (tab === 'irsaliye') {
+        const sb = getSupabase();
+        if (!sb) throw new Error('Supabase bağlantısı yok.');
+        const deliveryNo = `IRS-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+        const { data, error } = await sb.from('delivery_notes').insert({ delivery_no: deliveryNo, customer_id: wCustomer, customer_name: cust?.title || cust?.name || 'Müşteri', site_name: wSite.trim(), crane_code: crane.code, operator_name: operator.fullName, delivery_date: new Date().toISOString().slice(0, 10), from_location: wFrom || null, to_location: wTo || null, description: wNote || null, status: 'issued' }).select('*').single();
+        if (error) throw error;
+        if (data) setDeliveryNotes((prev) => [{ id: data.id, deliveryNo: data.delivery_no, customerName: data.customer_name, siteName: data.site_name, craneCode: data.crane_code, operatorName: data.operator_name, deliveryDate: data.delivery_date, fromLocation: data.from_location, toLocation: data.to_location, description: data.description, status: data.status }, ...prev]);
+      } else await addJobReceipt({
         customerId: wCustomer,
         customerName: cust?.title || cust?.name || 'Müşteri',
         siteName: wSite.trim(),
@@ -188,7 +204,7 @@ export const InvoiceReceiptPage: React.FC = () => {
             ? `İrsaliye: ${wFrom || '-'} → ${wTo || '-'} | ${wNote}`
             : wNote || 'Çalışma/puantaj evrakı',
       });
-      showToast(tab === 'irsaliye' ? '✓ İrsaliye kaydı oluşturuldu' : '✓ İş makbuzu oluşturuldu');
+      showToast(tab === 'irsaliye' ? '✓ Bağımsız irsaliye oluşturuldu' : '✓ İş makbuzu oluşturuldu');
       setWizardOpen(false);
       setStep(1);
       setWCustomer('');
@@ -245,8 +261,9 @@ export const InvoiceReceiptPage: React.FC = () => {
 
   const exportDocuments = (format: 'excel' | 'html' | 'print') => {
     const isInvoice = tab === 'fatura';
-    const columns = isInvoice ? [{ key: 'no', label: 'Fatura No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'amount', label: 'Tutar' }, { key: 'status', label: 'Durum' }] : [{ key: 'no', label: 'Belge No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'crane', label: 'Vinç' }, { key: 'site', label: 'Şantiye' }, { key: 'status', label: 'Durum' }];
-    const rows = isInvoice ? filteredInvoices.map((item) => ({ no: item.invoiceNo, date: item.issueDate, customer: item.customerName, amount: `${item.totalAmount.toLocaleString('tr-TR')} ₺`, status: item.status })) : filteredReceipts.map((item) => ({ no: item.receiptNo, date: item.date, customer: item.customerName, crane: item.craneCode, site: item.siteName || '-', status: item.status }));
+    const isDelivery = tab === 'irsaliye';
+    const columns = isInvoice ? [{ key: 'no', label: 'Fatura No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'amount', label: 'Tutar' }, { key: 'status', label: 'Durum' }] : [{ key: 'no', label: isDelivery ? 'İrsaliye No' : 'Makbuz No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'crane', label: 'Vinç' }, { key: 'site', label: 'Şantiye' }, { key: 'status', label: 'Durum' }];
+    const rows = isInvoice ? filteredInvoices.map((item) => ({ no: item.invoiceNo, date: item.issueDate, customer: item.customerName, amount: `${item.totalAmount.toLocaleString('tr-TR')} ₺`, status: item.status })) : isDelivery ? deliveryNotes.map((item) => ({ no: item.deliveryNo, date: item.deliveryDate, customer: item.customerName, crane: item.craneCode || '-', site: item.siteName || '-', status: item.status })) : filteredReceipts.map((item) => ({ no: item.receiptNo, date: item.date, customer: item.customerName, crane: item.craneCode, site: item.siteName || '-', status: item.status }));
     const title = tab === 'makbuz' ? 'Bizim Vinç İş Makbuzu Arşivi' : tab === 'irsaliye' ? 'Bizim Vinç İrsaliye Arşivi' : 'Bizim Vinç Fatura Arşivi';
     if (format === 'excel') downloadExcelReport(`belge-arsivi-${tab}`, title, columns, rows);
     else if (format === 'html') downloadHtmlReport(`belge-arsivi-${tab}`, title, columns, rows);
@@ -297,7 +314,7 @@ export const InvoiceReceiptPage: React.FC = () => {
             }}
             className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
           >
-            <Plus size={14} /> Yeni Makbuz
+              <Plus size={14} /> {tab === 'irsaliye' ? 'Yeni İrsaliye' : 'Yeni Makbuz'}
           </button>
           {tab === 'fatura' && selectedIds.length > 0 && (
             <button
@@ -432,20 +449,18 @@ export const InvoiceReceiptPage: React.FC = () => {
 
       {tab === 'irsaliye' && (
         <div className="bg-white rounded-2xl border border-emerald-100 p-6 no-print">
-          <p className="text-xs text-emerald-800/80 mb-4">
-            İrsaliye kayıtları makbuz hattı üzerinden takip edilir. Yeni belge için «Yeni Makbuz» kullanın; önizlemede A4 çıktı alınır.
-          </p>
+          <p className="text-xs text-emerald-800/80 mb-4">İrsaliyeler makbuzdan bağımsız, sevk/iş sahası belgesi olarak arşivlenir ve A4 formatında gösterilir.</p>
           <div className="grid sm:grid-cols-2 gap-3">
-            {filteredReceipts.slice(0, 6).map((r) => (
+            {deliveryNotes.filter((d) => !search || `${d.deliveryNo} ${d.customerName} ${d.siteName || ''}`.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'))).map((r) => (
               <button
                 key={r.id}
                 type="button"
-                onClick={() => openPreviewFromReceipt(r, 'irsaliye')}
+                onClick={() => setPreview({ type: 'irsaliye', title: 'İRSALİYE', no: r.deliveryNo, date: r.deliveryDate, customer: r.customerName, lines: [{ label: `${r.fromLocation || '-'} → ${r.toLocation || '-'} · ${r.siteName || ''}`, qty: r.craneCode || '', amount: 0 }], note: r.description, kdvRate: 0 })}
                 className="text-left p-3 rounded-xl border border-emerald-100 hover:bg-emerald-50/50"
               >
                 <div className="font-bold text-sm text-slate-800">{r.customerName}</div>
-                <div className="text-[11px] text-slate-500">{r.receiptNo} · {r.craneCode}</div>
-                <div className="text-xs font-mono font-bold text-emerald-800 mt-1">{(r.amount || 0).toLocaleString('tr-TR')} ₺</div>
+                <div className="text-[11px] text-slate-500">{r.deliveryNo} · {r.craneCode || '-'} · {r.deliveryDate}</div>
+                <div className="text-xs font-bold text-emerald-800 mt-1">{r.fromLocation || '-'} → {r.toLocation || '-'}</div>
               </button>
             ))}
           </div>

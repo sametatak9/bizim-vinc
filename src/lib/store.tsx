@@ -589,6 +589,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           craneCode: d.crane_code,
           personName: d.person_name,
           stationOrSupplier: d.station_or_supplier,
+          meterReading: Number(d.meter_reading) || undefined,
+          serviceDueDate: d.service_due_date,
           status: d.status,
           createdAt: d.created_at,
           updatedAt: d.updated_at,
@@ -1634,6 +1636,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             person_name: newExpense.personName,
             station_or_supplier: newExpense.stationOrSupplier,
             status: newExpense.status,
+            meter_reading: newExpense.meterReading || null,
+            service_due_date: newExpense.serviceDueDate || null,
           },
         ]);
       } catch (e) {
@@ -1649,6 +1653,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     showToast('Gider kaydı güncellendi.');
+    const sb = getSupabase();
+    if (sb) await sb.from('expenses').update({ ...updates, meter_reading: updates.meterReading, service_due_date: updates.serviceDueDate }).eq('id', id);
   };
 
   // ==========================================

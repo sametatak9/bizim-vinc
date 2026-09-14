@@ -579,13 +579,15 @@ export interface PayrollPayment {
 
 export interface Expense {
   id: string;
-  category: 'yakit' | 'masraf';
+  category: 'yakit' | 'masraf' | 'servis' | 'muayene' | 'yag_bakimi';
   title: string;
   detail?: string;
   amount: number;
   craneCode?: string;
   personName?: string;
   stationOrSupplier?: string;
+  meterReading?: number;
+  serviceDueDate?: string;
   status?: 'aktif' | 'iptal';
   createdAt: string;
   updatedAt?: string;

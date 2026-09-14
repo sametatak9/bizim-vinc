@@ -31,6 +31,8 @@ Use **`/migrations`** only. Filenames are globally unique and must remain strict
 | `0022_crane_telemetry.sql` | Repo pending | Crane GPS telemetry history and RLS |
 | `0023_public_card_documents.sql` | Uygulandı (`public_card_documents`) | Safe public-card document metadata RPC; files remain private |
 | `0024_payment_obligations.sql` | Uygulandı (`payment_obligations`) | Leasing, kredi, kart, petrol/DBS and tax payment installments |
+| `0025_maintenance_expenses.sql` | Uygulandı (`expenses` genişletildi) | Servis, muayene, yağ bakımı, sayaç ve sonraki takip tarihi |
+| `0026_delivery_notes.sql` | Uygulandı (`delivery_notes`) | Makbuzdan bağımsız irsaliye arşivi |
 
 ### Why the filenames changed
 
@@ -50,7 +52,7 @@ The full tool output is retained in the session artifact store; this document re
 
 ## Future naming rule
 
-The next new canonical migration must use **`0025_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
+The next new canonical migration must use **`0027_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
 
 ## Deprecated
 
