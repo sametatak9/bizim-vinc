@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, User, Phone, ShieldCheck, LogOut, ArrowRight } from 'lucide-react';
+import { X, Lock, Mail, User, Phone, ShieldCheck, LogOut, ArrowRight, IdCard, Briefcase } from 'lucide-react';
 import { useERP } from '../lib/store';
 
 interface AuthModalProps {
@@ -14,6 +14,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [tcNo, setTcNo] = useState('');
+  const [requestedRole, setRequestedRole] = useState<'personel' | 'operator'>('personel');
+  const [passwordRepeat, setPasswordRepeat] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,13 +47,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setError('Lütfen ad, e-posta ve şifre alanlarını doldurunuz.');
       return;
     }
+    if (password.length < 8) {
+      setError('Şifre en az 8 karakter olmalıdır.');
+      return;
+    }
+    if (password !== passwordRepeat) {
+      setError('Şifreler birbiriyle aynı değil.');
+      return;
+    }
+    const tcDigits = tcNo.replace(/\D/g, '');
+    if (tcDigits && tcDigits.length !== 11) {
+      setError('TC kimlik numarası 11 haneli olmalıdır.');
+      return;
+    }
     setLoading(true);
-    const res = await registerUser(email, password, fullName, phone);
+    const res = await registerUser(email, password, fullName, phone, { tcNo: tcDigits, requestedRole });
     setLoading(false);
     if (res.success) {
       showToast(res.message);
       setMode('login');
       setPassword('');
+      setPasswordRepeat('');
+      setTcNo('');
     } else {
       setError(res.message);
     }
@@ -122,7 +140,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <div><label className="block text-xs font-bold text-slate-700 mb-1">Ad Soyad *</label><div className="relative"><User className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ad Soyad" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
               <div><label className="block text-xs font-bold text-slate-700 mb-1">E-posta *</label><div className="relative"><Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ad@firma.com" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
               <div><label className="block text-xs font-bold text-slate-700 mb-1">Telefon</label><div className="relative"><Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
-              <div><label className="block text-xs font-bold text-slate-700 mb-1">Şifre *</label><div className="relative"><Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
+              <div><label className="block text-xs font-bold text-slate-700 mb-1">TC Kimlik No</label><div className="relative"><IdCard className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="text" inputMode="numeric" maxLength={11} value={tcNo} onChange={(e) => setTcNo(e.target.value.replace(/\D/g, ''))} placeholder="11 haneli TC kimlik no" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div><p className="mt-1 text-[10px] text-slate-500">TC numarası girerseniz hesabınız mevcut personel kaydınızla otomatik eşleştirilir.</p></div>
+              <div><label className="block text-xs font-bold text-slate-700 mb-1">Görev tipi *</label><div className="relative"><Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as 'personel' | 'operator')} className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 focus:outline-none focus:border-emerald-500 transition"><option value="personel">Personel (saha / ofis çalışanı)</option><option value="operator">Operatör (vinç operatörü — makbuz yetkisi)</option></select></div></div>
+              <div><label className="block text-xs font-bold text-slate-700 mb-1">Şifre *</label><div className="relative"><Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="En az 8 karakter" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
+              <div><label className="block text-xs font-bold text-slate-700 mb-1">Şifre tekrar *</label><div className="relative"><Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="password" required value={passwordRepeat} onChange={(e) => setPasswordRepeat(e.target.value)} placeholder="Şifreyi yeniden yazın" className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-emerald-100 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition" /></div></div>
               <p className="text-[11px] text-slate-500">Yeni üyelikler kurucu onayına gönderilir. Onaylanmadan ERP ekranlarına erişilemez.</p>
               <button type="submit" disabled={loading} className="w-full mt-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50">{loading ? 'Başvuru Gönderiliyor...' : 'Üyelik Başvurusu Gönder'}<ArrowRight className="w-4 h-4" /></button>
             </form>

@@ -10,9 +10,13 @@ import {
   RefreshCw,
   Download,
   Filter,
+  UserCheck,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { useERP } from '../lib/store';
-import { AppRole, UserProfile } from '../types';
+import { AppRole } from '../types';
+import { MEMBERSHIP_APPROVER_ROLES, roleLabel } from '../lib/permissions';
 
 export const AdminPage: React.FC = () => {
   const {
@@ -26,9 +30,46 @@ export const AdminPage: React.FC = () => {
     activeRole,
     personnelTypes,
     addPersonnelType,
+    memberships,
+    personnel,
+    approveMembership,
+    rejectMembership,
+    currentUser,
   } = useERP();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'audit' | 'database'>('users');
+  const [activeTab, setActiveTab] = useState<'memberships' | 'users' | 'audit' | 'database'>('memberships');
+  const [membershipFilter, setMembershipFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [draftRole, setDraftRole] = useState<Record<string, AppRole>>({});
+  const [draftPersonnel, setDraftPersonnel] = useState<Record<string, string>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const canApproveMemberships = MEMBERSHIP_APPROVER_ROLES.includes(currentUser.role);
+  const pendingMemberships = memberships.filter((item) => item.status === 'pending');
+  const visibleMemberships = memberships.filter((item) => membershipFilter === 'all' || item.status === membershipFilter);
+
+  const handleApprove = async (id: string) => {
+    setBusyId(id);
+    try {
+      await approveMembership(id, { role: draftRole[id], personnelId: draftPersonnel[id] || undefined });
+    } catch (error) {
+      showToast(`Üyelik onaylanamadı: ${error instanceof Error ? error.message : 'Supabase hatası'}`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const reason = window.prompt('Reddetme gerekçesi (personele iletilecek):');
+    if (!reason || !reason.trim()) return;
+    setBusyId(id);
+    try {
+      await rejectMembership(id, reason.trim());
+    } catch (error) {
+      showToast(`Üyelik reddedilemedi: ${error instanceof Error ? error.message : 'Supabase hatası'}`);
+    } finally {
+      setBusyId(null);
+    }
+  };
   const [auditSearch, setAuditSearch] = useState('');
   const [auditModuleFilter, setAuditModuleFilter] = useState('all');
   const [newPersonnelType, setNewPersonnelType] = useState('');
@@ -83,7 +124,18 @@ export const AdminPage: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-emerald-100 mt-5 text-xs font-medium">
+        <div className="flex flex-wrap border-b border-emerald-100 mt-5 text-xs font-medium">
+          <button
+            onClick={() => setActiveTab('memberships')}
+            className={`pb-2.5 px-4 transition border-b-2 flex items-center gap-2 ${
+              activeTab === 'memberships'
+                ? 'border-emerald-500 text-emerald-600'
+                : 'border-transparent text-slate-600 hover:text-emerald-950'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Üyelik Onayları ({pendingMemberships.length})</span>
+          </button>
           <button
             onClick={() => setActiveTab('users')}
             className={`pb-2.5 px-4 transition border-b-2 flex items-center gap-2 ${
@@ -119,6 +171,159 @@ export const AdminPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* TAB 0: MEMBERSHIP APPROVALS */}
+      {activeTab === 'memberships' && (
+        <div className="space-y-4">
+          {!canApproveMemberships ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm font-bold text-amber-800">
+              Üyelik onaylama yetkisi yalnızca kurucu, admin ve yönetici rollerine açıktır.
+            </div>
+          ) : (
+            <>
+              <div className="rounded-[26px] bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 p-6 text-white shadow-xl">
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200">Personel Üyelik Kurumu</div>
+                <h2 className="mt-1 text-2xl font-black">Üyelik Başvuruları</h2>
+                <p className="mt-1 max-w-2xl text-xs text-emerald-100">
+                  Sahadaki personel kendi hesabını açar; siz burada rolünü belirleyip personel kaydıyla eşleştirerek onaylarsınız.
+                  Onaylanmayan hesaplar hiçbir ERP ekranına erişemez.
+                </p>
+                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <div className="text-[10px] font-black uppercase text-emerald-200">Bekleyen</div>
+                    <div className="text-xl font-black">{memberships.filter((m) => m.status === 'pending').length}</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <div className="text-[10px] font-black uppercase text-emerald-200">Onaylı</div>
+                    <div className="text-xl font-black">{memberships.filter((m) => m.status === 'approved').length}</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <div className="text-[10px] font-black uppercase text-emerald-200">Reddedilen</div>
+                    <div className="text-xl font-black">{memberships.filter((m) => m.status === 'rejected').length}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {([['pending', 'Bekleyen'], ['approved', 'Onaylı'], ['rejected', 'Reddedilen'], ['all', 'Tümü']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setMembershipFilter(key)}
+                    className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
+                      membershipFilter === key ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-800 border border-emerald-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {visibleMemberships.length === 0 ? (
+                <div className="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+                  Bu filtrede üyelik başvurusu bulunmuyor.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {visibleMemberships.map((item) => {
+                    const matched = personnel.find((p) => p.id === (draftPersonnel[item.id] || item.personnelId));
+                    return (
+                      <div key={item.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-black text-emerald-950">{item.userFullName || item.userEmail}</h3>
+                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
+                                item.status === 'approved' ? 'bg-emerald-50 text-emerald-700'
+                                  : item.status === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
+                              }`}>
+                                {item.status === 'approved' ? 'onaylı' : item.status === 'rejected' ? 'reddedildi' : 'onay bekliyor'}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              {item.userEmail} · Talep edilen rol: <b className="text-emerald-800">{roleLabel(item.requestedRole as AppRole)}</b>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                              <Clock className="h-3 w-3" />
+                              {new Date(item.createdAt).toLocaleString('tr-TR')}
+                              {item.matchedPersonnelName && <span>· TC eşleşmesi: <b className="text-emerald-800">{item.matchedPersonnelName}</b></span>}
+                            </div>
+                            {item.rejectionReason && (
+                              <div className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">
+                                Red gerekçesi: {item.rejectionReason}
+                              </div>
+                            )}
+                          </div>
+
+                          {item.status === 'pending' && (
+                            <div className="flex flex-wrap items-end gap-2">
+                              <div>
+                                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Atanacak rol</label>
+                                <select
+                                  value={draftRole[item.id] || (item.requestedRole as AppRole) || 'personel'}
+                                  onChange={(e) => setDraftRole((prev) => ({ ...prev, [item.id]: e.target.value as AppRole }))}
+                                  className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-bold"
+                                >
+                                  <option value="personel">Personel</option>
+                                  <option value="operator">Operatör</option>
+                                  <option value="puantor">Puantör</option>
+                                  <option value="operasyon">Operasyon</option>
+                                  <option value="muhasebe">Muhasebe</option>
+                                  <option value="yonetici">Yönetici</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Personel kaydı</label>
+                                <select
+                                  value={draftPersonnel[item.id] || item.personnelId || ''}
+                                  onChange={(e) => setDraftPersonnel((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                  className="max-w-[220px] rounded-xl border border-emerald-200 px-3 py-2 text-xs font-bold"
+                                >
+                                  <option value="">Eşleştirme yok</option>
+                                  {personnel.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.fullName}{p.employeeNo ? ` (${p.employeeNo})` : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                onClick={() => handleApprove(item.id)}
+                                disabled={busyId === item.id}
+                                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />Onayla
+                              </button>
+                              <button
+                                onClick={() => handleReject(item.id)}
+                                disabled={busyId === item.id}
+                                className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 disabled:opacity-50"
+                              >
+                                <XCircle className="mr-1.5 inline h-3.5 w-3.5" />Reddet
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {item.status === 'pending' && (
+                          <p className="mt-3 rounded-xl bg-emerald-50/70 px-3 py-2 text-[11px] text-slate-600">
+                            Onayladığınızda kullanıcı {roleLabel(draftRole[item.id] || (item.requestedRole as AppRole))} yetkileriyle giriş yapar
+                            {matched ? ` ve ${matched.fullName} personel kaydına bağlanır` : ''}. Yalnızca bu role tanımlı ekranları görebilir.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {memberships.some((m) => m.status === 'pending') && (
+                <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[11px] font-bold text-amber-800">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  Bekleyen üyelikler ERP verilerine erişemez. Personelin sisteme girebilmesi için TC eşleşmesini kontrol edip rolünü atayın.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* TAB 1: USERS & ROLES */}
       {activeTab === 'users' && (

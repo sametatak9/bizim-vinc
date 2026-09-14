@@ -28,6 +28,9 @@ import {
   InvoiceStatus,
   Collection,
   Payment,
+  PaymentObligation,
+  PaymentReceiptDoc,
+  PaymentSettlementInput,
   Membership,
   PayrollRun,
   PayrollItem,
@@ -58,7 +61,13 @@ interface ERPContextType {
   activeRole: AppRole;
   setActiveRole: (role: AppRole) => void;
   loginWithCredentials: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
-  registerUser: (email: string, pass: string, fullName: string, phone?: string) => Promise<{ success: boolean; message: string }>;
+  registerUser: (
+    email: string,
+    pass: string,
+    fullName: string,
+    phone?: string,
+    extra?: { tcNo?: string; requestedRole?: 'personel' | 'operator' }
+  ) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateUserProfile: (id: string, updates: Partial<UserProfile>) => Promise<void>;
   changePassword: (password: string) => Promise<void>;
@@ -78,7 +87,7 @@ interface ERPContextType {
   // Üyelik & Eşleştirme
   memberships: Membership[];
   requestMembership: (tcNoOrHash: string, requestedRole: AppRole, personnelId?: string) => Promise<{ success: boolean; message: string }>;
-  approveMembership: (id: string) => Promise<void>;
+  approveMembership: (id: string, overrides?: { role?: AppRole; personnelId?: string }) => Promise<void>;
   rejectMembership: (id: string, reason: string) => Promise<void>;
 
   // Cari (Customers) & Şantiye (Sites)
@@ -109,7 +118,23 @@ interface ERPContextType {
   markCollectionReceived: (id: string) => Promise<void>;
   payments: Payment[];
   addPayment: (pay: Omit<Payment, 'id' | 'createdAt'>) => Promise<void>;
+  /** @deprecated dekont zorunlu: `settlePayment` kullanın */
   markPaymentPaid: (id: string) => Promise<void>;
+  obligations: PaymentObligation[];
+  paymentReceipts: PaymentReceiptDoc[];
+  createPaymentPlan: (
+    obligation: Omit<PaymentObligation, 'id' | 'createdAt'>,
+    schedule: { amount: number; dueDate: string; installmentNo: number }[]
+  ) => Promise<PaymentObligation>;
+  settlePayment: (id: string, input: PaymentSettlementInput) => Promise<void>;
+  addPaymentDocument: (
+    paymentId: string,
+    file: File,
+    docType?: PaymentReceiptDoc['docType'],
+    extra?: { amount?: number; referenceNo?: string; notes?: string }
+  ) => Promise<void>;
+  getPaymentDocumentUrl: (filePath: string) => Promise<string>;
+  cancelPayment: (id: string, reason: string) => Promise<void>;
 
   // Maaş & Bordro
   payrollRuns: PayrollRun[];
@@ -287,6 +312,12 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [payments, setPayments] = useState<Payment[]>(() =>
     loadStored('bv_payments', [])
+  );
+  const [obligations, setObligations] = useState<PaymentObligation[]>(() =>
+    loadStored('bv_payment_obligations', [])
+  );
+  const [paymentReceipts, setPaymentReceipts] = useState<PaymentReceiptDoc[]>(() =>
+    loadStored('bv_payment_receipts', [])
   );
   const [memberships, setMemberships] = useState<Membership[]>(() =>
     loadStored('bv_memberships', [])
@@ -656,8 +687,59 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         category: d.category, amount: Number(d.amount) || 0, dueDate: d.due_date, paidDate: d.paid_date,
         paymentDate: d.payment_date, paymentMethod: d.payment_method, status: d.status, payrollItemId: d.payroll_item_id,
         notes: d.notes, obligationId: d.obligation_id, installmentNo: d.installment_no, installmentCount: d.installment_count, reminderDaysBefore: Number(d.reminder_days_before) || 2, recurring: Boolean(d.recurring), createdAt: d.created_at,
+        periodMonth: d.period_month, paidAmount: d.paid_amount == null ? undefined : Number(d.paid_amount),
+        paymentChannel: d.payment_channel || undefined, bankAccount: d.bank_account || undefined,
+        referenceNo: d.reference_no || undefined, institutionName: d.institution_name || undefined,
+        invoiceNo: d.invoice_no || undefined, documentPath: d.document_path || undefined,
+        currency: d.currency || 'TRY',
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
+
+      // Ödeme yükümlülükleri (leasing / kredi / abonelik sözleşmeleri)
+      const { data: obligationData } = await sb.from('payment_obligations').select('*').order('created_at', { ascending: false });
+      const mappedObligations: PaymentObligation[] = (obligationData || []).map((d: any) => ({
+        id: d.id, title: d.title, category: d.category, recipientName: d.recipient_name, recipientId: d.recipient_id || undefined,
+        institutionName: d.institution_name || undefined, contractNo: d.contract_no || undefined, subscriberNo: d.subscriber_no || undefined,
+        invoiceNo: d.invoice_no || undefined, invoiceDate: d.invoice_date || undefined, plate: d.plate || undefined,
+        craneId: d.crane_id || undefined, iban: d.iban || undefined,
+        totalAmount: Number(d.total_amount) || 0, installmentCount: Number(d.installment_count) || 1,
+        paymentDay: d.payment_day || undefined, startMonth: d.start_month || undefined,
+        startDate: d.start_date || undefined, endDate: d.end_date || undefined,
+        currency: d.currency || 'TRY', interestRate: d.interest_rate == null ? undefined : Number(d.interest_rate),
+        reminderDaysBefore: d.reminder_days_before == null ? 2 : Number(d.reminder_days_before),
+        recurring: Boolean(d.recurring), status: d.status || undefined, source: d.source || 'manuel',
+        sourceInvoiceId: d.source_invoice_id || undefined, documentPath: d.document_path || undefined,
+        notes: d.notes || undefined, meta: d.meta || {}, createdAt: d.created_at,
+      }));
+      setObligations(mappedObligations); saveStored('bv_payment_obligations', mappedObligations);
+
+      // Dekont / belge arşivi
+      const { data: receiptDocData } = await sb.from('payment_receipts').select('*').order('created_at', { ascending: false });
+      const mappedReceiptDocs: PaymentReceiptDoc[] = (receiptDocData || []).map((d: any) => ({
+        id: d.id, paymentId: d.payment_id, obligationId: d.obligation_id || undefined, docType: d.doc_type,
+        filePath: d.file_path, fileName: d.file_name, mimeType: d.mime_type || undefined,
+        fileSize: d.file_size == null ? undefined : Number(d.file_size),
+        amount: d.amount == null ? undefined : Number(d.amount), bankName: d.bank_name || undefined,
+        referenceNo: d.reference_no || undefined, paidAt: d.paid_at || undefined, notes: d.notes || undefined,
+        uploadedBy: d.uploaded_by || undefined, createdAt: d.created_at,
+      }));
+      setPaymentReceipts(mappedReceiptDocs); saveStored('bv_payment_receipts', mappedReceiptDocs);
+
+      // Üyelik başvuruları (kurucu onay ekranı için)
+      const { data: membershipData } = await sb.from('memberships').select('*').order('created_at', { ascending: false });
+      if (membershipData) {
+        const mappedMemberships: Membership[] = membershipData.map((d: any) => ({
+          id: d.id, userId: d.user_id, userEmail: d.user_email, userFullName: d.user_full_name,
+          requestedRole: d.requested_role, personnelId: d.personnel_id || undefined,
+          matchedPersonnelName: d.matched_personnel_name || undefined, tcHashOrNo: d.tc_hash_or_no || undefined,
+          status: d.status, approvalRequestId: d.approval_request_id || undefined,
+          approvedBy: d.approved_by || undefined, approvedAt: d.approved_at || undefined,
+          rejectedBy: d.rejected_by || undefined, rejectedAt: d.rejected_at || undefined,
+          rejectionReason: d.rejection_reason || undefined,
+          createdAt: d.created_at, updatedAt: d.updated_at || undefined,
+        }));
+        setMemberships(mappedMemberships); saveStored('bv_memberships', mappedMemberships);
+      }
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const paymentAlerts = mappedPayments.filter((payment) => payment.status === 'bekliyor').filter((payment) => {
         const due = new Date(`${payment.dueDate}T00:00:00`);
@@ -774,12 +856,26 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, message: `Hoş geldiniz, ${profile.fullName}!` };
   };
 
-  const registerUser = async (email: string, pass: string, fullName: string, phone?: string): Promise<{ success: boolean; message: string }> => {
+  const registerUser = async (
+    email: string,
+    pass: string,
+    fullName: string,
+    phone?: string,
+    extra?: { tcNo?: string; requestedRole?: 'personel' | 'operator' }
+  ): Promise<{ success: boolean; message: string }> => {
     const sb = getSupabase();
     if (!sb) {
       return { success: false, message: 'Supabase bağlantısı yapılandırılmamış. Üyelik başvurusu gönderilemiyor.' };
     }
-    const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: fullName, phone } } });
+    const tcDigits = (extra?.tcNo || '').replace(/\D/g, '');
+    if (tcDigits && tcDigits.length !== 11) {
+      return { success: false, message: 'TC kimlik numarası 11 haneli olmalıdır.' };
+    }
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { full_name: fullName, phone, tc_no: tcDigits || undefined, requested_role: extra?.requestedRole || 'personel' } },
+    });
     if (error || !data.user) {
       return { success: false, message: error?.message || 'Üyelik başvurusu oluşturulamadı.' };
     }
@@ -1137,6 +1233,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: newApproval.status,
             title: newApproval.title,
             person_id: newApproval.personId,
+            created_by: currentUser.id === 'guest' ? null : currentUser.id,
             person_name: newApproval.personName,
             person_initials: newApproval.personInitials,
             related_label: newApproval.relatedLabel,
@@ -1649,6 +1746,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             amount: newExpense.amount,
             crane_code: newExpense.craneCode,
             person_name: newExpense.personName,
+            person_id: currentUser.personnelId || null,
+            created_by: currentUser.id === 'guest' ? null : currentUser.id,
             station_or_supplier: newExpense.stationOrSupplier,
             status: newExpense.status,
             meter_reading: newExpense.meterReading || null,
@@ -2175,25 +2274,244 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`✓ Ödeme Emri Oluşturuldu: ₺${newPay.amount.toLocaleString('tr-TR')}`);
   };
 
-  const markPaymentPaid = async (id: string) => {
+  /**
+   * Dekont zorunlu ödeme kapatma.
+   * Akış: belge önce `payment-documents` deposuna yüklenir, `payment_receipts` satırı açılır,
+   * ardından taksit "odendi" olarak işaretlenir. Veritabanı tarafındaki tetikleyici
+   * (0029) belge veya ödeme kanalı olmadan kapatmayı reddeder.
+   */
+  const settlePayment = async (id: string, input: PaymentSettlementInput) => {
     const pay = payments.find((p) => p.id === id);
-    if (!pay) return;
-
+    if (!pay) throw new Error('Ödeme satırı bulunamadı.');
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase bağlantısı yok.');
-    const paidDate = new Date().toISOString().split('T')[0];
-    const { error } = await sb.from('payments').update({ status: 'odendi', payment_date: paidDate, paid_date: paidDate }).eq('id', id);
-    if (error) throw error;
+    if (!input.file) throw new Error('Dekont / ödeme belgesi zorunludur.');
+    if (!(input.paidAmount > 0)) throw new Error('Ödenen tutarı giriniz.');
+    if (!input.paymentChannel) throw new Error('Ödeme kanalını seçiniz.');
+    if (!input.paymentDate) throw new Error('Ödeme tarihini giriniz.');
+    const maxSize = 20 * 1024 * 1024;
+    if (input.file.size > maxSize) throw new Error('Belge boyutu en fazla 20 MB olabilir.');
 
+    const safeName = input.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const path = `${input.paymentDate.slice(0, 7)}/${id}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await sb.storage.from('payment-documents').upload(path, input.file, { upsert: false });
+    if (uploadError) throw new Error(`Dekont yüklenemedi: ${uploadError.message}`);
+
+    const receiptId = generateUuid();
+    const { error: docError } = await sb.from('payment_receipts').insert({
+      id: receiptId, payment_id: id, obligation_id: pay.obligationId || null,
+      doc_type: input.docType || 'dekont', file_path: path, file_name: input.file.name,
+      mime_type: input.file.type || null, file_size: input.file.size,
+      amount: input.paidAmount, bank_name: input.bankAccount || null,
+      reference_no: input.referenceNo || null, paid_at: input.paymentDate,
+      notes: input.notes || null, uploaded_by: currentUser.id === 'guest' ? null : currentUser.id,
+    });
+    if (docError) {
+      await sb.storage.from('payment-documents').remove([path]).catch(() => {});
+      throw new Error(`Dekont kaydı oluşturulamadı: ${docError.message}`);
+    }
+
+    const { error: updateError } = await sb.from('payments').update({
+      status: 'odendi', payment_date: input.paymentDate, paid_date: input.paymentDate,
+      paid_amount: input.paidAmount, payment_channel: input.paymentChannel,
+      bank_account: input.bankAccount || null, reference_no: input.referenceNo || null,
+      institution_name: input.institutionName || pay.institutionName || null,
+      invoice_no: input.invoiceNo || pay.invoiceNo || null,
+      document_path: path,
+      paid_by: currentUser.id === 'guest' ? null : currentUser.id,
+      notes: input.notes ? `${pay.notes ? pay.notes + ' | ' : ''}${input.notes}` : pay.notes || null,
+    }).eq('id', id);
+    if (updateError) throw new Error(updateError.message);
+
+    const nowIso = new Date().toISOString();
+    setPaymentReceipts((prev) => {
+      const next: PaymentReceiptDoc[] = [{
+        id: receiptId, paymentId: id, obligationId: pay.obligationId,
+        docType: input.docType || 'dekont', filePath: path, fileName: input.file.name,
+        mimeType: input.file.type, fileSize: input.file.size, amount: input.paidAmount,
+        bankName: input.bankAccount, referenceNo: input.referenceNo, paidAt: input.paymentDate,
+        notes: input.notes, uploadedBy: currentUser.id, createdAt: nowIso,
+      }, ...prev];
+      saveStored('bv_payment_receipts', next);
+      return next;
+    });
     setPayments((prev) => {
-      const next = prev.map((p) =>
-        p.id === id ? { ...p, status: 'odendi' as const, paymentDate: paidDate, paidDate } : p
-      );
+      const next = prev.map((p) => p.id === id ? {
+        ...p, status: 'odendi' as const, paymentDate: input.paymentDate, paidDate: input.paymentDate,
+        paidAmount: input.paidAmount, paymentChannel: input.paymentChannel,
+        bankAccount: input.bankAccount, referenceNo: input.referenceNo,
+        institutionName: input.institutionName || p.institutionName,
+        invoiceNo: input.invoiceNo || p.invoiceNo, documentPath: path,
+      } : p);
       saveStored('bv_payments', next);
       return next;
     });
-    logAction('ODEME_YAPILDI', 'Finans', id, `${pay.recipientName} alıcısına ₺${pay.amount.toLocaleString('tr-TR')} ödendi.`);
-    showToast(`✓ Ödeme Tamamlandı: ₺${pay.amount.toLocaleString('tr-TR')}`);
+
+    logAction('ODEME_YAPILDI', 'Finans', id, `${pay.recipientName} – ₺${input.paidAmount.toLocaleString('tr-TR')} (${input.paymentChannel}) dekontlu ödendi.`);
+    showToast(`✓ Ödeme dekontuyla kapatıldı: ₺${input.paidAmount.toLocaleString('tr-TR')}`);
+  };
+
+  /** Bir taksite ek belge (fatura görseli, ekstre) bağlar. */
+  const addPaymentDocument = async (
+    paymentId: string,
+    file: File,
+    docType: PaymentReceiptDoc['docType'] = 'fatura',
+    extra?: { amount?: number; referenceNo?: string; notes?: string }
+  ) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const pay = payments.find((p) => p.id === paymentId);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const path = `${(pay?.dueDate || new Date().toISOString()).slice(0, 7)}/${paymentId}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await sb.storage.from('payment-documents').upload(path, file, { upsert: false });
+    if (uploadError) throw new Error(`Belge yüklenemedi: ${uploadError.message}`);
+    const id = generateUuid();
+    const { error } = await sb.from('payment_receipts').insert({
+      id, payment_id: paymentId, obligation_id: pay?.obligationId || null, doc_type: docType,
+      file_path: path, file_name: file.name, mime_type: file.type || null, file_size: file.size,
+      amount: extra?.amount ?? null, reference_no: extra?.referenceNo || null, notes: extra?.notes || null,
+      uploaded_by: currentUser.id === 'guest' ? null : currentUser.id,
+    });
+    if (error) throw new Error(error.message);
+    setPaymentReceipts((prev) => {
+      const next: PaymentReceiptDoc[] = [{
+        id, paymentId, obligationId: pay?.obligationId, docType, filePath: path, fileName: file.name,
+        mimeType: file.type, fileSize: file.size, amount: extra?.amount, referenceNo: extra?.referenceNo,
+        notes: extra?.notes, uploadedBy: currentUser.id, createdAt: new Date().toISOString(),
+      }, ...prev];
+      saveStored('bv_payment_receipts', next);
+      return next;
+    });
+    showToast('✓ Belge yüklendi.');
+  };
+
+  /** Özel depodaki belge için 5 dakika geçerli imzalı bağlantı üretir. */
+  const getPaymentDocumentUrl = async (filePath: string): Promise<string> => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const { data, error } = await sb.storage.from('payment-documents').createSignedUrl(filePath, 300);
+    if (error || !data?.signedUrl) throw new Error(error?.message || 'Belge bağlantısı alınamadı.');
+    return data.signedUrl;
+  };
+
+  /**
+   * Yükümlülük (sözleşme/abonelik) + taksit planını tek işlemde oluşturur.
+   * Kategoriye özel alanlar (kurum, sözleşme no, abone no, plaka, fatura no…) korunur.
+   */
+  const createPaymentPlan = async (
+    obligation: Omit<PaymentObligation, 'id' | 'createdAt'>,
+    schedule: { amount: number; dueDate: string; installmentNo: number }[]
+  ): Promise<PaymentObligation> => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Ödeme planı kaydedilemedi.');
+    if (!schedule.length) throw new Error('En az bir taksit satırı gerekli.');
+    const id = generateUuid();
+    const row = {
+      id,
+      title: obligation.title,
+      category: obligation.category,
+      recipient_name: obligation.recipientName,
+      recipient_id: obligation.recipientId || null,
+      institution_name: obligation.institutionName || null,
+      contract_no: obligation.contractNo || null,
+      subscriber_no: obligation.subscriberNo || null,
+      invoice_no: obligation.invoiceNo || null,
+      invoice_date: obligation.invoiceDate || null,
+      plate: obligation.plate || null,
+      crane_id: obligation.craneId || null,
+      iban: obligation.iban || null,
+      total_amount: obligation.totalAmount,
+      installment_count: obligation.installmentCount,
+      payment_day: obligation.paymentDay || null,
+      start_month: obligation.startMonth || null,
+      start_date: obligation.startDate || null,
+      end_date: obligation.endDate || null,
+      currency: obligation.currency || 'TRY',
+      interest_rate: obligation.interestRate ?? null,
+      reminder_days_before: obligation.reminderDaysBefore ?? 2,
+      recurring: obligation.recurring ?? false,
+      source: obligation.source || 'manuel',
+      source_invoice_id: obligation.sourceInvoiceId || null,
+      notes: obligation.notes || null,
+      meta: obligation.meta || {},
+    };
+    const { error: obligationError } = await sb.from('payment_obligations').insert(row);
+    if (obligationError) throw new Error(`Yükümlülük kaydedilemedi: ${obligationError.message}`);
+
+    const paymentRows = schedule.map((s) => ({
+      id: generateUuid(),
+      recipient_type: obligation.category === 'maas' || obligation.category === 'avans' ? 'personel' : 'tedarikci',
+      recipient_id: obligation.recipientId || null,
+      recipient_name: obligation.recipientName,
+      category: obligation.category,
+      amount: s.amount,
+      due_date: s.dueDate,
+      payment_method: 'havale',
+      status: 'bekliyor',
+      obligation_id: id,
+      installment_no: s.installmentNo,
+      installment_count: schedule.length,
+      reminder_days_before: obligation.reminderDaysBefore ?? 2,
+      recurring: obligation.recurring ?? false,
+      institution_name: obligation.institutionName || null,
+      invoice_no: obligation.invoiceNo || null,
+      currency: obligation.currency || 'TRY',
+      notes: obligation.notes || `${obligation.title} – ${schedule.length} taksitli plan`,
+    }));
+    const { error: paymentError } = await sb.from('payments').insert(paymentRows);
+    if (paymentError) {
+      await sb.from('payment_obligations').delete().eq('id', id);
+      throw new Error(`Taksitler oluşturulamadı: ${paymentError.message}`);
+    }
+
+    const created: PaymentObligation = { ...obligation, id, createdAt: new Date().toISOString() };
+    setObligations((prev) => {
+      const next = [created, ...prev];
+      saveStored('bv_payment_obligations', next);
+      return next;
+    });
+    const newPayments: Payment[] = paymentRows.map((r) => ({
+      id: r.id, recipientType: r.recipient_type as Payment['recipientType'], recipientId: obligation.recipientId,
+      recipientName: r.recipient_name, category: obligation.category, amount: r.amount, dueDate: r.due_date,
+      paymentMethod: 'havale', status: 'bekliyor', obligationId: id, installmentNo: r.installment_no,
+      installmentCount: r.installment_count, reminderDaysBefore: r.reminder_days_before, recurring: r.recurring,
+      institutionName: obligation.institutionName, invoiceNo: obligation.invoiceNo,
+      currency: obligation.currency || 'TRY', periodMonth: `${r.due_date.slice(0, 7)}-01`,
+      notes: r.notes, createdAt: new Date().toISOString(),
+    }));
+    setPayments((prev) => {
+      const next = [...newPayments, ...prev];
+      saveStored('bv_payments', next);
+      return next;
+    });
+
+    logAction('ODEME_PLANI_OLUSTURULDU', 'Finans', id, `${obligation.title} – ${schedule.length} taksit / ₺${obligation.totalAmount.toLocaleString('tr-TR')}`);
+    showToast(`✓ ${schedule.length} taksitli ödeme planı oluşturuldu.`);
+    return created;
+  };
+
+  /** Taksiti iptal eder (silmek yerine iz bırakır). */
+  const cancelPayment = async (id: string, reason: string) => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const pay = payments.find((p) => p.id === id);
+    if (!pay) return;
+    const { error } = await sb.from('payments').update({
+      status: 'iptal', notes: `${pay.notes ? pay.notes + ' | ' : ''}İptal: ${reason}`,
+    }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setPayments((prev) => {
+      const next = prev.map((p) => p.id === id ? { ...p, status: 'iptal' as const, notes: `${p.notes ? p.notes + ' | ' : ''}İptal: ${reason}` } : p);
+      saveStored('bv_payments', next);
+      return next;
+    });
+    logAction('ODEME_IPTAL', 'Finans', id, `${pay.recipientName} ödemesi iptal edildi: ${reason}`);
+    showToast('Ödeme satırı iptal edildi.');
+  };
+
+  /** @deprecated Dekont zorunluluğu nedeniyle `settlePayment` kullanılmalıdır. */
+  const markPaymentPaid = async (_id: string) => {
+    throw new Error('Ödeme, dekont/belge yüklenmeden kapatılamaz. Lütfen ödeme kaydı penceresini kullanın.');
   };
 
   // ==========================================
@@ -2258,57 +2576,49 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const approveMembership = async (id: string) => {
+  /**
+   * Üyeliği onaylar. Tüm kontroller (yetki, personel bağı tekilliği, sekme yetkileri)
+   * veritabanındaki `approve_membership` fonksiyonunda yapılır; istemci tarafı tek başına
+   * rol yükseltemez (bkz. migration 0030).
+   */
+  const approveMembership = async (id: string, overrides?: { role?: AppRole; personnelId?: string }) => {
     const mem = memberships.find((m) => m.id === id);
     if (!mem) return;
     if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik onayı yalnızca founder veya admin tarafından yapılabilir.');
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase bağlantısı yok.');
-    const { error: membershipError } = await sb.from('memberships').update({ status: 'approved', approved_by: currentUser.id, approved_at: new Date().toISOString() }).eq('id', id);
-    if (membershipError) throw membershipError;
-    const { error: profileError } = await sb.from('profiles').update({ role: mem.requestedRole, status: 'aktif', personnel_id: mem.personnelId || null, updated_at: new Date().toISOString() }).eq('id', mem.userId);
-    if (profileError) throw profileError;
 
+    const finalRole = (overrides?.role || mem.requestedRole || 'personel') as AppRole;
+    const finalPersonnelId = overrides?.personnelId || mem.personnelId;
+    const { error } = await sb.rpc('approve_membership', {
+      p_membership_id: id,
+      p_role: finalRole,
+      p_personnel_id: finalPersonnelId || null,
+    });
+    if (error) throw new Error(error.message);
+
+    const nowIso = new Date().toISOString();
     setMemberships((prev) => {
-      const next = prev.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              status: 'approved' as const,
-              approvedBy: currentUser.fullName,
-              approvedAt: new Date().toISOString(),
-            }
-          : m
-      );
+      const next = prev.map((m) => m.id === id ? {
+        ...m, status: 'approved' as const, requestedRole: finalRole,
+        personnelId: finalPersonnelId, approvedBy: currentUser.fullName, approvedAt: nowIso,
+      } : m);
       saveStored('bv_memberships', next);
       return next;
     });
-
-    // Kullanıcı profilini güncelle
     setUserProfiles((prev) => {
-      const next = prev.map((u) =>
-        u.id === mem.userId
-          ? {
-              ...u,
-              role: mem.requestedRole,
-              personnelId: mem.personnelId || u.personnelId,
-            }
-          : u
-      );
+      const next = prev.map((u) => u.id === mem.userId ? {
+        ...u, role: finalRole, status: 'aktif' as const, personnelId: finalPersonnelId || u.personnelId,
+      } : u);
       saveStored('bv_user_profiles', next);
       return next;
     });
-
     if (currentUser.id === mem.userId) {
-      setActiveRole(mem.requestedRole);
-      setCurrentUser((prev) => ({
-        ...prev,
-        role: mem.requestedRole,
-        personnelId: mem.personnelId || prev.personnelId,
-      }));
+      setActiveRole(finalRole);
+      setCurrentUser((prev) => ({ ...prev, role: finalRole, personnelId: finalPersonnelId || prev.personnelId }));
     }
 
-    logAction('UYELIK_ONAYLANDI', 'Auth', id, `${mem.userFullName} kullanıcısının ${mem.requestedRole} yetkisi onaylandı.`);
+    logAction('UYELIK_ONAYLANDI', 'Auth', id, `${mem.userFullName} kullanıcısının ${finalRole} yetkisi onaylandı.`);
     showToast(`✓ Üyelik ve Yetki Onaylandı: ${mem.userFullName}`);
   };
 
@@ -2316,8 +2626,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!['founder', 'admin'].includes(currentUser.role)) throw new Error('Üyelik reddi yalnızca founder veya admin tarafından yapılabilir.');
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase bağlantısı yok.');
-    const { error: membershipError } = await sb.from('memberships').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
-    if (membershipError) throw membershipError;
+    const { error: membershipError } = await sb.rpc('reject_membership', { p_membership_id: id, p_reason: reason });
+    if (membershipError) throw new Error(membershipError.message);
     setMemberships((prev) => {
       const next = prev.map((m) =>
         m.id === id
@@ -2668,6 +2978,13 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         payments,
         addPayment,
         markPaymentPaid,
+        obligations,
+        paymentReceipts,
+        createPaymentPlan,
+        settlePayment,
+        addPaymentDocument,
+        getPaymentDocumentUrl,
+        cancelPayment,
         payrollRuns,
         payrollItems,
         payrollPayments,

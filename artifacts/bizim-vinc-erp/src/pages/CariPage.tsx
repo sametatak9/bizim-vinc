@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useERP } from '../lib/store';
 import { Customer, Site, Collection, Payment } from '../types';
+import { PaymentSettleModal } from '../components/PaymentSettleModal';
 import {
   Building2,
   Plus,
@@ -37,10 +38,10 @@ export const CariPage: React.FC = () => {
     addCollection,
     markCollectionReceived,
     addPayment,
-    markPaymentPaid,
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<'customers' | 'sites' | 'collections' | 'payments'>('customers');
+  const [settleTarget, setSettleTarget] = useState<Payment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modals
@@ -638,10 +639,10 @@ export const CariPage: React.FC = () => {
                       <td className="p-3.5 text-right">
                         {p.status === 'bekliyor' && (
                           <button
-                            onClick={() => markPaymentPaid(p.id)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                            onClick={() => setSettleTarget(p)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition"
                           >
-                            Ödendi Yap
+                            Dekont Yükle & Öde
                           </button>
                         )}
                       </td>
@@ -999,6 +1000,8 @@ export const CariPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {settleTarget && <PaymentSettleModal payment={settleTarget} onClose={() => setSettleTarget(null)} />}
     </div>
   );
 };

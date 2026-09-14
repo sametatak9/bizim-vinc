@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { isEmployeeSelfServiceRole } from '../types';
 import { ProfilePanel } from './ProfilePanel';
+import { canAccessRoute } from '../lib/permissions';
 
 interface HeaderProps {
   currentPath: string;
@@ -71,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
   const visibleNavItems = isEmployeeSelfServiceRole(currentUser.role)
     ? navItems.filter((item) => item.path === '/operator')
-    : navItems;
+    : navItems.filter((item) => canAccessRoute(currentUser.role, item.path));
 
   return (
     <header className="sticky top-0 z-[1000] bg-white/95 border-b border-emerald-200 text-emerald-950 shadow-sm">
@@ -339,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </div>
       )}
-      {profileOpen && <div className="fixed inset-0 z-[99999]"><ProfilePanel onClose={() => setProfileOpen(false)} /></div>}
+      {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} />}
     </header>
   );
 };

@@ -462,12 +462,42 @@ export interface Collection {
   createdAt: string;
 }
 
+export type PaymentCategory =
+  | 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'leasing' | 'kredi'
+  | 'kredi_karti' | 'petrol_dbs' | 'kdv_vergi' | 'elektrik_su' | 'diger';
+
+/** Ödemenin fiilen hangi yolla yapıldığı (dekont eşleştirmesi için) */
+export type PaymentChannel =
+  | 'havale_eft' | 'otomatik_odeme' | 'dbs' | 'nakit' | 'cek' | 'senet'
+  | 'kredi_karti' | 'pos' | 'mahsup' | 'virman' | 'diger';
+
+export const PAYMENT_CHANNEL_LABELS: Record<PaymentChannel, string> = {
+  havale_eft: 'Havale / EFT',
+  otomatik_odeme: 'Otomatik Ödeme (Talimat)',
+  dbs: 'DBS (Doğrudan Borçlandırma)',
+  nakit: 'Nakit (Kasa)',
+  cek: 'Çek',
+  senet: 'Senet',
+  kredi_karti: 'Kredi Kartı',
+  pos: 'POS',
+  mahsup: 'Mahsup / Takas',
+  virman: 'Virman',
+  diger: 'Diğer',
+};
+
+export const PAYMENT_CATEGORY_LABELS: Record<PaymentCategory, string> = {
+  maas: 'Maaş', avans: 'Avans', yakit: 'Yakıt', bakim: 'Bakım / Servis',
+  kira: 'Kira', masraf: 'Masraf', leasing: 'Leasing', kredi: 'Banka Kredisi',
+  kredi_karti: 'Kredi Kartı', petrol_dbs: 'Petrol DBS', kdv_vergi: 'Vergi / SGK',
+  elektrik_su: 'Elektrik / Su / Doğalgaz', diger: 'Diğer',
+};
+
 export interface Payment {
   id: string;
   recipientType: 'personel' | 'tedarikci' | 'diger';
   recipientId?: string;
   recipientName: string;
-  category: 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'leasing' | 'kredi' | 'kredi_karti' | 'petrol_dbs' | 'kdv_vergi' | 'elektrik_su' | 'diger';
+  category: PaymentCategory;
   amount: number;
   dueDate: string;
   paidDate?: string;
@@ -482,6 +512,83 @@ export interface Payment {
   reminderDaysBefore?: number;
   recurring?: boolean;
   createdAt: string;
+  /** 0029: gerçek ödeme detayı */
+  periodMonth?: string;
+  paidAmount?: number;
+  paymentChannel?: PaymentChannel;
+  bankAccount?: string;
+  referenceNo?: string;
+  institutionName?: string;
+  invoiceNo?: string;
+  documentPath?: string;
+  currency?: string;
+  receiptCount?: number;
+}
+
+/** Ödeme yükümlülüğü: leasing sözleşmesi, kredi, abonelik, kira vb. */
+export interface PaymentObligation {
+  id: string;
+  title: string;
+  category: PaymentCategory;
+  recipientName: string;
+  recipientId?: string;
+  institutionName?: string;
+  contractNo?: string;
+  subscriberNo?: string;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  plate?: string;
+  craneId?: string;
+  iban?: string;
+  totalAmount: number;
+  installmentCount: number;
+  paymentDay?: number;
+  startMonth?: string;
+  startDate?: string;
+  endDate?: string;
+  currency?: string;
+  interestRate?: number;
+  reminderDaysBefore?: number;
+  recurring?: boolean;
+  status?: string;
+  source?: 'manuel' | 'fatura' | 'sozlesme' | 'ice_aktarim';
+  sourceInvoiceId?: string;
+  documentPath?: string;
+  notes?: string;
+  meta?: Record<string, unknown>;
+  createdAt?: string;
+}
+
+/** Dekont / fatura görseli arşivi */
+export interface PaymentReceiptDoc {
+  id: string;
+  paymentId: string;
+  obligationId?: string;
+  docType: 'dekont' | 'fatura' | 'ekstre' | 'makbuz' | 'sozlesme' | 'diger';
+  filePath: string;
+  fileName: string;
+  mimeType?: string;
+  fileSize?: number;
+  amount?: number;
+  bankName?: string;
+  referenceNo?: string;
+  paidAt?: string;
+  notes?: string;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
+export interface PaymentSettlementInput {
+  paidAmount: number;
+  paymentChannel: PaymentChannel;
+  paymentDate: string;
+  bankAccount?: string;
+  referenceNo?: string;
+  institutionName?: string;
+  invoiceNo?: string;
+  notes?: string;
+  docType?: PaymentReceiptDoc['docType'];
+  file: File;
 }
 
 // -------------------------------------------------------------

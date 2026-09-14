@@ -30,6 +30,7 @@ import {
   Download,
 } from 'lucide-react';
 import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
+import { FINANCE_ROLES, roleLabel } from '../lib/permissions';
 
 export const PersonnelPage: React.FC = () => {
   const {
@@ -52,6 +53,11 @@ export const PersonnelPage: React.FC = () => {
     payrollPayments,
     addPayrollPayment,
   } = useERP();
+
+  // Rol duyarli yetkiler
+  const canSeeSalary = FINANCE_ROLES.includes(currentUser.role);
+  const canManagePersonnel = ['founder', 'admin', 'yonetici'].includes(currentUser.role);
+  const canRecordAttendance = ['founder', 'admin', 'yonetici', 'puantor', 'operasyon'].includes(currentUser.role);
 
   const [activeTab, setActiveTab] = useState<'list' | 'card' | 'attendance' | 'payroll' | 'payments'>('list');
   const [search, setSearch] = useState('');
@@ -101,6 +107,7 @@ export const PersonnelPage: React.FC = () => {
   // Batch Save Daily Attendance
   const handleSaveAllAttendance = async () => {
     for (const p of personnel) {
+      if (!canRecordAttendance) break;
       const input = attendanceInputs[p.id] || { status: 'geldi' as AttendanceStatus, hours: 0 };
       await recordAttendance(p.id, input.status);
 
@@ -170,7 +177,7 @@ export const PersonnelPage: React.FC = () => {
   };
   const exportPersonnelReport = (format: 'excel' | 'html' | 'print') => {
     const columns = [{ key: 'sicil', label: 'Sicil' }, { key: 'ad', label: 'Ad Soyad' }, { key: 'gorev', label: 'Görev' }, { key: 'telefon', label: 'Telefon' }, { key: 'durum', label: 'Durum' }, { key: 'maas', label: 'Maaş' }];
-    const rows = filtered.map((p) => ({ sicil: p.employeeNo, ad: p.fullName, gorev: p.title, telefon: p.phone, durum: p.status, maas: `${(p.salary || 0).toLocaleString('tr-TR')} ₺` }));
+    const rows = filtered.map((p) => ({ sicil: p.employeeNo, ad: p.fullName, gorev: p.title, telefon: p.phone, durum: p.status, maas: canSeeSalary ? `${(p.salary || 0).toLocaleString('tr-TR')} ₺` : 'gizli' }));
     const title = 'BİZİM VİNÇ Personel Arşivi';
     if (format === 'excel') downloadExcelReport('personel-arsivi', title, columns, rows);
     else if (format === 'html') downloadHtmlReport('personel-arsivi', title, columns, rows);
@@ -182,7 +189,13 @@ export const PersonnelPage: React.FC = () => {
     <main className="space-y-6 animate-in fade-in duration-150" id="personnel-page">
       <section className="relative overflow-hidden rounded-[26px] bg-white border border-emerald-200 p-5 sm:p-6 shadow-sm">
         <div className="absolute -right-12 -top-20 h-52 w-52 rounded-full bg-emerald-100/70 blur-3xl" />
-        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">İnsan ve saha kaynağı</p><h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">Personel Yönetimi</h1><p className="mt-2 text-sm text-slate-500">Ekibinizi görsel bir dizinde yönetin; görev, durum, evrak ve puantaj akışını tek kayıttan takip edin.</p></div><button onClick={handleCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700"><Plus size={16} /> Yeni Personel Kaydı</button></div>
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">İnsan ve saha kaynağı</p><h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">Personel Yönetimi</h1><p className="mt-2 text-sm text-slate-500">Ekibinizi görsel bir dizinde yönetin; görev, durum, evrak ve puantaj akışını tek kayıttan takip edin.</p></div>{canManagePersonnel && <button onClick={handleCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700"><Plus size={16} /> Yeni Personel Kaydı</button>}</div>
+        <div className="relative mt-4 flex flex-wrap gap-2 text-[11px] font-bold">
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Oturum rolü: {roleLabel(currentUser.role)}</span>
+          <span className={`rounded-full px-3 py-1 ${canSeeSalary ? 'bg-lime-50 text-lime-700' : 'bg-slate-100 text-slate-500'}`}>{canSeeSalary ? 'Maaş ve bordro görünür' : 'Maaş bilgileri gizli'}</span>
+          <span className={`rounded-full px-3 py-1 ${canManagePersonnel ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{canManagePersonnel ? 'Kayıt ekleme/silme açık' : 'Salt okunur kayıt erişimi'}</span>
+          <span className={`rounded-full px-3 py-1 ${canRecordAttendance ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-500'}`}>{canRecordAttendance ? 'Yoklama girişi açık' : 'Yoklama girişi kapalı'}</span>
+        </div>
       </section>
       {/* Top summary cards */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -248,7 +261,7 @@ export const PersonnelPage: React.FC = () => {
             <span>Yoklama & Mesai</span>
           </button>
 
-          <button
+          {canSeeSalary && <button
             onClick={() => setActiveTab('payroll')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
               activeTab === 'payroll'
@@ -263,9 +276,9 @@ export const PersonnelPage: React.FC = () => {
                 {currentRun.month}
               </span>
             )}
-          </button>
+          </button>}
 
-          <button
+          {canSeeSalary && <button
             onClick={() => setActiveTab('payments')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
               activeTab === 'payments'
@@ -275,10 +288,10 @@ export const PersonnelPage: React.FC = () => {
           >
             <CreditCard size={14} />
             <span>Maaş Ödemeleri</span>
-          </button>
+          </button>}
         </div>
 
-        {activeTab === 'list' && (
+        {activeTab === 'list' && canManagePersonnel && (
           <button
             onClick={handleCreate}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap"
@@ -340,7 +353,7 @@ export const PersonnelPage: React.FC = () => {
                   <th className="py-3 px-4">Personel</th>
                   <th className="py-3 px-4">Sicil / Görev</th>
                   <th className="py-3 px-4">İletişim</th>
-                  <th className="py-3 px-4">Tanımlı Maaş</th>
+                  {canSeeSalary && <th className="py-3 px-4">Tanımlı Maaş</th>}
                   <th className="py-3 px-4">Durum</th>
                   <th className="py-3 px-4">Evrak & İSG</th>
                   <th className="py-3 px-4 text-right">İşlemler</th>
@@ -384,9 +397,11 @@ export const PersonnelPage: React.FC = () => {
                       </a>
                     </td>
 
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                      {(person.salary || 0).toLocaleString('tr-TR')} ₺
-                    </td>
+                    {canSeeSalary && (
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        {(person.salary || 0).toLocaleString('tr-TR')} ₺
+                      </td>
+                    )}
 
                     <td className="py-3 px-4">
                       <span
@@ -437,24 +452,28 @@ export const PersonnelPage: React.FC = () => {
                         >
                           <QrCode size={16} />
                         </a>
-                        <button
-                          onClick={() => handleEdit(person)}
-                          className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
-                          title="Düzenle"
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`${person.fullName} silinsin mi?`)) {
-                              deletePerson(person.id);
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
-                          title="Sil"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {canManagePersonnel && (
+                          <button
+                            onClick={() => handleEdit(person)}
+                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+                            title="Düzenle"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                        )}
+                        {canManagePersonnel && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`${person.fullName} silinsin mi?`)) {
+                                deletePerson(person.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                            title="Sil"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

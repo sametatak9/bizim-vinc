@@ -1,82 +1,639 @@
 import React, { useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
-import { Payment } from '../types';
-import { getSupabase } from '../lib/supabase';
-import { CalendarClock, CircleDollarSign, FileWarning, Phone, Search, WalletCards, CheckCircle2 } from 'lucide-react';
+import { PAYMENT_CATEGORY_LABELS, PAYMENT_CHANNEL_LABELS, Payment, PaymentCategory } from '../types';
+import {
+  AlertTriangle, BarChart3, Building2, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign,
+  Download, FileText, FileWarning, Landmark, Lock, Paperclip, Phone, Printer, Search, ShieldCheck,
+  Sparkles, WalletCards, XCircle,
+} from 'lucide-react';
+import { PaymentSettleModal } from '../components/PaymentSettleModal';
+import { PaymentPlanWizard } from '../components/PaymentPlanWizard';
 
-const money = (value: number) => `${value.toLocaleString('tr-TR')} ₺`;
-const daysSince = (date?: string) => date ? Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000)) : 0;
+const money = (value: number) => `${value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+const daysSince = (date?: string) => (date ? Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000)) : 0);
+const today = () => new Date().toISOString().slice(0, 10);
+const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+const monthLabel = (key: string) => {
+  const [year, month] = key.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, 1).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+};
+const FINANCE_ROLES = ['founder', 'admin', 'yonetici', 'muhasebe'];
 
+/** Aylık plan, dekontlu kapatma ve rapor üreten muhasebe ekranı. */
 export const PaymentPlanningPage: React.FC = () => {
-  const { customers, invoices, collections, payments, jobReceipts, addCollection, addPayment, markCollectionReceived, markPaymentPaid } = useERP();
-  const [tab, setTab] = useState<'collections' | 'payments' | 'receipts'>('collections');
+  const {
+    customers, invoices, collections, payments, jobReceipts, obligations, paymentReceipts,
+    addCollection, markCollectionReceived, cancelPayment, getPaymentDocumentUrl, currentUser,
+  } = useERP();
+
+  const [tab, setTab] = useState<'month' | 'obligations' | 'report' | 'new' | 'collections' | 'receipts'>('month');
+  const [month, setMonth] = useState(monthKey(new Date()));
   const [search, setSearch] = useState('');
+  const [settleTarget, setSettleTarget] = useState<Payment | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | PaymentCategory>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'bekliyor' | 'odendi' | 'iptal'>('all');
   const [planCustomer, setPlanCustomer] = useState('');
   const [planAmount, setPlanAmount] = useState('');
-  const [planDate, setPlanDate] = useState(new Date().toISOString().slice(0, 10));
+  const [planDate, setPlanDate] = useState(today());
   const [planNote, setPlanNote] = useState('');
-  const [planCategory, setPlanCategory] = useState<Payment['category']>('diger');
-  const [planInstallments, setPlanInstallments] = useState('1');
-  const [planTitle, setPlanTitle] = useState('');
-  const [paymentRecipient, setPaymentRecipient] = useState('');
-  const [planMode, setPlanMode] = useState<'installment' | 'recurring'>('installment');
-  const [reminderDays, setReminderDays] = useState('2');
   const [manualCustomer, setManualCustomer] = useState('');
+  const [docBusy, setDocBusy] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const canView = FINANCE_ROLES.includes(currentUser?.role || '');
   const normalizedSearch = search.toLocaleLowerCase('tr-TR');
+
+  const inMonth = useMemo(
+    () => payments.filter((item) => (item.periodMonth ? item.periodMonth.slice(0, 7) : item.dueDate.slice(0, 7)) === month),
+    [payments, month]
+  );
+
+  const monthRows = useMemo(() => inMonth
+    .filter((item) => (categoryFilter === 'all' ? true : item.category === categoryFilter))
+    .filter((item) => (statusFilter === 'all' ? true : item.status === statusFilter))
+    .filter((item) => !normalizedSearch || `${item.recipientName} ${item.institutionName || ''} ${item.invoiceNo || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedSearch))
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+  [inMonth, categoryFilter, statusFilter, normalizedSearch]);
+
+  const monthTotals = useMemo(() => {
+    const planned = inMonth.reduce((sum, item) => sum + (item.status === 'iptal' ? 0 : item.amount), 0);
+    const paid = inMonth.filter((item) => item.status === 'odendi').reduce((sum, item) => sum + (item.paidAmount ?? item.amount), 0);
+    const pending = inMonth.filter((item) => item.status === 'bekliyor').reduce((sum, item) => sum + item.amount, 0);
+    const overdue = inMonth.filter((item) => item.status === 'bekliyor' && item.dueDate < today());
+    return { planned, paid, pending, overdueCount: overdue.length, overdueTotal: overdue.reduce((s, i) => s + i.amount, 0) };
+  }, [inMonth]);
+
+  const categoryBreakdown = useMemo(() => {
+    const map = new Map<PaymentCategory, { planned: number; paid: number; count: number }>();
+    inMonth.forEach((item) => {
+      if (item.status === 'iptal') return;
+      const current = map.get(item.category) || { planned: 0, paid: 0, count: 0 };
+      current.planned += item.amount;
+      if (item.status === 'odendi') current.paid += item.paidAmount ?? item.amount;
+      current.count += 1;
+      map.set(item.category, current);
+    });
+    return [...map.entries()].sort((a, b) => b[1].planned - a[1].planned);
+  }, [inMonth]);
+
+  const obligationProgress = useMemo(() => obligations.map((obligation) => {
+    const rows = payments.filter((item) => item.obligationId === obligation.id);
+    const paidRows = rows.filter((item) => item.status === 'odendi');
+    const pendingRows = rows.filter((item) => item.status === 'bekliyor');
+    const paidTotal = paidRows.reduce((sum, item) => sum + (item.paidAmount ?? item.amount), 0);
+    const nextDue = pendingRows.map((item) => item.dueDate).sort()[0];
+    return {
+      obligation, rows, paidCount: paidRows.length, totalCount: rows.length, paidTotal,
+      remaining: Math.max(0, Math.round((obligation.totalAmount - paidTotal) * 100) / 100),
+      nextDue, overdue: pendingRows.some((item) => item.dueDate < today()),
+    };
+  }).filter((item) => !normalizedSearch || `${item.obligation.title} ${item.obligation.recipientName} ${item.obligation.institutionName || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedSearch))
+    .sort((a, b) => (a.nextDue || '9999').localeCompare(b.nextDue || '9999')),
+  [obligations, payments, normalizedSearch]);
 
   const customerDebt = useMemo(() => customers.map((customer) => {
     const customerInvoices = invoices.filter((invoice) => invoice.customerId === customer.id && !['paid', 'odendi', 'cancelled'].includes(invoice.status));
     const pending = collections.filter((item) => item.customerId === customer.id && item.status === 'bekliyor');
     const lastDue = customerInvoices.map((invoice) => invoice.dueDate).sort()[0];
-    return { customer, invoiceTotal: customerInvoices.reduce((sum, invoice) => sum + Math.max(0, invoice.totalAmount - invoice.paidAmount), 0), pendingTotal: pending.reduce((sum, item) => sum + item.amount, 0), oldestDays: daysSince(lastDue), lastDue };
-  }).filter((item) => item.customer.balance > 0 || item.invoiceTotal > 0 || item.pendingTotal > 0).sort((a, b) => b.oldestDays - a.oldestDays), [customers, invoices, collections]);
+    return {
+      customer,
+      invoiceTotal: customerInvoices.reduce((sum, invoice) => sum + Math.max(0, invoice.totalAmount - invoice.paidAmount), 0),
+      pendingTotal: pending.reduce((sum, item) => sum + item.amount, 0),
+      oldestDays: daysSince(lastDue),
+    };
+  }).filter((item) => item.customer.balance > 0 || item.invoiceTotal > 0 || item.pendingTotal > 0)
+    .sort((a, b) => b.oldestDays - a.oldestDays), [customers, invoices, collections]);
 
-  const uninvoiced = jobReceipts.filter((receipt) => ['approved', 'onaylandi'].includes(receipt.status) && !receipt.invoiced).filter((receipt) => !normalizedSearch || receipt.customerName.toLocaleLowerCase('tr-TR').includes(normalizedSearch));
   const filteredDebts = customerDebt.filter((item) => !normalizedSearch || `${item.customer.title} ${item.customer.phone} ${item.customer.authorizedPerson || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedSearch));
-  const scheduledPayments = payments.filter((item) => item.status === 'bekliyor').filter((item) => !normalizedSearch || item.recipientName.toLocaleLowerCase('tr-TR').includes(normalizedSearch));
-  const receivedCash = collections.filter((item) => item.status === 'tahsil_edildi').reduce((sum, item) => sum + item.amount, 0);
-  const paidCash = payments.filter((item) => item.status === 'odendi').reduce((sum, item) => sum + item.amount, 0);
-  const plannedIn = collections.filter((item) => item.status === 'bekliyor').reduce((sum, item) => sum + item.amount, 0);
-  const plannedOut = payments.filter((item) => item.status === 'bekliyor').reduce((sum, item) => sum + item.amount, 0);
-  const duePayments = payments.filter((item) => item.status === 'bekliyor' && item.dueDate <= new Date().toISOString().slice(0, 10));
+  const uninvoiced = jobReceipts.filter((receipt) => ['approved', 'onaylandi'].includes(receipt.status) && !receipt.invoiced);
+  const pendingCollections = collections.filter((item) => item.status === 'bekliyor');
+
+  const openDocument = async (path?: string) => {
+    if (!path) return;
+    setDocBusy(path); setNotice('');
+    try {
+      const url = await getPaymentDocumentUrl(path);
+      window.open(url, '_blank', 'noopener');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Belge açılamadı.');
+    } finally {
+      setDocBusy('');
+    }
+  };
+
+  const cancel = async (payment: Payment) => {
+    const reason = window.prompt('İptal gerekçesi:');
+    if (!reason) return;
+    try { await cancelPayment(payment.id, reason); } catch (err) { setNotice(err instanceof Error ? err.message : 'İptal edilemedi.'); }
+  };
+
+  const exportCsv = (rows: Payment[], fileName: string) => {
+    const header = ['Vade', 'Dönem', 'Alıcı', 'Kurum', 'Kategori', 'Taksit', 'Plan tutarı', 'Ödenen', 'Durum', 'Ödeme kanalı', 'Ödeme tarihi', 'Banka/hesap', 'Dekont no', 'Fatura no', 'Belge'];
+    const lines = rows.map((item) => [
+      item.dueDate, (item.periodMonth || item.dueDate).slice(0, 7), item.recipientName, item.institutionName || '',
+      PAYMENT_CATEGORY_LABELS[item.category], item.installmentCount ? `${item.installmentNo || 1}/${item.installmentCount}` : '',
+      String(item.amount).replace('.', ','), String(item.paidAmount ?? '').replace('.', ','),
+      item.status, item.paymentChannel ? PAYMENT_CHANNEL_LABELS[item.paymentChannel] : '',
+      item.paymentDate || item.paidDate || '', item.bankAccount || '', item.referenceNo || '', item.invoiceNo || '',
+      item.documentPath ? 'Var' : 'Yok',
+    ].map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';'));
+    const blob = new Blob([`\uFEFF${[header.join(';'), ...lines].join('\n')}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   const createCollectionPlan = async (event: React.FormEvent) => {
     event.preventDefault();
     const customer = customers.find((item) => item.id === planCustomer);
     const customerName = customer?.title || manualCustomer.trim();
     if (!customerName || !planAmount) return;
-    await addCollection({ customerId: customer?.id || '', customerName, amount: Number(planAmount), date: planDate, dueDate: planDate, paymentMethod: 'havale', status: 'bekliyor', notes: planNote || 'Tahsilat planı' });
+    await addCollection({
+      customerId: customer?.id || '', customerName, amount: Number(planAmount), date: planDate,
+      dueDate: planDate, paymentMethod: 'havale', status: 'bekliyor', notes: planNote || 'Tahsilat planı',
+    });
     setPlanAmount(''); setPlanNote(''); setManualCustomer('');
   };
 
-  const createPaymentPlan = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const recipientName = paymentRecipient.trim() || planCustomer;
-    if (!recipientName || !planAmount) return;
-    const count = planMode === 'recurring' ? 12 : Math.max(1, Number(planInstallments) || 1);
-    const monthly = Number(planAmount);
-    const total = planMode === 'recurring' ? monthly * count : monthly;
-    const obligationId = crypto.randomUUID();
-    const sb = getSupabase();
-    if (!sb) return;
-    const { error: obligationError } = await sb.from('payment_obligations').insert({ id: obligationId, title: planTitle.trim() || planCategory, category: planCategory, recipient_name: recipientName, total_amount: total, installment_count: count, payment_day: Number(planDate.slice(-2)), start_month: `${planDate.slice(0, 7)}-01`, reminder_days_before: Math.max(0, Number(reminderDays) || 2), recurring: planMode === 'recurring', notes: planNote || null });
-    if (obligationError) throw obligationError;
-    for (let index = 0; index < count; index += 1) {
-      const base = new Date(`${planDate}T12:00:00`); base.setMonth(base.getMonth() + index);
-      await addPayment({ recipientType: 'tedarikci', recipientName, category: planCategory, amount: planMode === 'recurring' ? monthly : (index === count - 1 ? Math.round((total - monthly * (count - 1)) * 100) / 100 : monthly), dueDate: base.toISOString().slice(0, 10), paymentMethod: 'havale', status: 'bekliyor', obligationId, installmentNo: index + 1, installmentCount: count, reminderDaysBefore: Math.max(0, Number(reminderDays) || 2), recurring: planMode === 'recurring', notes: planNote || `${planTitle || planCategory} ${planMode === 'recurring' ? 'aylık tekrar' : 'taksitli'} ödeme planı` });
-    }
-    setPlanAmount(''); setPlanNote(''); setPlanInstallments('1'); setPlanTitle(''); setPaymentRecipient(''); setPlanMode('installment'); setReminderDays('2');
+  const shiftMonth = (delta: number) => {
+    const [year, monthNumber] = month.split('-').map(Number);
+    setMonth(monthKey(new Date(year, (monthNumber || 1) - 1 + delta, 1)));
   };
 
-  return <main className="space-y-6 animate-in fade-in duration-150">
-    <section className="rounded-[26px] bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 text-white p-6 shadow-xl"><div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-200">Muhasebe karar ekranı</p><h1 className="mt-2 text-3xl font-black">Ödeme & Tahsilat Planlama</h1><p className="mt-2 text-sm text-emerald-50/80 max-w-2xl">Cari bakiyeleri, vadesi geçmiş alacakları, planlanan ödemeleri ve fatura bekleyen iş makbuzlarını tek akışta yönetin.</p><button type="button" onClick={() => window.print()} className="mt-4 rounded-xl bg-white/15 border border-white/25 px-3 py-2 text-xs font-black hover:bg-white/25">Ay sonu ödeme raporu / yazdır</button></div><div className="grid grid-cols-2 gap-2 text-xs"><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-emerald-100">Cari alacak</span><b className="block text-xl mt-1">{money(customerDebt.reduce((sum, item) => sum + Math.max(item.customer.balance, item.invoiceTotal), 0))}</b></div><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-emerald-100">Faturasız iş</span><b className="block text-xl mt-1">{uninvoiced.length}</b></div></div></div></section>
-    <section className="grid grid-cols-2 lg:grid-cols-5 gap-3"><div className="rounded-2xl bg-white border border-emerald-100 p-4 shadow-sm"><span className="text-[10px] font-bold uppercase text-slate-500">Banka/kasa net hareket</span><b className="block mt-1 text-xl text-emerald-900">{money(receivedCash - paidCash)}</b><span className="text-[10px] text-slate-500">Gerçekleşen tahsilat − ödeme</span></div><div className="rounded-2xl bg-white border border-emerald-100 p-4 shadow-sm"><span className="text-[10px] font-bold uppercase text-slate-500">Planlanan giriş</span><b className="block mt-1 text-xl text-emerald-700">{money(plannedIn)}</b></div><div className="rounded-2xl bg-white border border-emerald-100 p-4 shadow-sm"><span className="text-[10px] font-bold uppercase text-slate-500">Planlanan çıkış</span><b className="block mt-1 text-xl text-rose-700">{money(plannedOut)}</b></div><div className="rounded-2xl bg-white border border-emerald-100 p-4 shadow-sm"><span className="text-[10px] font-bold uppercase text-slate-500">Beklenen net</span><b className="block mt-1 text-xl text-emerald-900">{money(plannedIn - plannedOut)}</b></div><div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 shadow-sm"><span className="text-[10px] font-bold uppercase text-amber-800">Vakıf Katılım / P@ket</span><b className="block mt-1 text-sm text-amber-950">Bağlantı hazırlığı</b><span className="text-[10px] text-amber-800">API bilgileri bekleniyor</span></div></section>
-    {duePayments.length > 0 && <section className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-rose-950 shadow-sm"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><b className="text-sm">ACİL ÖDEME HATIRLATMASI</b><p className="text-xs mt-1">{duePayments.length} ödeme vadesine ulaştı. Ödeme yapıldıktan sonra her kaydı ayrıca işaretleyin.</p></div><b className="text-lg">{money(duePayments.reduce((sum, item) => sum + item.amount, 0))}</b></div></section>}
-    <div className="flex flex-col lg:flex-row gap-3 justify-between"><div className="flex flex-wrap gap-2"><button onClick={() => setTab('collections')} className={`px-4 py-2.5 rounded-xl text-xs font-black ${tab === 'collections' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-800'}`}><CircleDollarSign size={14} className="inline mr-1" /> Tahsilat Planlama</button><button onClick={() => setTab('payments')} className={`px-4 py-2.5 rounded-xl text-xs font-black ${tab === 'payments' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-800'}`}><WalletCards size={14} className="inline mr-1" /> Ödeme Planlama</button><button onClick={() => setTab('receipts')} className={`px-4 py-2.5 rounded-xl text-xs font-black ${tab === 'receipts' ? 'bg-amber-500 text-white' : 'bg-white border border-amber-200 text-amber-800'}`}><FileWarning size={14} className="inline mr-1" /> Fatura Bekleyen İşler ({uninvoiced.length})</button></div><div className="relative w-full lg:w-72"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Firma, yetkili veya telefon ara" className="w-full rounded-xl border border-emerald-200 bg-white py-2.5 pl-9 pr-3 text-xs outline-none focus:ring-2 focus:ring-emerald-200" /></div></div>
-    {tab === 'collections' && <section className="grid xl:grid-cols-[1fr_330px] gap-5"><div className="rounded-2xl bg-white border border-emerald-100 shadow-sm overflow-hidden"><div className="p-4 border-b border-emerald-100"><h2 className="font-black text-emerald-950">Tahsilat öncelik sırası</h2><p className="text-xs text-slate-500 mt-1">En uzun süredir borçlu olan cari üstte gösterilir.</p></div><div className="divide-y divide-emerald-50">{filteredDebts.length ? filteredDebts.map((item, index) => <div key={item.customer.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"><div className="flex gap-3"><div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${index < 3 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{index + 1}</div><div><b className="text-sm text-emerald-950">{item.customer.title}</b><div className="flex flex-wrap gap-3 text-[11px] text-slate-500 mt-1"><span><Phone size={11} className="inline mr-1" />{item.customer.phone || 'Telefon yok'}</span><span>{item.customer.authorizedPerson || 'Yetkili belirtilmemiş'}</span><span>{item.oldestDays ? `${item.oldestDays} gündür vadesi geçmiş` : 'Güncel takip'}</span></div></div></div><div className="text-right"><b className="block text-base text-rose-700">{money(Math.max(item.customer.balance, item.invoiceTotal))}</b><button onClick={() => { setPlanCustomer(item.customer.id); setPlanAmount(String(Math.max(item.customer.balance, item.invoiceTotal))); }} className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline">Tahsilat planı oluştur</button></div></div>) : <div className="p-10 text-center text-xs text-slate-500">Takip gerektiren cari bulunmuyor.</div>}</div></div><PlanForm title="Tahsilat planı" customerOptions={customers.map((item) => ({ id: item.id, label: item.title }))} customer={planCustomer} amount={planAmount} date={planDate} note={planNote} setCustomer={setPlanCustomer} setAmount={setPlanAmount} setDate={setPlanDate} setNote={setPlanNote} onSubmit={createCollectionPlan} manualName={manualCustomer} setManualName={setManualCustomer} /></section>}
-    {tab === 'payments' && <section className="space-y-4"><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">{(['leasing','kredi','kredi_karti','petrol_dbs','kdv_vergi','elektrik_su'] as const).map((category) => <div key={category} className="rounded-2xl bg-white border border-emerald-100 p-3 shadow-sm"><span className="text-[10px] font-black uppercase text-slate-500">{category === 'kredi_karti' ? 'Kredi kartı' : category === 'petrol_dbs' ? 'Petrol / DBS' : category === 'kdv_vergi' ? 'KDV / Vergi' : category === 'elektrik_su' ? 'Elektrik / Su' : category}</span><b className="block mt-1 text-lg text-emerald-900">{money(scheduledPayments.filter((item) => item.category === category).reduce((sum, item) => sum + item.amount, 0))}</b><span className="text-[10px] text-rose-700">{scheduledPayments.filter((item) => item.category === category).length} bekleyen</span></div>)}</div><div className="grid xl:grid-cols-[1fr_330px] gap-5"><div className="rounded-2xl bg-white border border-emerald-100 shadow-sm overflow-hidden"><div className="p-4 border-b border-emerald-100"><h2 className="font-black text-emerald-950">Aylık ödeme takvimi</h2><p className="text-xs text-slate-500 mt-1">Vadesinden {scheduledPayments[0]?.reminderDaysBefore ?? 2} gün önce hatırlatılır; ödendi olarak işaretlenene kadar takipte kalır.</p></div><div className="divide-y divide-emerald-50">{scheduledPayments.length ? scheduledPayments.map((item) => <div key={item.id} className={`p-4 flex items-center justify-between gap-3 ${item.dueDate <= new Date().toISOString().slice(0,10) ? 'bg-rose-50/60' : ''}`}><div><b className="text-sm text-emerald-950">{item.recipientName}</b><div className="text-[11px] text-slate-500 mt-1">{item.category} · {item.recurring ? 'Aylık tekrar' : `Taksit ${item.installmentNo || 1}/${item.installmentCount || 1}`} · Vade: {item.dueDate} · Hatırlatma: {item.reminderDaysBefore ?? 2} gün önce</div></div><div className="text-right"><b className="block text-rose-700">{money(item.amount)}</b><button onClick={() => markPaymentPaid(item.id)} className="text-[11px] font-bold text-emerald-700 mt-1">Ödendi olarak işaretle</button></div></div>) : <div className="p-10 text-center text-xs text-slate-500">Planlanmış ödeme yok.</div>}</div></div><PlanForm title="Aylık ödeme planı oluştur" customerOptions={[]} customer={planCustomer} amount={planAmount} date={planDate} note={planNote} setCustomer={setPlanCustomer} setAmount={setPlanAmount} setDate={setPlanDate} setNote={setPlanNote} onSubmit={createPaymentPlan} manualName={paymentRecipient} setManualName={setPaymentRecipient} planCategory={planCategory} setPlanCategory={setPlanCategory} planInstallments={planInstallments} setPlanInstallments={setPlanInstallments} planTitle={planTitle} setPlanTitle={setPlanTitle} planMode={planMode} setPlanMode={setPlanMode} reminderDays={reminderDays} setReminderDays={setReminderDays} /></div></section>}
-    {tab === 'receipts' && <section className="rounded-2xl bg-white border border-amber-200 shadow-sm overflow-hidden"><div className="p-4 border-b border-amber-100 bg-amber-50"><h2 className="font-black text-amber-950">Fatura kesilmesi gereken iş makbuzları</h2><p className="text-xs text-amber-800 mt-1">Onaylanmış ancak faturaya dönüştürülmemiş işler yöneticilerin hatırlatması için burada tutulur.</p></div><div className="divide-y divide-amber-50">{uninvoiced.length ? uninvoiced.map((receipt) => <div key={receipt.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"><div><b className="text-sm text-emerald-950">{receipt.customerName}</b><div className="text-xs text-slate-500 mt-1">{receipt.receiptNo} · {receipt.date} · {receipt.craneCode} · {receipt.workingHours || 0} saat</div></div><button onClick={() => setTab('collections')} className="px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold">Cari takibe yönlendir</button></div>) : <div className="p-10 text-center text-xs text-slate-500">Fatura bekleyen onaylı iş makbuzu yok.</div>}</div></section>}
-  </main>;
-};
+  if (!canView) {
+    return (
+      <main className="animate-in fade-in duration-150">
+        <section className="mx-auto max-w-lg rounded-[26px] border border-emerald-100 bg-white p-8 text-center shadow-sm">
+          <Lock size={30} className="mx-auto text-emerald-600" />
+          <h1 className="mt-3 text-lg font-black text-emerald-950">Bu ekran finans ekibine özeldir</h1>
+          <p className="mt-2 text-xs text-slate-600">
+            Ödeme planlama ve dekont arşivi yalnızca kurucu, yönetici ve muhasebe rolleri tarafından görüntülenebilir.
+            Erişim gerekiyorsa yöneticinizden rol güncellemesi talep edin.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
-const PlanForm: React.FC<{ title: string; customerOptions: { id: string; label: string }[]; customer: string; amount: string; date: string; note: string; setCustomer: (value: string) => void; setAmount: (value: string) => void; setDate: (value: string) => void; setNote: (value: string) => void; onSubmit: (event: React.FormEvent) => void; manualName?: string; setManualName?: (value: string) => void; planCategory?: Payment['category']; setPlanCategory?: (value: Payment['category']) => void; planInstallments?: string; setPlanInstallments?: (value: string) => void; planTitle?: string; setPlanTitle?: (value: string) => void; planMode?: 'installment' | 'recurring'; setPlanMode?: (value: 'installment' | 'recurring') => void; reminderDays?: string; setReminderDays?: (value: string) => void }> = ({ title, customerOptions, customer, amount, date, note, setCustomer, setAmount, setDate, setNote, onSubmit, manualName, setManualName, planCategory, setPlanCategory, planInstallments, setPlanInstallments, planTitle, setPlanTitle, planMode, setPlanMode, reminderDays, setReminderDays }) => <form onSubmit={onSubmit} className="rounded-2xl bg-white border border-emerald-100 p-4 shadow-sm space-y-3 h-fit"><div className="flex items-center gap-2"><CalendarClock size={17} className="text-emerald-600" /><h3 className="font-black text-emerald-950">{title} oluştur</h3></div>{customerOptions.length > 0 && <select required={!setManualName} value={customer} onChange={(event) => setCustomer(event.target.value)} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs"><option value="">Cari / firma seçin</option>{customerOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>}{setManualName && <input value={manualName || ''} onChange={(event) => setManualName(event.target.value)} placeholder="veya cari/firma adını yazın" className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />}{setPlanCategory && <><select value={planMode || 'installment'} onChange={(event) => setPlanMode?.(event.target.value as 'installment' | 'recurring')} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs"><option value="installment">Toplam tutarı aylara böl</option><option value="recurring">Her ay tekrar eden ödeme</option></select><input type="number" min="0" max="30" value={reminderDays || '2'} onChange={(event) => setReminderDays?.(event.target.value)} placeholder="Vadesinden kaç gün önce hatırlatılsın?" className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" /><input value={planTitle || ''} onChange={(event) => setPlanTitle?.(event.target.value)} placeholder="Ödeme başlığı (örn. X Leasing)" className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" /><select value={planCategory} onChange={(event) => setPlanCategory(event.target.value as Payment['category'])} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs"><option value="leasing">Leasing ödemeleri</option><option value="kredi">Kredi ödemeleri</option><option value="kredi_karti">Kredi kartı ödemeleri</option><option value="petrol_dbs">Petrol / DBS ödemeleri</option><option value="kdv_vergi">KDV / Vergi ödemeleri</option><option value="elektrik_su">Elektrik / Su ödemeleri</option><option value="diger">Diğer</option></select></>}<input required type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={setPlanCategory ? 'Toplam tutar' : 'Tutar'} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />{setPlanInstallments && planMode !== 'recurring' && <input type="number" min="1" value={planInstallments} onChange={(event) => setPlanInstallments(event.target.value)} placeholder="Ay / taksit sayısı" className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />}<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" /><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Not / takip aksiyonu" rows={3} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" /><button className="w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-black text-white hover:bg-emerald-700"><CheckCircle2 size={14} className="inline mr-1" /> Planı kaydet</button></form>;
+  const tabs: { key: typeof tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { key: 'month', label: 'Bu Ay', icon: <CalendarClock size={14} /> },
+    { key: 'obligations', label: 'Yükümlülükler', icon: <Landmark size={14} />, badge: obligations.length },
+    { key: 'report', label: 'Rapor & Dekont Arşivi', icon: <BarChart3 size={14} /> },
+    { key: 'new', label: 'Yeni Plan', icon: <Sparkles size={14} /> },
+    { key: 'collections', label: 'Tahsilat', icon: <CircleDollarSign size={14} />, badge: pendingCollections.length },
+    { key: 'receipts', label: 'Fatura Bekleyen', icon: <FileWarning size={14} />, badge: uninvoiced.length },
+  ];
+
+  return (
+    <main className="space-y-6 animate-in fade-in duration-150">
+      <section className="rounded-[26px] bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 p-6 text-white shadow-xl">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-200">Muhasebe karar ekranı</p>
+            <h1 className="mt-2 text-3xl font-black">Ödeme Planlama & Dekont Takibi</h1>
+            <p className="mt-2 max-w-2xl text-sm text-emerald-50/80">
+              Aylık ödeme takvimi, banka benzeri yükümlülük kartları ve dekontsuz kapatılamayan ödeme kayıtları.
+              Her ödeme belgesiyle birlikte raporlanabilir.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => shiftMonth(-1)} className="rounded-xl border border-white/25 bg-white/15 p-2 hover:bg-white/25" aria-label="Önceki ay">
+                <ChevronLeft size={15} />
+              </button>
+              <span className="rounded-xl border border-white/25 bg-white/15 px-4 py-2 text-sm font-black capitalize">{monthLabel(month)}</span>
+              <button type="button" onClick={() => shiftMonth(1)} className="rounded-xl border border-white/25 bg-white/15 p-2 hover:bg-white/25" aria-label="Sonraki ay">
+                <ChevronRight size={15} />
+              </button>
+              <button type="button" onClick={() => setMonth(monthKey(new Date()))} className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-[11px] font-black hover:bg-white/25">
+                Bu aya dön
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+              <span className="text-emerald-100">Ayın planı</span>
+              <b className="mt-1 block text-xl">{money(monthTotals.planned)}</b>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+              <span className="text-emerald-100">Ödenen</span>
+              <b className="mt-1 block text-xl">{money(monthTotals.paid)}</b>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+              <span className="text-emerald-100">Bekleyen</span>
+              <b className="mt-1 block text-xl">{money(monthTotals.pending)}</b>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+              <span className="text-emerald-100">Vadesi geçen</span>
+              <b className="mt-1 block text-xl">{monthTotals.overdueCount}</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {monthTotals.overdueCount > 0 && (
+        <section className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-rose-950 shadow-sm">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div>
+              <b className="text-sm"><AlertTriangle size={15} className="mr-1 inline" />VADESİ GEÇEN ÖDEME</b>
+              <p className="mt-1 text-xs">{monthTotals.overdueCount} ödeme vadesini geçti. Ödeme kaydı için dekont yüklemeniz gerekir.</p>
+            </div>
+            <b className="text-lg">{money(monthTotals.overdueTotal)}</b>
+          </div>
+        </section>
+      )}
+
+      {notice && <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-800">{notice}</p>}
+
+      <div className="flex flex-col justify-between gap-3 lg:flex-row">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((item) => (
+            <button key={item.key} type="button" onClick={() => setTab(item.key)}
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-black ${tab === item.key ? 'bg-emerald-600 text-white' : 'border border-emerald-200 bg-white text-emerald-800'}`}>
+              {item.icon} {item.label}{item.badge ? ` (${item.badge})` : ''}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full lg:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Alıcı, kurum, fatura no ara"
+            className="w-full rounded-xl border border-emerald-200 bg-white py-2.5 pl-9 pr-3 text-xs outline-none focus:ring-2 focus:ring-emerald-200" />
+        </div>
+      </div>
+
+      {tab === 'month' && (
+        <section className="space-y-4">
+          {categoryBreakdown.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {categoryBreakdown.map(([category, value]) => (
+                <button key={category} type="button" onClick={() => setCategoryFilter(categoryFilter === category ? 'all' : category)}
+                  className={`rounded-2xl border p-3 text-left shadow-sm ${categoryFilter === category ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-100 bg-white'}`}>
+                  <span className="text-[10px] font-black uppercase text-slate-500">{PAYMENT_CATEGORY_LABELS[category]}</span>
+                  <b className="mt-1 block text-base text-emerald-900">{money(value.planned)}</b>
+                  <span className="text-[10px] text-slate-500">{value.count} kayıt · {money(value.paid)} ödendi</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(['all', 'bekliyor', 'odendi', 'iptal'] as const).map((key) => (
+              <button key={key} type="button" onClick={() => setStatusFilter(key)}
+                className={`rounded-xl px-3 py-2 text-[11px] font-black ${statusFilter === key ? 'bg-emerald-900 text-white' : 'border border-emerald-200 bg-white text-emerald-800'}`}>
+                {key === 'all' ? 'Tümü' : key === 'bekliyor' ? 'Bekleyen' : key === 'odendi' ? 'Ödenen' : 'İptal'}
+              </button>
+            ))}
+            {categoryFilter !== 'all' && (
+              <button type="button" onClick={() => setCategoryFilter('all')} className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">
+                Kategori filtresini temizle
+              </button>
+            )}
+            <button type="button" onClick={() => exportCsv(monthRows, `odeme-plani-${month}.csv`)}
+              className="ml-auto flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">
+              <Download size={13} /> CSV indir
+            </button>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+            <div className="border-b border-emerald-100 p-4">
+              <h2 className="font-black text-emerald-950 capitalize">{monthLabel(month)} ödeme takvimi</h2>
+              <p className="mt-1 text-xs text-slate-500">Ödeme yalnızca dekont / belge yüklenerek kapatılabilir; aksi halde bekleyen olarak kalır.</p>
+            </div>
+            <div className="divide-y divide-emerald-50">
+              {monthRows.length ? monthRows.map((item) => {
+                const isOverdue = item.status === 'bekliyor' && item.dueDate < today();
+                const receipts = paymentReceipts.filter((doc) => doc.paymentId === item.id);
+                return (
+                  <div key={item.id} className={`p-4 ${isOverdue ? 'bg-rose-50/60' : item.status === 'odendi' ? 'bg-emerald-50/40' : ''}`}>
+                    <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <b className="text-sm text-emerald-950 break-words">{item.recipientName}</b>
+                          <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">{PAYMENT_CATEGORY_LABELS[item.category]}</span>
+                          {item.status === 'odendi' && <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white">Ödendi</span>}
+                          {item.status === 'iptal' && <span className="rounded-lg bg-slate-400 px-2 py-0.5 text-[10px] font-black text-white">İptal</span>}
+                          {isOverdue && <span className="rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-black text-white">Vadesi geçti</span>}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                          <span>Vade: {item.dueDate}</span>
+                          {item.institutionName && <span><Building2 size={11} className="mr-1 inline" />{item.institutionName}</span>}
+                          {item.installmentCount ? <span>Taksit {item.installmentNo || 1}/{item.installmentCount}</span> : null}
+                          {item.invoiceNo && <span>Fatura {item.invoiceNo}</span>}
+                          {item.status === 'odendi' && item.paymentChannel && <span>{PAYMENT_CHANNEL_LABELS[item.paymentChannel]}</span>}
+                          {item.status === 'odendi' && (item.paymentDate || item.paidDate) && <span>Ödeme: {item.paymentDate || item.paidDate}</span>}
+                          {item.referenceNo && <span>Dekont no: {item.referenceNo}</span>}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <b className={`block text-base ${item.status === 'odendi' ? 'text-emerald-700' : 'text-rose-700'}`}>{money(item.paidAmount ?? item.amount)}</b>
+                        {item.status === 'odendi' && item.paidAmount != null && item.paidAmount !== item.amount && (
+                          <span className="text-[10px] text-slate-500">Plan: {money(item.amount)}</span>
+                        )}
+                        <div className="mt-1 flex flex-wrap justify-end gap-2">
+                          {item.status === 'bekliyor' && (
+                            <>
+                              <button type="button" onClick={() => setSettleTarget(item)} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-black text-white">
+                                Dekont yükle & öde
+                              </button>
+                              <button type="button" onClick={() => cancel(item)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-black text-rose-700">
+                                <XCircle size={12} className="mr-1 inline" />İptal
+                              </button>
+                            </>
+                          )}
+                          {(item.documentPath || receipts.length > 0) && (
+                            <button type="button" disabled={docBusy !== ''} onClick={() => openDocument(item.documentPath || receipts[0]?.filePath)}
+                              className="rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-black text-emerald-800 disabled:opacity-50">
+                              <Paperclip size={12} className="mr-1 inline" />Dekontu gör{receipts.length > 1 ? ` (${receipts.length})` : ''}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {item.notes && <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 break-words">{item.notes}</p>}
+                  </div>
+                );
+              }) : (
+                <div className="p-10 text-center text-xs text-slate-500">Bu ay için planlanmış ödeme bulunmuyor. “Yeni Plan” sekmesinden ekleyebilirsiniz.</div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'obligations' && (
+        <section className="space-y-3">
+          {obligationProgress.length ? obligationProgress.map((entry) => {
+            const percent = entry.obligation.totalAmount > 0 ? Math.min(100, Math.round((entry.paidTotal / entry.obligation.totalAmount) * 100)) : 0;
+            const isOpen = expanded === entry.obligation.id;
+            return (
+              <article key={entry.obligation.id} className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+                <button type="button" onClick={() => setExpanded(isOpen ? null : entry.obligation.id)} className="w-full p-4 text-left">
+                  <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <b className="text-sm text-emerald-950 break-words">{entry.obligation.title}</b>
+                        <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">{PAYMENT_CATEGORY_LABELS[entry.obligation.category]}</span>
+                        {entry.obligation.recurring && <span className="rounded-lg bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-800">Aylık tekrar</span>}
+                        {entry.overdue && <span className="rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-black text-white">Gecikme</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                        <span>{entry.obligation.institutionName || entry.obligation.recipientName}</span>
+                        {entry.obligation.contractNo && <span>Sözleşme: {entry.obligation.contractNo}</span>}
+                        {entry.obligation.subscriberNo && <span>Abone no: {entry.obligation.subscriberNo}</span>}
+                        {entry.obligation.plate && <span>Plaka: {entry.obligation.plate}</span>}
+                        {entry.obligation.startDate && <span>Başlangıç: {entry.obligation.startDate}</span>}
+                        {entry.obligation.endDate && <span>Vade sonu: {entry.obligation.endDate}</span>}
+                        {entry.obligation.interestRate ? <span>Faiz: %{entry.obligation.interestRate}</span> : null}
+                        {entry.obligation.iban && <span>IBAN: {entry.obligation.iban}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <b className="block text-base text-emerald-900">{money(entry.obligation.totalAmount)}</b>
+                      <span className="text-[11px] text-slate-500">Kalan {money(entry.remaining)}</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">Sıradaki vade: {entry.nextDue || 'tamamlandı'}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-50">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${percent}%` }} />
+                    </div>
+                    <span className="mt-1 block text-[10px] font-bold text-slate-500">
+                      {entry.paidCount}/{entry.totalCount} taksit ödendi · %{percent} tamamlandı · detay için tıklayın
+                    </span>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-t border-emerald-100 bg-emerald-50/40 p-3">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px]">
+                        <thead className="text-slate-500">
+                          <tr>
+                            <th className="p-2 text-left font-bold">Taksit</th>
+                            <th className="p-2 text-left font-bold">Vade</th>
+                            <th className="p-2 text-right font-bold">Tutar</th>
+                            <th className="p-2 text-left font-bold">Durum</th>
+                            <th className="p-2 text-left font-bold">Kanal / dekont</th>
+                            <th className="p-2 text-right font-bold">İşlem</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100 bg-white">
+                          {entry.rows.sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map((row) => (
+                            <tr key={row.id}>
+                              <td className="p-2">{row.installmentNo || 1}/{row.installmentCount || entry.totalCount}</td>
+                              <td className="p-2">{row.dueDate}</td>
+                              <td className="p-2 text-right font-bold">{money(row.paidAmount ?? row.amount)}</td>
+                              <td className="p-2">{row.status === 'odendi' ? 'Ödendi' : row.status === 'iptal' ? 'İptal' : row.dueDate < today() ? 'Gecikti' : 'Bekliyor'}</td>
+                              <td className="p-2">
+                                {row.paymentChannel ? PAYMENT_CHANNEL_LABELS[row.paymentChannel] : '—'}
+                                {row.referenceNo ? ` · ${row.referenceNo}` : ''}
+                              </td>
+                              <td className="p-2 text-right">
+                                {row.status === 'bekliyor' ? (
+                                  <button type="button" onClick={() => setSettleTarget(row)} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-black text-white">Dekontla öde</button>
+                                ) : row.documentPath ? (
+                                  <button type="button" onClick={() => openDocument(row.documentPath)} className="rounded-lg border border-emerald-200 px-2.5 py-1 text-[10px] font-black text-emerald-800">Belge</button>
+                                ) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {entry.obligation.notes && <p className="mt-2 text-[11px] text-slate-600 break-words">Not: {entry.obligation.notes}</p>}
+                  </div>
+                )}
+              </article>
+            );
+          }) : (
+            <div className="rounded-2xl border border-emerald-100 bg-white p-10 text-center text-xs text-slate-500 shadow-sm">
+              Kayıtlı yükümlülük yok. Leasing, kredi, DBS veya abonelik planlarını “Yeni Plan” sekmesinden oluşturun.
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'report' && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => exportCsv(payments.filter((item) => item.status === 'odendi'), 'odeme-raporu-tum.csv')}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-black text-white">
+              <Download size={13} /> Tüm ödemeler (CSV)
+            </button>
+            <button type="button" onClick={() => exportCsv(inMonth, `odeme-raporu-${month}.csv`)}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">
+              <Download size={13} /> {monthLabel(month)} (CSV)
+            </button>
+            <button type="button" onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">
+              <Printer size={13} /> Yazdır / PDF
+            </button>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <span className="text-[10px] font-black uppercase text-slate-500">Dekontlu ödeme sayısı</span>
+              <b className="mt-1 block text-2xl text-emerald-900">{payments.filter((item) => item.status === 'odendi' && (item.documentPath || item.receiptCount)).length}</b>
+              <span className="text-[10px] text-slate-500">Toplam {payments.filter((item) => item.status === 'odendi').length} kapatılmış ödeme</span>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <span className="text-[10px] font-black uppercase text-slate-500">Arşivdeki belge</span>
+              <b className="mt-1 block text-2xl text-emerald-900">{paymentReceipts.length}</b>
+              <span className="text-[10px] text-slate-500">Dekont, fatura, makbuz ve ekstre</span>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <span className="text-[10px] font-black uppercase text-slate-500">Kanal dağılımı</span>
+              <div className="mt-1 space-y-1">
+                {Object.entries(payments.filter((item) => item.status === 'odendi').reduce<Record<string, number>>((acc, item) => {
+                  const key = item.paymentChannel ? PAYMENT_CHANNEL_LABELS[item.paymentChannel] : 'Belirtilmedi';
+                  acc[key] = (acc[key] || 0) + (item.paidAmount ?? item.amount);
+                  return acc;
+                }, {})).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-600">{label}</span>
+                    <b className="text-emerald-900">{money(value)}</b>
+                  </div>
+                ))}
+                {payments.filter((item) => item.status === 'odendi').length === 0 && <span className="text-[11px] text-slate-500">Henüz kapatılmış ödeme yok.</span>}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+            <div className="border-b border-emerald-100 p-4">
+              <h2 className="font-black text-emerald-950">Dekont arşivi</h2>
+              <p className="mt-1 text-xs text-slate-500">Her ödeme belgesi 300 saniyelik güvenli bağlantı ile açılır.</p>
+            </div>
+            <div className="divide-y divide-emerald-50">
+              {paymentReceipts.length ? paymentReceipts
+                .filter((doc) => !normalizedSearch || `${doc.fileName} ${doc.bankName || ''} ${doc.referenceNo || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedSearch))
+                .slice(0, 100)
+                .map((doc) => {
+                  const related = payments.find((item) => item.id === doc.paymentId);
+                  return (
+                    <div key={doc.id} className="flex flex-col justify-between gap-2 p-3 sm:flex-row sm:items-center">
+                      <div className="min-w-0">
+                        <b className="block text-xs text-emerald-950 break-words">{related?.recipientName || doc.fileName}</b>
+                        <span className="text-[11px] text-slate-500 break-words">
+                          {doc.docType} · {doc.paidAt || doc.createdAt.slice(0, 10)}
+                          {doc.referenceNo ? ` · ${doc.referenceNo}` : ''}
+                          {doc.amount ? ` · ${money(doc.amount)}` : ''}
+                        </span>
+                      </div>
+                      <button type="button" onClick={() => openDocument(doc.filePath)} disabled={docBusy !== ''}
+                        className="rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-black text-emerald-800 disabled:opacity-50">
+                        <FileText size={12} className="mr-1 inline" />Belgeyi aç
+                      </button>
+                    </div>
+                  );
+                }) : <div className="p-10 text-center text-xs text-slate-500">Arşivde belge yok.</div>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'new' && <PaymentPlanWizard onCreated={() => setTab('obligations')} />}
+
+      {tab === 'collections' && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_330px]">
+          <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+            <div className="border-b border-emerald-100 p-4">
+              <h2 className="font-black text-emerald-950">Tahsilat öncelik sırası</h2>
+              <p className="mt-1 text-xs text-slate-500">En uzun süredir borçlu olan cari üstte gösterilir.</p>
+            </div>
+            <div className="divide-y divide-emerald-50">
+              {filteredDebts.length ? filteredDebts.map((item, index) => (
+                <div key={item.customer.id} className="flex flex-col justify-between gap-3 p-4 md:flex-row md:items-center">
+                  <div className="flex gap-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black ${index < 3 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{index + 1}</div>
+                    <div className="min-w-0">
+                      <b className="text-sm text-emerald-950 break-words">{item.customer.title}</b>
+                      <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-slate-500">
+                        <span><Phone size={11} className="mr-1 inline" />{item.customer.phone || 'Telefon yok'}</span>
+                        <span>{item.customer.authorizedPerson || 'Yetkili belirtilmemiş'}</span>
+                        <span>{item.oldestDays ? `${item.oldestDays} gündür vadesi geçmiş` : 'Güncel takip'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <b className="block text-base text-rose-700">{money(Math.max(item.customer.balance, item.invoiceTotal))}</b>
+                    <button type="button" onClick={() => { setPlanCustomer(item.customer.id); setPlanAmount(String(Math.max(item.customer.balance, item.invoiceTotal))); }}
+                      className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline">Tahsilat planı oluştur</button>
+                  </div>
+                </div>
+              )) : <div className="p-10 text-center text-xs text-slate-500">Takip gerektiren cari bulunmuyor.</div>}
+            </div>
+          </div>
+
+          <div className="h-fit space-y-4">
+            <form onSubmit={createCollectionPlan} className="h-fit space-y-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <CalendarClock size={17} className="text-emerald-600" />
+                <h3 className="font-black text-emerald-950">Tahsilat planı oluştur</h3>
+              </div>
+              <select value={planCustomer} onChange={(event) => setPlanCustomer(event.target.value)} className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs">
+                <option value="">Cari / firma seçin</option>
+                {customers.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+              <input value={manualCustomer} onChange={(event) => setManualCustomer(event.target.value)} placeholder="veya cari/firma adını yazın"
+                className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />
+              <input required type="number" min="0" step="0.01" value={planAmount} onChange={(event) => setPlanAmount(event.target.value)} placeholder="Tutar"
+                className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />
+              <input required type="date" value={planDate} onChange={(event) => setPlanDate(event.target.value)}
+                className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />
+              <textarea value={planNote} onChange={(event) => setPlanNote(event.target.value)} placeholder="Not / takip aksiyonu" rows={3}
+                className="w-full rounded-xl border border-emerald-200 px-3 py-2.5 text-xs" />
+              <button type="submit" className="w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-black text-white hover:bg-emerald-700">Planı kaydet</button>
+            </form>
+
+            <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-black text-emerald-950">Bekleyen tahsilatlar ({pendingCollections.length})</h3>
+              <div className="mt-2 space-y-2">
+                {pendingCollections.slice(0, 8).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50/60 px-3 py-2">
+                    <div className="min-w-0">
+                      <b className="block text-[11px] text-emerald-950 break-words">{item.customerName}</b>
+                      <span className="text-[10px] text-slate-500">Vade {item.dueDate || item.date}</span>
+                    </div>
+                    <div className="text-right">
+                      <b className="block text-[11px] text-emerald-800">{money(item.amount)}</b>
+                      <button type="button" onClick={() => markCollectionReceived(item.id)} className="text-[10px] font-bold text-emerald-700 hover:underline">Tahsil edildi</button>
+                    </div>
+                  </div>
+                ))}
+                {pendingCollections.length === 0 && <p className="text-[11px] text-slate-500">Bekleyen tahsilat yok.</p>}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'receipts' && (
+        <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="border-b border-amber-100 bg-amber-50 p-4">
+            <h2 className="font-black text-amber-950">Fatura kesilmesi gereken iş makbuzları</h2>
+            <p className="mt-1 text-xs text-amber-800">Onaylanmış ancak faturaya dönüştürülmemiş işler burada tutulur.</p>
+          </div>
+          <div className="divide-y divide-amber-50">
+            {uninvoiced.length ? uninvoiced.map((receipt) => (
+              <div key={receipt.id} className="flex flex-col justify-between gap-3 p-4 md:flex-row md:items-center">
+                <div className="min-w-0">
+                  <b className="text-sm text-emerald-950 break-words">{receipt.customerName}</b>
+                  <div className="mt-1 text-xs text-slate-500">{receipt.receiptNo} · {receipt.date} · {receipt.craneCode} · {receipt.workingHours || 0} saat</div>
+                </div>
+                <button type="button" onClick={() => setTab('collections')} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white">Cari takibe yönlendir</button>
+              </div>
+            )) : <div className="p-10 text-center text-xs text-slate-500">Fatura bekleyen onaylı iş makbuzu yok.</div>}
+          </div>
+        </section>
+      )}
+
+      <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <ShieldCheck size={13} className="text-emerald-600" />
+        Ödeme kapatma işlemleri veritabanı tarafında da denetlenir: dekont, ödeme kanalı ve tarih olmadan kayıt kapatılamaz.
+      </p>
+
+      {settleTarget && <PaymentSettleModal payment={settleTarget} onClose={() => setSettleTarget(null)} />}
+    </main>
+  );
+};

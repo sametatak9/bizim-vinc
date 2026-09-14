@@ -46,6 +46,7 @@ export const OperatorPage: React.FC = () => {
     addExpense,
     customers,
     cranes,
+    jobReceipts,
     showToast,
   } = useERP();
 
@@ -57,6 +58,15 @@ export const OperatorPage: React.FC = () => {
     }
     return personnel.find((p) => p.userId === currentUser.id) || null;
   }, [personnel, currentUser.id, currentUser.personnelId]);
+
+  // Makbuz yetkisi: yalnizca operator rolu veya operator tipinde personel karti
+  const canIssueReceipt = currentUser.role === 'operator' || myPerson?.kind === 'operator'
+    || ['founder', 'admin', 'yonetici'].includes(currentUser.role);
+  const myReceipts = useMemo(
+    () => jobReceipts.filter((item) => item.operatorId === myPerson?.id)
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+    [jobReceipts, myPerson?.id],
+  );
 
   const [activeModal, setActiveModal] = useState<'none' | 'avans' | 'izin' | 'mesai' | 'makbuz' | 'masraf'>('none');
   const [busy, setBusy] = useState(false);
@@ -189,6 +199,11 @@ export const OperatorPage: React.FC = () => {
     }, undefined, { kind: 'overtime', payload: [myPerson.id, overtimeDate, overtimeStart, overtimeEnd, overtimeHours, overtimeType, overtimeDesc] });
   };
 
+  const handleSendJobReceiptGuarded = async (e: React.FormEvent) => {
+    e.preventDefault();
+    showToast('İş makbuzu oluşturma yetkisi yalnızca operatörlere açıktır.');
+  };
+
   const handleSendJobReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!myPerson) return;
@@ -316,10 +331,12 @@ export const OperatorPage: React.FC = () => {
           <FileText className="text-orange-600" size={22} />
           <span className="text-xs font-bold text-emerald-950">İzin talebi</span>
         </button>
-        <button type="button" disabled={busy} onClick={() => setActiveModal('makbuz')} className={actionBtn}>
-          <Receipt className="text-emerald-700" size={22} />
-          <span className="text-xs font-bold text-emerald-950">Makbuz</span>
-        </button>
+        {canIssueReceipt && (
+          <button type="button" disabled={busy} onClick={() => setActiveModal('makbuz')} className={actionBtn}>
+            <Receipt className="text-emerald-700" size={22} />
+            <span className="text-xs font-bold text-emerald-950">Makbuz</span>
+          </button>
+        )}
         <button type="button" disabled={busy} onClick={() => setActiveModal('masraf')} className={`${actionBtn} col-span-2 sm:col-span-1`}>
           <Fuel className="text-rose-600" size={22} />
           <span className="text-xs font-bold text-emerald-950">Masraf</span>
@@ -357,6 +374,50 @@ export const OperatorPage: React.FC = () => {
           </ul>
         )}
       </div>
+
+      {canIssueReceipt && (
+        <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-emerald-950">
+              <Receipt size={16} className="text-emerald-600" />
+              İş makbuzlarım
+            </h2>
+            <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase">
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">Onay bekleyen {myReceipts.filter((r) => r.status === 'pending_approval').length}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Onaylı {myReceipts.filter((r) => r.status === 'approved').length}</span>
+              <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Faturalanan {myReceipts.filter((r) => r.invoiced).length}</span>
+            </div>
+          </div>
+          {myReceipts.length === 0 ? (
+            <p className="text-xs text-slate-500">Henüz makbuz göndermediniz. “Makbuz” butonundan saha işini kaydedin; onay merkezine düşer.</p>
+          ) : (
+            <ul className="space-y-2">
+              {myReceipts.slice(0, 10).map((r) => (
+                <li key={r.id} className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-emerald-950">{r.customerName} · {r.siteName}</p>
+                    <p className="text-[11px] text-emerald-800/70">
+                      {r.date ? new Date(r.date).toLocaleDateString('tr-TR') : '—'} · {r.startTime}-{r.endTime} · {r.workingHours || r.hoursWorked || 0} saat · {r.craneCode || '—'}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <span className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                      r.status === 'pending_approval' ? 'bg-amber-100 text-amber-800'
+                        : r.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {r.status === 'pending_approval' ? 'ONAY BEKLİYOR' : r.status === 'approved' ? 'ONAYLANDI' : 'RED'}
+                    </span>
+                    {r.invoiced && <span className="rounded-lg bg-sky-100 px-2 py-1 text-[10px] font-black text-sky-800">FATURALANDI</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 rounded-xl bg-emerald-50/70 px-3 py-2 text-[11px] text-slate-600">
+            Makbuzlarınız onay merkezine düşer; yönetici onayladıktan sonra muhasebe faturaya çevirir. Reddedilen makbuzu düzelterek tekrar gönderebilirsiniz.
+          </p>
+        </div>
+      )}
 
       {activeModal !== 'none' && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
@@ -455,7 +516,7 @@ export const OperatorPage: React.FC = () => {
             )}
 
             {activeModal === 'makbuz' && (
-              <form onSubmit={handleSendJobReceipt} className="space-y-3">
+              <form onSubmit={canIssueReceipt ? handleSendJobReceipt : handleSendJobReceiptGuarded} className="space-y-3">
                 <div>
                   <label className="block text-xs text-emerald-900 mb-1">Çalışma alanı / şantiye *</label>
                   <input required value={jobSite} onChange={(e) => setJobSite(e.target.value)} placeholder="Şantiye" className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />

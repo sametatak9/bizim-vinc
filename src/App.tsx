@@ -19,6 +19,7 @@ import { CariPage } from './pages/CariPage';
 import { QuotesPage } from './pages/QuotesPage';
 import { CheckCircle2 } from 'lucide-react';
 import { isEmployeeSelfServiceRole } from './types';
+import { ROLE_ROUTES, ROUTE_LABELS, canAccessRoute, roleLabel } from './lib/permissions';
 
 function AppContent() {
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -26,7 +27,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage, isAuthenticated, isAuthReady, currentUser } = useERP();
+  const { toastMessage, isAuthenticated, isAuthReady, currentUser, memberships, logout } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -91,6 +92,31 @@ function AppContent() {
     );
   }
 
+  const myMembership = memberships.find((item) => item.userId === currentUser.id);
+  if (myMembership && myMembership.status !== 'approved') {
+    const rejected = myMembership.status === 'rejected';
+    return (
+      <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
+          <div className={`mx-auto mb-4 w-12 h-12 rounded-2xl flex items-center justify-center font-black ${rejected ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>BV</div>
+          <h1 className="text-lg font-black text-slate-900">{rejected ? 'Üyelik başvurunuz reddedildi' : 'Üyeliğiniz onay bekliyor'}</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {rejected
+              ? myMembership.rejectionReason || 'Yöneticiniz başvurunuzu onaylamadı. Bilgilerinizi kontrol edip tekrar başvurabilirsiniz.'
+              : 'Hesabınız oluşturuldu ancak yönetici onayı verilmeden ERP ekranlarına erişemezsiniz. Onaylandığında bu ekran otomatik açılır.'}
+          </p>
+          <div className="mt-4 rounded-xl bg-emerald-50/70 px-3 py-2 text-left text-[11px] text-slate-600">
+            <div><b>Ad soyad:</b> {myMembership.userFullName || currentUser.fullName}</div>
+            <div><b>E-posta:</b> {myMembership.userEmail || currentUser.email}</div>
+            <div><b>Talep edilen rol:</b> {roleLabel(myMembership.requestedRole)}</div>
+            {myMembership.matchedPersonnelName && <div><b>Eşleşen personel:</b> {myMembership.matchedPersonnelName}</div>}
+          </div>
+          <button onClick={logout} className="mt-6 w-full py-2.5 rounded-xl border border-emerald-200 text-emerald-800 text-sm font-bold transition hover:bg-emerald-50">Oturumu kapat</button>
+        </div>
+      </div>
+    );
+  }
+
   const employeeSelfServiceOnly = isEmployeeSelfServiceRole(currentUser.role);
   if (employeeSelfServiceOnly && !['/operator', '/teklifler'].includes(currentPath)) {
     return (
@@ -100,6 +126,23 @@ function AppContent() {
           <h1 className="text-lg font-black text-slate-900">Personel talepleri</h1>
           <p className="mt-2 text-sm text-slate-500">Bu hesap yalnızca kendi yoklama, izin, avans, mesai, makbuz ve masraf taleplerine erişebilir.</p>
           <button onClick={() => navigate('/operator')} className="mt-6 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition">Personel taleplerine git</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!employeeSelfServiceOnly && !canAccessRoute(currentUser.role, currentPath)) {
+    const allowedRoutes = (ROLE_ROUTES[currentUser.role] || ['/']).filter((item) => item !== '*');
+    const fallback = allowedRoutes[0] || '/';
+    return (
+      <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-black">BV</div>
+          <h1 className="text-lg font-black text-slate-900">Bu ekrana yetkiniz yok</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {roleLabel(currentUser.role)} rolü “{ROUTE_LABELS[currentPath] || currentPath}” ekranını görüntüleyemez. Ek yetki için kurucu veya sistem yöneticisine başvurun.
+          </p>
+          <button onClick={() => navigate(fallback)} className="mt-6 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition">Yetkili ekrana dön</button>
         </div>
       </div>
     );
