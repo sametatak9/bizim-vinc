@@ -27,7 +27,7 @@ interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
-  const { stats, receipts, expenses, cranes, jobReceipts, approvals } = useERP();
+  const { stats, receipts, expenses, cranes, jobReceipts, approvals, customers, invoices } = useERP();
   const [selectedCrane, setSelectedCrane] = useState<Crane | null>(null);
   const [isCraneModalOpen, setIsCraneModalOpen] = useState(false);
 
@@ -43,6 +43,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const approvalArchive = approvals.filter((a) => a.status !== 'pending').slice(0, 8);
 
   const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
+  const debtReminders = customers.filter((customer) => customer.balance > 0 || invoices.some((invoice) => invoice.customerId === customer.id && !['paid', 'odendi', 'cancelled'].includes(invoice.status))).slice(0, 5);
 
   const handleOpenCrane = (c: Crane) => {
     setSelectedCrane(c);
@@ -120,6 +121,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="flex items-center justify-between mb-2"><h3 className="text-xs font-black text-emerald-900">Onay arşivi</h3><span className="text-[10px] font-bold text-emerald-700">Gönderen • Onaylayan</span></div><div className="space-y-2">{approvalArchive.length ? approvalArchive.map((a) => <div key={a.id} className="bg-white rounded-xl border border-emerald-100 p-3 text-xs"><div className="flex items-center gap-2"><span className={`w-6 h-6 rounded-full flex items-center justify-center ${a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{a.status === 'approved' ? <ShieldCheck size={13} /> : <XCircle size={13} />}</span><b className="text-emerald-950 truncate">{a.title}</b></div><div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-500"><span>Gönderen: <strong className="text-slate-700">{a.personName}</strong></span><span>Karar: <strong className={a.status === 'approved' ? 'text-emerald-700' : 'text-rose-700'}>{a.approvedBy || a.rejectedBy || '—'}</strong></span></div></div>) : <div className="text-xs text-slate-500 py-4 text-center">Henüz arşivlenmiş karar yok.</div>}</div></div>
         </div>
       </section>
+
+      <section className="grid lg:grid-cols-2 gap-4"><div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4"><div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-black text-rose-950">Tahsilat hatırlatmaları</h2><p className="text-xs text-rose-800 mt-1">Borçlu cariler ve iletişim bilgileri</p></div><button onClick={() => onNavigate?.('/finans-planlama')} className="rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white">Planlamaya git</button></div><div className="space-y-2">{debtReminders.length ? debtReminders.map((customer) => <div key={customer.id} className="rounded-xl bg-white border border-rose-100 px-3 py-2 flex items-center justify-between gap-2"><div><b className="text-xs text-emerald-950">{customer.title}</b><div className="text-[10px] text-slate-500">{customer.authorizedPerson || 'Yetkili yok'} · {customer.phone || 'Telefon yok'}</div></div><strong className="text-xs text-rose-700">{customer.balance.toLocaleString('tr-TR')} ₺</strong></div>) : <div className="text-xs text-rose-800 text-center py-3">Borçlu cari bulunmuyor.</div>}</div></div><div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-black text-amber-950">Fatura unutma uyarısı</h2><p className="text-xs text-amber-800 mt-1">Onaylanmış, fatura edilmemiş işler</p></div><button onClick={() => onNavigate?.('/finans-planlama')} className="rounded-xl bg-amber-500 px-3 py-2 text-[11px] font-bold text-white">İşlemleri gör</button></div><div className="space-y-2">{unInvoicedReceipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-white border border-amber-100 px-3 py-2 flex items-center justify-between"><div><b className="text-xs text-emerald-950">{receipt.customerName}</b><div className="text-[10px] text-slate-500">{receipt.receiptNo} · {receipt.date} · {receipt.craneCode}</div></div><strong className="text-xs text-amber-700">Fatura bekliyor</strong></div>)}</div></div></section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 flex flex-col">

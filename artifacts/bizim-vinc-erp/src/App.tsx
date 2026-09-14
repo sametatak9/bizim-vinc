@@ -11,6 +11,7 @@ import { FleetPage } from './pages/FleetPage';
 import { OperatorPage } from './pages/OperatorPage';
 import { DigitalCardPage } from './pages/DigitalCardPage';
 import { FinancePage } from './pages/FinancePage';
+import { PaymentPlanningPage } from './pages/PaymentPlanningPage';
 import { AdminPage } from './pages/AdminPage';
 import { TvBoardPage } from './pages/TvBoardPage';
 import { InvoiceReceiptPage } from './pages/InvoiceReceiptPage';
@@ -125,6 +126,7 @@ function AppContent() {
         {currentPath === '/filo' && <FleetPage />}
         {currentPath === '/operator' && <OperatorPage />}
         {currentPath === '/finans' && <FinancePage />}
+        {currentPath === '/finans-planlama' && <PaymentPlanningPage />}
         {currentPath === '/teklifler' && <QuotesPage />}
         {currentPath === '/admin' && <AdminPage />}
       </main>
