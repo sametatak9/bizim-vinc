@@ -10,13 +10,12 @@ interface PersonModalProps {
 }
 
 export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClose }) => {
-  const { addPerson, updatePerson, deletePerson, showToast, personnelDocuments, uploadPersonnelDocument, currentUser, personnelTypes } = useERP();
+  const { addPerson, updatePerson, deletePerson, showToast, personnelDocuments, uploadPersonnelDocument, currentUser } = useERP();
 
   const [fullName, setFullName] = useState('');
   const [employeeNo, setEmployeeNo] = useState('');
   const [phone, setPhone] = useState('');
   const [kind, setKind] = useState<PersonKind>('operator');
-  const [personnelTypeId, setPersonnelTypeId] = useState('');
   const [status, setStatus] = useState<PersonStatus>('aktif');
   const [poolStatus, setPoolStatus] = useState<PoolStatus>('musait');
   const [title, setTitle] = useState('');
@@ -35,7 +34,6 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setEmployeeNo(person.employeeNo);
       setPhone(person.phone);
       setKind(person.kind);
-      setPersonnelTypeId(person.personnelTypeId || '');
       setStatus(person.status);
       setPoolStatus(person.poolStatus);
       setTitle(person.title);
@@ -49,7 +47,6 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setEmployeeNo(`OP-${Math.floor(100 + Math.random() * 900)}`);
       setPhone('+90 5');
       setKind('operator');
-      setPersonnelTypeId('');
       setStatus('aktif');
       setPoolStatus('musait');
       setTitle('Mobil Vinç Operatörü');
@@ -94,7 +91,6 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         employeeNo,
         phone,
         kind,
-        personnelTypeId: personnelTypeId || undefined,
         status,
         poolStatus,
         title,
@@ -118,7 +114,6 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         employeeNo,
         phone,
         kind,
-        personnelTypeId: personnelTypeId || undefined,
         status,
         poolStatus,
         title,
@@ -238,13 +233,6 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
                 <option value="operator">Operatör</option>
                 <option value="yardimci">Yardımcı / Yağcı</option>
                 <option value="idari">İdari / Şef</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-emerald-950 mb-1">Dinamik Personel Türü</label>
-              <select value={personnelTypeId} onChange={(e) => setPersonnelTypeId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <option value="">Varsayılan tür</option>
-                {personnelTypes.filter((type) => type.isActive).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
               </select>
             </div>
             <div>

@@ -60,6 +60,7 @@ export const OperatorPage: React.FC = () => {
   const [jobEnd, setJobEnd] = useState('17:00');
   const [jobDescription, setJobDescription] = useState('');
   const [jobCustomerId, setJobCustomerId] = useState('');
+  const [jobCustomerName, setJobCustomerName] = useState('');
   const [jobCraneId, setJobCraneId] = useState('');
   const [expenseAmount, setExpenseAmount] = useState(0);
   const [expenseDetail, setExpenseDetail] = useState('');
@@ -188,8 +189,9 @@ export const OperatorPage: React.FC = () => {
     if (!myPerson) return;
     const customer = customers.find((c) => c.id === jobCustomerId);
     const crane = cranes.find((c) => c.id === jobCraneId);
-    if (!customer || !crane || !jobSite.trim() || !jobStart || !jobEnd) {
-      showToast('Makbuz için cari, şantiye, vinç ve saat aralığı gerekir.');
+    const customerName = customer?.title || jobCustomerName.trim();
+    if (!customerName || !crane || !jobSite.trim() || !jobStart || !jobEnd) {
+      showToast('Makbuz için firma adı, şantiye, vinç ve saat aralığı gerekir.');
       return;
     }
     const [sh, sm] = jobStart.split(':').map(Number);
@@ -198,8 +200,8 @@ export const OperatorPage: React.FC = () => {
     if (calculatedHours <= 0) return showToast('Bitiş saati başlangıçtan sonra olmalıdır.');
     await runSafe(async () => {
       await addJobReceipt({
-        customerId: customer.id,
-        customerName: customer.title,
+        customerId: customer?.id,
+        customerName,
         siteName: jobSite.trim(),
         craneCode: crane.code,
         craneId: crane.id,
@@ -216,11 +218,13 @@ export const OperatorPage: React.FC = () => {
         description: jobDescription || 'Saha işi',
       });
       setJobSite('');
+      setJobCustomerId('');
+      setJobCustomerName('');
       setJobStart('08:00');
       setJobEnd('17:00');
       setJobDescription('');
       setActiveModal('none');
-    }, '✓ İş makbuzu onaya gönderildi', { kind: 'receipt', payload: { customerId: customer.id, customerName: customer.title, siteName: jobSite.trim(), craneCode: crane.code, craneId: crane.id, operatorId: myPerson.id, operatorName: myPerson.fullName, date: new Date().toISOString().slice(0, 10), startTime: jobStart, endTime: jobEnd, workingHours: calculatedHours, hoursWorked: calculatedHours, amount: 0, status: 'pending_approval', invoiced: false, description: jobDescription || 'Saha işi' } });
+      }, '✓ İş makbuzu onaya gönderildi', { kind: 'receipt', payload: { customerId: customer?.id, customerName, siteName: jobSite.trim(), craneCode: crane.code, craneId: crane.id, operatorId: myPerson.id, operatorName: myPerson.fullName, date: new Date().toISOString().slice(0, 10), startTime: jobStart, endTime: jobEnd, workingHours: calculatedHours, hoursWorked: calculatedHours, amount: 0, status: 'pending_approval', invoiced: false, description: jobDescription || 'Saha işi' } });
   };
 
   const handleSendExpense = async (e: React.FormEvent) => {
@@ -459,13 +463,14 @@ export const OperatorPage: React.FC = () => {
                   <input required value={jobSite} onChange={(e) => setJobSite(e.target.value)} placeholder="Şantiye" className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs text-emerald-900 mb-1">Cari</label>
+                  <label className="block text-xs text-emerald-900 mb-1">Çalışılan firma *</label>
                   <select value={jobCustomerId} onChange={(e) => setJobCustomerId(e.target.value)} className="w-full min-h-11 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm">
-                    <option value="">Cari seçin *</option>
+                    <option value="">Cari seçin (veya aşağıya yazın)</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>{c.title}</option>
                     ))}
                   </select>
+                  <input value={jobCustomerName} onChange={(e) => { setJobCustomerName(e.target.value); setJobCustomerId(''); }} placeholder="Firma adını elle yazabilirsiniz" className="w-full min-h-11 mt-2 px-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs text-emerald-900 mb-1">Vinç</label>

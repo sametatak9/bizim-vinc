@@ -17,6 +17,9 @@ import {
   TrendingUp,
   Tv,
   MonitorPlay,
+  ShieldCheck,
+  XCircle,
+  UserRound,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -36,6 +39,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const monthKey = todayKey.slice(0, 7);
   const approvedToday = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 10) === todayKey);
   const approvedThisMonth = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 7) === monthKey);
+  const pendingApprovals = approvals.filter((a) => a.status === 'pending').slice(0, 6);
+  const approvalArchive = approvals.filter((a) => a.status !== 'pending').slice(0, 8);
 
   const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
 
@@ -168,9 +173,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      <section className="bg-white text-emerald-950 rounded-2xl p-4 shadow-sm border border-emerald-200">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.25em] text-emerald-600 font-bold">Yönetici karar akışı</div><h2 className="text-lg font-black mt-1">Onaylar ve gün sonu raporu</h2></div><div className="flex items-center gap-2 text-xs"><span className="px-3 py-2 rounded-xl bg-emerald-600 text-white font-black">Bekleyen {stats.pendingApprovalsCount}</span><span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800">Bugün {approvedToday.length}</span><span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800">Ay {approvedThisMonth.length}</span></div></div>
-        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">{approvals.filter((a) => a.status === 'approved').slice(0, 4).map((a) => <div key={a.id} className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs"><div className="font-bold text-emerald-950 truncate">{a.title}</div><div className="text-emerald-700 mt-1">Onaylayan: {a.approvedBy || '—'}</div></div>)}</div>
+      <section className="bg-white text-emerald-950 rounded-2xl p-5 shadow-sm border-2 border-emerald-200">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><ShieldCheck size={23} /></div><div><div className="text-[10px] uppercase tracking-[0.25em] text-emerald-600 font-bold">Yönetici karar akışı</div><h2 className="text-xl font-black mt-1">Onay Merkezi ve Günlük Akış</h2><p className="text-xs text-slate-500 mt-1">Talepler onaylanmadan yoklama, mesai, izin, avans ve iş makbuzu kesinleşmez.</p></div></div>
+          <div className="grid grid-cols-3 gap-2 text-xs"><div className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-center"><b className="block text-lg">{stats.pendingApprovalsCount}</b>Bekleyen</div><div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-center"><b className="block text-lg">{approvedToday.length}</b>Bugün</div><div className="px-3 py-2 rounded-xl bg-lime-50 text-lime-800 text-center"><b className="block text-lg">{approvedThisMonth.length}</b>Bu ay</div></div>
+        </div>
+        <div className="mt-5 grid lg:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3"><div className="flex items-center justify-between mb-2"><h3 className="text-xs font-black text-amber-900">Onay bekleyen talepler</h3><span className="text-[10px] font-bold text-amber-700">Yönetici işlemi gerekli</span></div><div className="space-y-2">{pendingApprovals.length ? pendingApprovals.map((a) => <div key={a.id} className="bg-white rounded-xl border border-amber-100 p-3 text-xs"><div className="flex items-start justify-between gap-2"><b className="text-emerald-950">{a.title}</b><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">{a.kind}</span></div><div className="mt-2 flex items-center gap-1.5 text-slate-600"><UserRound size={13} className="text-emerald-600" /> Gönderen: <strong>{a.personName}</strong></div><div className="text-[10px] text-slate-400 mt-1">{new Date(a.createdAt).toLocaleString('tr-TR')}</div></div>) : <div className="text-xs text-amber-800 py-4 text-center">Bekleyen talep bulunmuyor.</div>}</div></div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="flex items-center justify-between mb-2"><h3 className="text-xs font-black text-emerald-900">Onay arşivi</h3><span className="text-[10px] font-bold text-emerald-700">Gönderen • Onaylayan</span></div><div className="space-y-2">{approvalArchive.length ? approvalArchive.map((a) => <div key={a.id} className="bg-white rounded-xl border border-emerald-100 p-3 text-xs"><div className="flex items-center gap-2"><span className={`w-6 h-6 rounded-full flex items-center justify-center ${a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{a.status === 'approved' ? <ShieldCheck size={13} /> : <XCircle size={13} />}</span><b className="text-emerald-950 truncate">{a.title}</b></div><div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-500"><span>Gönderen: <strong className="text-slate-700">{a.personName}</strong></span><span>Karar: <strong className={a.status === 'approved' ? 'text-emerald-700' : 'text-rose-700'}>{a.approvedBy || a.rejectedBy || '—'}</strong></span></div></div>) : <div className="text-xs text-slate-500 py-4 text-center">Henüz arşivlenmiş karar yok.</div>}</div></div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -1182,6 +1182,32 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Remote approve error:', e);
       }
     }
+
+    if (target.kind === 'yoklama' && target.personId && target.requestedDate && sb) {
+      const parsed = target.relatedLabel ? JSON.parse(target.relatedLabel) as { checkInTime?: string; checkOut?: string; note?: string } : {};
+      const requestedStatus = target.title.split(': ').pop()?.toLowerCase() as AttendanceStatus;
+      const attendanceRecord: AttendanceRecord = {
+        id: generateUuid(), personId: target.personId, personName: target.personName, date: target.requestedDate,
+        checkInTime: parsed.checkInTime, checkOutTime: parsed.checkOut, status: ['geldi', 'gelmedi', 'izinli', 'raporlu', 'tatil', 'eksik'].includes(requestedStatus) ? requestedStatus : 'geldi',
+        note: parsed.note, createdAt: now,
+      };
+      const { error: attendanceError } = await sb!.from('attendance_records').upsert({
+        id: attendanceRecord.id, person_id: attendanceRecord.personId, person_name: attendanceRecord.personName,
+        date: attendanceRecord.date, check_in_time: attendanceRecord.checkInTime, check_out_time: attendanceRecord.checkOutTime,
+        status: attendanceRecord.status, note: attendanceRecord.note, updated_at: now,
+      }, { onConflict: 'person_id,date' });
+      if (attendanceError) throw attendanceError;
+      setAttendance((prev) => {
+        const next = [attendanceRecord, ...prev.filter((a) => !(a.personId === attendanceRecord.personId && a.date === attendanceRecord.date))];
+        saveStored('bv_attendance', next);
+        return next;
+      });
+      logAction('YOKLAMA_KAYDI', 'Puantaj', attendanceRecord.personId, `${approverName} onayıyla ${attendanceRecord.personName} yoklaması işlendi.`);
+    }
+    if (target.kind === 'makbuz_onay' && target.relatedLabel && sb) {
+      await sb.from('job_receipts').update({ status: 'approved', approved_by: approverName, approved_at: now, updated_at: now }).eq('id', target.relatedLabel);
+      setJobReceipts((prev) => prev.map((r) => r.id === target.relatedLabel ? { ...r, status: 'approved', approvedBy: approverName, approvedAt: now, updatedAt: now } : r));
+    }
   };
 
   const rejectRequest = async (id: string, reason: string) => {
@@ -1211,6 +1237,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAction('TALEP_REDDEDİLDİ', 'Onay', id, `${rejectorName} tarafından reddedildi. Sebep: ${reason}`);
     sendNotification('Talep Reddedildi', `'${target.title}' reddedildi. Sebep: ${reason}`, 'error', target.personId);
     showToast(`✕ '${target.title}' talebi reddedildi.`);
+    if (target.kind === 'makbuz_onay' && target.relatedLabel) {
+      setJobReceipts((prev) => prev.map((r) => r.id === target.relatedLabel ? { ...r, status: 'rejected', rejectionReason: reason, updatedAt: now } : r));
+    }
 
     const sb = getSupabase();
     if (sb) {
@@ -1229,6 +1258,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Remote reject error:', e);
       }
     }
+    if (target.kind === 'makbuz_onay' && target.relatedLabel && sb) {
+      await sb.from('job_receipts').update({ status: 'rejected', rejection_reason: reason, updated_at: now }).eq('id', target.relatedLabel);
+    }
   };
 
   // Yoklama İşlemleri
@@ -1243,53 +1275,18 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const personName = person ? person.fullName : 'Bilinmeyen';
     const date = new Date().toISOString().split('T')[0];
 
-    const newRecord: AttendanceRecord = {
-      id: generateUuid(),
-      personId,
-      personName,
-      date,
-      checkInTime: checkIn || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      checkOutTime: checkOut,
-      status,
-      note,
-      createdAt: new Date().toISOString(),
-    };
-
-    const sb = getSupabase();
-    if (!sb) throw new Error('Supabase bağlantısı yok. Yoklama remote kaydedilemedi.');
-    const { error: attendanceError } = await sb.from('attendance_records').upsert({
-      id: newRecord.id,
-      person_id: personId,
-      person_name: personName,
-      date,
-      check_in_time: newRecord.checkInTime,
-      check_out_time: newRecord.checkOutTime,
-      status,
-      note,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'person_id,date' });
-    if (attendanceError) throw attendanceError;
-
-    setAttendance((prev) => {
-      const filtered = prev.filter((a) => !(a.personId === personId && a.date === date));
-      const next = [newRecord, ...filtered];
-      saveStored('bv_attendance', next);
-      return next;
-    });
-
-    logAction('YOKLAMA_KAYDI', 'Puantaj', personId, `${personName} bugünkü durumu: ${status.toUpperCase()}`);
-    showToast(`✓ ${personName} yoklaması kaydedildi (${status}).`);
-
-    // Onay listesine de ekle
+    const checkInTime = checkIn || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     await addApproval({
       kind: 'yoklama',
-      status: 'approved',
+      status: 'pending',
       title: `Günlük Yoklama: ${status.toUpperCase()}`,
       personId,
       personName,
       requestedDate: date,
-      note: note || `Giriş: ${newRecord.checkInTime || '-'}`,
+      relatedLabel: JSON.stringify({ checkInTime, checkOut, note }),
+      note: note || `Giriş: ${checkInTime}`,
     });
+    showToast(`✓ ${personName} yoklaması yönetici onayına gönderildi.`);
   };
 
   // İzin Talebi
@@ -1841,7 +1838,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobReceipts((prev) => { const next = [newRec, ...prev]; saveStored('bv_job_receipts', next); return next; });
     await addApproval({
       kind: 'makbuz_onay', status: 'pending', title: `İş Makbuzu Onayı: ${receiptNo} (${newRec.customerName})`,
-      personName: newRec.operatorName, amount: 0,
+      personId: newRec.operatorId, personName: newRec.operatorName, amount: 0, relatedLabel: newRec.id,
       note: `${newRec.workingHours || 0} Saat | ${newRec.craneCode} | ${newRec.description || ''}`, requestedDate: newRec.date,
     });
     logAction('MAKBUZ_OLUSTURULDU', 'Makbuz', id, `${receiptNo} no'lu makbuz oluşturuldu.`);
