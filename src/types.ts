@@ -479,6 +479,8 @@ export interface Payment {
   obligationId?: string;
   installmentNo?: number;
   installmentCount?: number;
+  reminderDaysBefore?: number;
+  recurring?: boolean;
   createdAt: string;
 }
 

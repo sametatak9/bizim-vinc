@@ -655,7 +655,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: d.id, recipientType: d.recipient_type, recipientId: d.recipient_id, recipientName: d.recipient_name,
         category: d.category, amount: Number(d.amount) || 0, dueDate: d.due_date, paidDate: d.paid_date,
         paymentDate: d.payment_date, paymentMethod: d.payment_method, status: d.status, payrollItemId: d.payroll_item_id,
-        notes: d.notes, obligationId: d.obligation_id, installmentNo: d.installment_no, installmentCount: d.installment_count, createdAt: d.created_at,
+        notes: d.notes, obligationId: d.obligation_id, installmentNo: d.installment_no, installmentCount: d.installment_count, reminderDaysBefore: Number(d.reminder_days_before) || 2, recurring: Boolean(d.recurring), createdAt: d.created_at,
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
 
@@ -2150,7 +2150,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newPay: Payment = { ...payData, id, createdAt: new Date().toISOString() };
     const sb = getSupabase();
     if (!sb) throw new Error('Supabase bağlantısı yok. Ödeme planı kaydedilemedi.');
-    const { error } = await sb.from('payments').insert({ id, recipient_type: newPay.recipientType, recipient_id: newPay.recipientId || null, recipient_name: newPay.recipientName, category: newPay.category, amount: newPay.amount, due_date: newPay.dueDate, paid_date: newPay.paidDate || null, payment_date: newPay.paymentDate || null, payment_method: newPay.paymentMethod || 'havale', status: newPay.status, payroll_item_id: newPay.payrollItemId || null, obligation_id: newPay.obligationId || null, installment_no: newPay.installmentNo || null, installment_count: newPay.installmentCount || null, notes: newPay.notes || null });
+    const { error } = await sb.from('payments').insert({ id, recipient_type: newPay.recipientType, recipient_id: newPay.recipientId || null, recipient_name: newPay.recipientName, category: newPay.category, amount: newPay.amount, due_date: newPay.dueDate, paid_date: newPay.paidDate || null, payment_date: newPay.paymentDate || null, payment_method: newPay.paymentMethod || 'havale', status: newPay.status, payroll_item_id: newPay.payrollItemId || null, obligation_id: newPay.obligationId || null, installment_no: newPay.installmentNo || null, installment_count: newPay.installmentCount || null, reminder_days_before: newPay.reminderDaysBefore ?? 2, recurring: newPay.recurring ?? false, notes: newPay.notes || null });
     if (error) throw error;
     setPayments((prev) => {
       const next = [newPay, ...prev];
