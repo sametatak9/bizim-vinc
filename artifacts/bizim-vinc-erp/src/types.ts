@@ -748,3 +748,32 @@ export interface TelemetryPoint {
   operator?: string;
   site?: string;
 }
+
+
+// ==================== ÇEK & SENET TAKİBİ ====================
+export type CommercialPaperType = 'alinan_cek' | 'verilen_cek' | 'alinan_senet' | 'verilen_senet';
+export type CommercialPaperStatus = 'portfoyde' | 'ciro_edildi' | 'tahsile_verildi' | 'odendi_tahsil' | 'karsiliksiz_protesto' | 'iade_edildi';
+
+export interface CommercialPaper {
+  id: string;
+  type: CommercialPaperType;
+  documentNo: string; // Çek No veya Senet/Bono No
+  serialNo?: string;
+  amount: number;
+  issueDate: string; // Düzenleme / Keşide Tarihi (YYYY-MM-DD)
+  dueDate: string; // Vade Tarihi (YYYY-MM-DD)
+  debtor: string; // Keşideci / Borçlu Firma veya Şahıs
+  debtorTaxId?: string; // VKN veya TCKN
+  beneficiary: string; // Lehtar (Kime Düzenlendiği)
+  endorser?: string; // Ciranta (Ciro Eden)
+  bankName?: string; // Banka Adı (Çek için)
+  bankBranch?: string; // Şube Adı veya Kodu
+  accountNo?: string; // Hesap No / IBAN
+  city?: string; // Keşide/Ödeme Yeri
+  status: CommercialPaperStatus;
+  notes?: string;
+  documentUrl?: string; // Evrak Görseli veya PDF
+  statusDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}

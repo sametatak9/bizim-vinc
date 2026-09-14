@@ -31,6 +31,9 @@ import {
   PaymentObligation,
   PaymentReceiptDoc,
   PaymentSettlementInput,
+  CommercialPaper,
+  CommercialPaperType,
+  CommercialPaperStatus,
   Membership,
   PayrollRun,
   PayrollItem,
@@ -117,6 +120,10 @@ interface ERPContextType {
   addCollection: (col: Omit<Collection, 'id' | 'createdAt'>) => Promise<void>;
   markCollectionReceived: (id: string) => Promise<void>;
   payments: Payment[];
+  commercialPapers: CommercialPaper[];
+  addCommercialPaper: (paper: Omit<CommercialPaper, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateCommercialPaperStatus: (id: string, status: CommercialPaperStatus, note?: string) => Promise<void>;
+  deleteCommercialPaper: (id: string) => Promise<void>;
   addPayment: (pay: Omit<Payment, 'id' | 'createdAt'>) => Promise<void>;
   /** @deprecated dekont zorunlu: `settlePayment` kullanın */
   markPaymentPaid: (id: string) => Promise<void>;
@@ -260,6 +267,81 @@ function saveStored<T>(key: string, val: T): void {
   }
 }
 
+
+const INITIAL_COMMERCIAL_PAPERS: CommercialPaper[] = [
+  {
+    id: 'cp-101',
+    type: 'alinan_cek',
+    documentNo: 'CK-884920',
+    serialNo: 'A-2026',
+    amount: 145000,
+    issueDate: '2026-08-15',
+    dueDate: '2026-09-22',
+    debtor: 'Kalyon Altyapı A.Ş.',
+    debtorTaxId: '5420198821',
+    beneficiary: 'Bizim Vinç ERP Hizmetleri',
+    bankName: 'Vakıf Katılım',
+    bankBranch: 'Pendik Sanayi Şubesi (0421)',
+    accountNo: 'TR44 0021 0000 0045 8820 01',
+    city: 'İstanbul',
+    status: 'portfoyde',
+    notes: 'Köprülü kavşak 120T vinç kiralama hakediş çeki',
+    createdAt: '2026-08-15T10:00:00Z',
+    updatedAt: '2026-08-15T10:00:00Z'
+  },
+  {
+    id: 'cp-102',
+    type: 'verilen_cek',
+    documentNo: 'CK-003412',
+    serialNo: 'BV-2026',
+    amount: 98000,
+    issueDate: '2026-09-01',
+    dueDate: '2026-09-18',
+    debtor: 'Bizim Vinç Nakliyat Ltd. Şti.',
+    debtorTaxId: '1980345112',
+    beneficiary: 'Hidroliksan Vinç Ekipmanları Sanayi',
+    bankName: 'Ziraat Bankası',
+    bankBranch: 'Tuzla Şubesi',
+    accountNo: 'TR12 0001 0005 1234 5678 90',
+    city: 'Kocaeli',
+    status: 'portfoyde',
+    notes: 'Liebherr periyodik hidrolik pompa ve halat revizyon faturası karşılığı',
+    createdAt: '2026-09-01T14:30:00Z',
+    updatedAt: '2026-09-01T14:30:00Z'
+  },
+  {
+    id: 'cp-103',
+    type: 'alinan_senet',
+    documentNo: 'SN-0491',
+    amount: 65000,
+    issueDate: '2026-07-20',
+    dueDate: '2026-09-10',
+    debtor: 'Özdemir İnşaat & Taahhüt',
+    debtorTaxId: '6849102834',
+    beneficiary: 'Bizim Vinç',
+    city: 'Sakarya',
+    status: 'karsiliksiz_protesto',
+    notes: 'Vadesi geçti, protesto çekildi. Avukata havale bekliyor.',
+    createdAt: '2026-07-20T09:15:00Z',
+    updatedAt: '2026-09-11T11:00:00Z'
+  },
+  {
+    id: 'cp-104',
+    type: 'verilen_senet',
+    documentNo: 'SN-0082',
+    amount: 52000,
+    issueDate: '2026-08-10',
+    dueDate: '2026-09-30',
+    debtor: 'Bizim Vinç',
+    beneficiary: 'Opet Akaryakıt Dağıtım Bayi',
+    city: 'İstanbul',
+    status: 'portfoyde',
+    notes: 'Ağustos ayı şantiye motorin alımı 2. taksit senedi',
+    createdAt: '2026-08-10T16:00:00Z',
+    updatedAt: '2026-08-10T16:00:00Z'
+  }
+];
+
 export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Kullanıcı & Auth
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>(() =>
@@ -310,7 +392,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [collections, setCollections] = useState<Collection[]>(() =>
     loadStored('bv_collections', [])
   );
-  const [payments, setPayments] = useState<Payment[]>(() =>
+  const [payments, commercialPapers, addCommercialPaper, updateCommercialPaperStatus, deleteCommercialPaper,
+    setPayments] = useState<Payment[]>(() =>
     loadStored('bv_payments', [])
   );
   const [obligations, setObligations] = useState<PaymentObligation[]>(() =>
@@ -2976,7 +3059,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addCollection,
         markCollectionReceived,
         payments,
-        addPayment,
+        commercialPapers, addCommercialPaper, updateCommercialPaperStatus, deleteCommercialPaper,
+    addPayment,
         markPaymentPaid,
         obligations,
         paymentReceipts,

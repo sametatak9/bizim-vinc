@@ -1,7 +1,7 @@
 import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 import React, { useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
-import { PAYMENT_CATEGORY_LABELS, PAYMENT_CHANNEL_LABELS, Payment, PaymentCategory } from '../types';
+import { PAYMENT_CATEGORY_LABELS, PAYMENT_CHANNEL_LABELS, Payment, PaymentCategory, CommercialPaper, CommercialPaperType, CommercialPaperStatus } from '../types';
 import {
   AlertTriangle, BarChart3, Building2, CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign,
   Download, FileText, FileWarning, Landmark, Lock, Paperclip, Phone, Printer, Search, ShieldCheck,
@@ -23,11 +23,11 @@ const FINANCE_ROLES = ['founder', 'admin', 'yonetici', 'muhasebe'];
 /** Aylık plan, dekontlu kapatma ve rapor üreten muhasebe ekranı. */
 export const PaymentPlanningPage: React.FC = () => {
   const {
-    customers, invoices, collections, payments, jobReceipts, obligations, paymentReceipts,
+    customers, invoices, collections, payments, jobReceipts, obligations, paymentReceipts, commercialPapers, addCommercialPaper, updateCommercialPaperStatus, deleteCommercialPaper,
     addCollection, markCollectionReceived, cancelPayment, getPaymentDocumentUrl, currentUser,
   } = useERP();
 
-  const [tab, setTab] = useState<'month' | 'obligations' | 'report' | 'new' | 'collections' | 'receipts'>('month');
+  const [tab, setTab] = useState<'month' | 'obligations' | 'report' | 'new' | 'collections' | 'receipts' | 'checks'>('month');
   const [month, setMonth] = useState(monthKey(new Date()));
   const [search, setSearch] = useState('');
   const [settleTarget, setSettleTarget] = useState<Payment | null>(null);
@@ -145,6 +145,99 @@ export const PaymentPlanningPage: React.FC = () => {
     link.download = fileName;
     link.click();
     URL.revokeObjectURL(link.href);
+  };
+
+
+  // ==================== ÇEK & SENET TAKİBİ STATE & MANTIK ====================
+  const [paperFilter, setPaperFilter] = useState<'all' | CommercialPaperType>('all');
+  const [paperStatusFilter, setPaperStatusFilter] = useState<'all' | CommercialPaperStatus>('all');
+  const [isAddPaperOpen, setIsAddPaperOpen] = useState(false);
+  const [newPaper, setNewPaper] = useState<Partial<CommercialPaper>>({
+    type: 'alinan_cek',
+    status: 'portfoyde',
+    issueDate: today(),
+    dueDate: today(),
+    amount: 0,
+    documentNo: '',
+    debtor: '',
+    beneficiary: 'Bizim Vinç',
+    bankName: '',
+    bankBranch: '',
+    accountNo: '',
+    city: 'İstanbul',
+    notes: ''
+  });
+
+  const getDaysLeft = (dueDate: string) => {
+    const diff = new Date(dueDate).getTime() - new Date(today()).getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  // 10 Günlük Periyodik Takip ve Vade Segmentleri
+  const paperStats = useMemo(() => {
+    const papers = commercialPapers || [];
+    const overdue = papers.filter((p) => p.status === 'portfoyde' && getDaysLeft(p.dueDate) < 0);
+    const critical10Days = papers.filter((p) => p.status === 'portfoyde' && getDaysLeft(p.dueDate) >= 0 && getDaysLeft(p.dueDate) <= 10);
+    const upcoming30Days = papers.filter((p) => p.status === 'portfoyde' && getDaysLeft(p.dueDate) > 10 && getDaysLeft(p.dueDate) <= 30);
+    const totalPortfolio = papers.filter((p) => p.status === 'portfoyde').reduce((s, p) => s + p.amount, 0);
+
+    return {
+      overdue,
+      critical10Days,
+      upcoming30Days,
+      totalPortfolio,
+      count: papers.length
+    };
+  }, [commercialPapers]);
+
+  const filteredPapers = useMemo(() => {
+    return (commercialPapers || []).filter((p) => {
+      if (paperFilter !== 'all' && p.type !== paperFilter) return false;
+      if (paperStatusFilter !== 'all' && p.status !== paperStatusFilter) return false;
+      if (normalizedSearch) {
+        const text = `${p.documentNo} ${p.debtor} ${p.bankName || ''} ${p.beneficiary} ${p.notes || ''}`.toLocaleLowerCase('tr-TR');
+        if (!text.includes(normalizedSearch)) return false;
+      }
+      return true;
+    }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [commercialPapers, paperFilter, paperStatusFilter, normalizedSearch]);
+
+  const exportCommercialPapers = (format: 'excel' | 'html') => {
+    const columns = [
+      { key: 'tur', label: 'Evrak Türü' },
+      { key: 'no', label: 'Çek/Senet No' },
+      { key: 'vade', label: 'Vade Tarihi' },
+      { key: 'kalan', label: 'Kalan Gün' },
+      { key: 'borclu', label: 'Keşideci / Borçlu' },
+      { key: 'lehtar', label: 'Lehtar' },
+      { key: 'tutar', label: 'Tutar' },
+      { key: 'banka', label: 'Banka / Şube' },
+      { key: 'durum', label: 'Durum' },
+      { key: 'notlar', label: 'Açıklama' }
+    ];
+    const rows = filteredPapers.map((p) => {
+      const days = getDaysLeft(p.dueDate);
+      return {
+        tur: p.type === 'alinan_cek' ? 'Alınan Çek' : p.type === 'verilen_cek' ? 'Verilen Çek' : p.type === 'alinan_senet' ? 'Alınan Senet' : 'Verilen Senet',
+        no: p.documentNo,
+        vade: p.dueDate,
+        kalan: days < 0 ? `Vadesi Geçti (${Math.abs(days)} gün)` : `${days} gün kaldı`,
+        borclu: p.debtor,
+        lehtar: p.beneficiary,
+        tutar: `${p.amount.toLocaleString('tr-TR')} ₺`,
+        banka: p.bankName ? `${p.bankName} (${p.bankBranch || 'Merkez'})` : '—',
+        durum: p.status === 'portfoyde' ? 'Portföyde' : p.status === 'tahsile_verildi' ? 'Bankada Tahsilde' : p.status === 'ciro_edildi' ? 'Ciro Edildi' : p.status === 'odendi_tahsil' ? 'Ödendi / Tahsil' : 'Karşılıksız / Protesto',
+        notlar: p.notes || ''
+      };
+    });
+    const summary = [
+      { label: 'Portföy Toplam Tutarı', value: `${paperStats.totalPortfolio.toLocaleString('tr-TR')} ₺` },
+      { label: '10 Gün İçinde Vadesi Dolan', value: `${paperStats.critical10Days.length} Adet` },
+      { label: 'Vadesi Geçen / Riskli', value: `${paperStats.overdue.length} Adet` }
+    ];
+    const title = 'BİZİM VİNÇ Çek & Senet Portföy ve Vade Takip Raporu';
+    if (format === 'excel') downloadExcelReport('cek-senet-raporu', title, columns, rows, summary);
+    else downloadHtmlReport('cek-senet-raporu', title, columns, rows, summary);
   };
 
   const exportPaymentPlanReport = (format: 'excel' | 'html') => {
@@ -642,6 +735,408 @@ return (
             </div>
           </div>
         </section>
+      )}
+
+      
+      {tab === 'checks' && (
+        <div className="space-y-6">
+          {/* 10 GÜNDE BİR PERİYODİK UYARI VE VADE TAKİP BİLDİRİM PANELİ */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className={`p-4 rounded-2xl border ${paperStats.critical10Days.length > 0 ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-800">⚠️ 10 Günlük Vade Alarmı</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white animate-pulse">10 Günde Bir</span>
+              </div>
+              <div className="text-2xl font-black mt-2 text-amber-900">{paperStats.critical10Days.length} Evrak</div>
+              <div className="text-xs text-amber-700 mt-1">Önümüzdeki 10 gün içinde tahsilatı/ödemesi gelen çek ve senetler.</div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${paperStats.overdue.length > 0 ? 'bg-red-50 border-red-300 text-red-950' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-red-800">🚨 Vadesi Geçmiş Evraklar</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-red-600 text-white">Acil Takip</span>
+              </div>
+              <div className="text-2xl font-black mt-2 text-red-900">{paperStats.overdue.length} Evrak</div>
+              <div className="text-xs text-red-700 mt-1">Günü dolup henüz tahsilatı veya ödemesi kaydedilmemiş kayıtlar.</div>
+            </div>
+
+            <div className="p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-950">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">💼 Aktif Portföy Hacmi</span>
+              <div className="text-2xl font-black mt-2 text-emerald-900">{paperStats.totalPortfolio.toLocaleString('tr-TR')} ₺</div>
+              <div className="text-xs text-emerald-700 mt-1">Portföyde tahsil veya ödeme bekleyen net tutar.</div>
+            </div>
+
+            <div className="p-4 rounded-2xl border bg-blue-50 border-blue-200 text-blue-950">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-800">📅 11 - 30 Gün Kalanlar</span>
+              <div className="text-2xl font-black mt-2 text-blue-900">{paperStats.upcoming30Days.length} Evrak</div>
+              <div className="text-xs text-blue-700 mt-1">Ay sonu ve gelecek nakit akışını etkileyecek evraklar.</div>
+            </div>
+          </div>
+
+          {/* ARAÇ ÇUBUĞU: FİLTRELER, YENİ EVRAK VE RAPOR BUTONLARI */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={paperFilter}
+                onChange={(e) => setPaperFilter(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              >
+                <option value="all">Tüm Evrak Türleri</option>
+                <option value="alinan_cek">Alınan Çekler</option>
+                <option value="verilen_cek">Verilen Çekler</option>
+                <option value="alinan_senet">Alınan Senetler</option>
+                <option value="verilen_senet">Verilen Senetler</option>
+              </select>
+
+              <select
+                value={paperStatusFilter}
+                onChange={(e) => setPaperStatusFilter(e.target.value as any)}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              >
+                <option value="all">Tüm Durumlar</option>
+                <option value="portfoyde">Portföyde</option>
+                <option value="tahsile_verildi">Bankada Tahsilde</option>
+                <option value="ciro_edildi">Ciro Edildi</option>
+                <option value="odendi_tahsil">Ödendi / Tahsil Edildi</option>
+                <option value="karsiliksiz_protesto">Karşılıksız / Protestolu</option>
+                <option value="iade_edildi">İade Edildi</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => exportCommercialPapers('excel')}
+                className="rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition flex items-center gap-1.5"
+              >
+                📊 Excel Raporu
+              </button>
+              <button
+                type="button"
+                onClick={() => exportCommercialPapers('html')}
+                className="rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-900 transition flex items-center gap-1.5"
+              >
+                🏛️ Kurumsal HTML Rapor
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddPaperOpen(true)}
+                className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white shadow-md hover:bg-emerald-800 transition flex items-center gap-1.5"
+              >
+                + Yeni Çek / Senet Girişi
+              </button>
+            </div>
+          </div>
+
+          {/* ÇEK & SENET LİSTESİ TABLOSU */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">Evrak Türü / No</th>
+                  <th className="p-3.5">Keşideci (Borçlu) / Lehtar</th>
+                  <th className="p-3.5">Banka & Şube</th>
+                  <th className="p-3.5">Vade / 10 Gün Uyarısı</th>
+                  <th className="p-3.5">Tutar</th>
+                  <th className="p-3.5">Durum</th>
+                  <th className="p-3.5 text-right">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPapers.map((paper) => {
+                  const days = getDaysLeft(paper.dueDate);
+                  const is10Days = days >= 0 && days <= 10;
+                  const isOverdue = days < 0 && paper.status === 'portfoyde';
+
+                  return (
+                    <tr key={paper.id} className={`hover:bg-slate-50 transition ${isOverdue ? 'bg-red-50/30' : is10Days ? 'bg-amber-50/20' : ''}`}>
+                      <td className="p-3.5 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            paper.type.includes('cek') ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {paper.type === 'alinan_cek' ? 'Alınan Çek' : paper.type === 'verilen_cek' ? 'Verilen Çek' : paper.type === 'alinan_senet' ? 'Alınan Senet' : 'Verilen Senet'}
+                          </span>
+                        </div>
+                        <div className="text-slate-900 font-mono font-bold text-sm mt-1">{paper.documentNo}</div>
+                        {paper.serialNo && <div className="text-[10px] text-slate-500">Seri: {paper.serialNo}</div>}
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-900">{paper.debtor}</div>
+                        {paper.debtorTaxId && <div className="text-[10px] text-slate-500 font-mono">VKN/TCKN: {paper.debtorTaxId}</div>}
+                        <div className="text-[11px] text-slate-600 mt-0.5">Lehtar: {paper.beneficiary}</div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="font-medium text-slate-900">{paper.bankName || 'Banka Belirtilmedi'}</div>
+                        <div className="text-[11px] text-slate-500">{paper.bankBranch || '—'} {paper.city ? `(${paper.city})` : ''}</div>
+                        {paper.accountNo && <div className="text-[10px] text-slate-400 font-mono truncate max-w-[180px]">{paper.accountNo}</div>}
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-900">{paper.dueDate}</div>
+                        {isOverdue ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-800">
+                            Vadesi Geçti ({Math.abs(days)} gün)
+                          </span>
+                        ) : is10Days ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 animate-pulse">
+                            ⚠️ {days} Gün Kaldı (10 Gün Uyarısı)
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-500">{days} gün sonra</span>
+                        )}
+                        <div className="text-[10px] text-slate-400 mt-0.5">Keşide: {paper.issueDate}</div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="text-sm font-black text-slate-900">{paper.amount.toLocaleString('tr-TR')} ₺</div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                          paper.status === 'portfoyde' ? 'bg-emerald-100 text-emerald-800' :
+                          paper.status === 'tahsile_verildi' ? 'bg-blue-100 text-blue-800' :
+                          paper.status === 'ciro_edildi' ? 'bg-indigo-100 text-indigo-800' :
+                          paper.status === 'odendi_tahsil' ? 'bg-teal-100 text-teal-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {paper.status === 'portfoyde' ? 'Portföyde' :
+                           paper.status === 'tahsile_verildi' ? 'Tahsilde' :
+                           paper.status === 'ciro_edildi' ? 'Ciro Edildi' :
+                           paper.status === 'odendi_tahsil' ? 'Tahsil/Ödendi' :
+                           paper.status === 'karsiliksiz_protesto' ? 'Protestolu' : 'İade Edildi'}
+                        </span>
+                      </td>
+
+                      <td className="p-3.5 text-right space-x-1">
+                        <select
+                          value={paper.status}
+                          onChange={(e) => updateCommercialPaperStatus(paper.id, e.target.value as any)}
+                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700"
+                        >
+                          <option value="portfoyde">Portföyde</option>
+                          <option value="tahsile_verildi">Tahsile Ver</option>
+                          <option value="ciro_edildi">Ciro Et</option>
+                          <option value="odendi_tahsil">Tahsil / Ödendi Yap</option>
+                          <option value="karsiliksiz_protesto">Karşılıksız / Protesto</option>
+                          <option value="iade_edildi">İade Et</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Bu evrak kaydını silmek istediğinize emin misiniz?')) {
+                              deleteCommercialPaper(paper.id);
+                            }
+                          }}
+                          className="rounded-lg px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* YENİ ÇEK / SENET MODALI */}
+          {isAddPaperOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+              <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                  <h3 className="text-lg font-black text-slate-900">Yeni Çek / Senet Evrak Kaydı</h3>
+                  <button type="button" onClick={() => setIsAddPaperOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">✕</button>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!newPaper.documentNo || !newPaper.debtor || !newPaper.amount) {
+                      alert('Lütfen Evrak No, Keşideci/Borçlu ve Tutar alanlarını doldurun.');
+                      return;
+                    }
+                    await addCommercialPaper(newPaper as any);
+                    setIsAddPaperOpen(false);
+                    setNotice('Çek/Senet evrakı başarıyla portföye kaydedildi.');
+                  }}
+                  className="mt-4 space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Evrak Türü</label>
+                      <select
+                        value={newPaper.type}
+                        onChange={(e) => setNewPaper({ ...newPaper, type: e.target.value as any })}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold"
+                      >
+                        <option value="alinan_cek">Alınan Çek (Müşteriden)</option>
+                        <option value="verilen_cek">Verilen Çek (Tedarikçiye)</option>
+                        <option value="alinan_senet">Alınan Senet (Bono)</option>
+                        <option value="verilen_senet">Verilen Senet (Bono)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Çek / Senet No *</label>
+                      <input
+                        type="text"
+                        placeholder="Örn: CK-884920"
+                        value={newPaper.documentNo}
+                        onChange={(e) => setNewPaper({ ...newPaper, documentNo: e.target.value })}
+                        required
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Tutar (₺) *</label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={newPaper.amount || ''}
+                        onChange={(e) => setNewPaper({ ...newPaper, amount: Number(e.target.value) })}
+                        required
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Düzenleme Tarihi</label>
+                      <input
+                        type="date"
+                        value={newPaper.issueDate}
+                        onChange={(e) => setNewPaper({ ...newPaper, issueDate: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Vade Tarihi *</label>
+                      <input
+                        type="date"
+                        value={newPaper.dueDate}
+                        onChange={(e) => setNewPaper({ ...newPaper, dueDate: e.target.value })}
+                        required
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold text-emerald-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Keşideci (Borçlu) *</label>
+                      <input
+                        type="text"
+                        placeholder="Borçlu Firma veya Şahıs Adı"
+                        value={newPaper.debtor}
+                        onChange={(e) => setNewPaper({ ...newPaper, debtor: e.target.value })}
+                        required
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Borçlu VKN / TCKN</label>
+                      <input
+                        type="text"
+                        placeholder="10 veya 11 haneli vergi/TC no"
+                        value={newPaper.debtorTaxId || ''}
+                        onChange={(e) => setNewPaper({ ...newPaper, debtorTaxId: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Lehtar (Kime Düzenlendiği)</label>
+                      <input
+                        type="text"
+                        value={newPaper.beneficiary}
+                        onChange={(e) => setNewPaper({ ...newPaper, beneficiary: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700">Ödeme / Keşide Yeri (Şehir)</label>
+                      <input
+                        type="text"
+                        placeholder="İstanbul"
+                        value={newPaper.city || ''}
+                        onChange={(e) => setNewPaper({ ...newPaper, city: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {newPaper.type?.includes('cek') && (
+                    <div className="grid grid-cols-3 gap-4 rounded-2xl bg-slate-50 p-3 border border-slate-200">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Banka Adı</label>
+                        <input
+                          type="text"
+                          placeholder="Örn: Vakıf Katılım"
+                          value={newPaper.bankName || ''}
+                          onChange={(e) => setNewPaper({ ...newPaper, bankName: e.target.value })}
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Şube Adı/Kodu</label>
+                        <input
+                          type="text"
+                          placeholder="Pendik Şb. (0421)"
+                          value={newPaper.bankBranch || ''}
+                          onChange={(e) => setNewPaper({ ...newPaper, bankBranch: e.target.value })}
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hesap No / IBAN</label>
+                        <input
+                          type="text"
+                          placeholder="TR..."
+                          value={newPaper.accountNo || ''}
+                          onChange={(e) => setNewPaper({ ...newPaper, accountNo: e.target.value })}
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">Açıklama & Notlar</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Hakediş, fatura veya sözleşme referansı..."
+                      value={newPaper.notes || ''}
+                      onChange={(e) => setNewPaper({ ...newPaper, notes: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-300 p-2 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPaperOpen(false)}
+                      className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                    >
+                      Vazgeç
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-black text-white hover:bg-emerald-800 shadow"
+                    >
+                      Portföye Kaydet
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {tab === 'receipts' && (
