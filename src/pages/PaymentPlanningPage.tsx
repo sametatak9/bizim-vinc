@@ -1,3 +1,4 @@
+import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 import React, { useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
 import { PAYMENT_CATEGORY_LABELS, PAYMENT_CHANNEL_LABELS, Payment, PaymentCategory } from '../types';
@@ -146,6 +147,38 @@ export const PaymentPlanningPage: React.FC = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  const exportPaymentPlanReport = (format: 'excel' | 'html') => {
+    const columns = [
+      { key: 'tarih', label: 'Vade Tarihi' },
+      { key: 'tip', label: 'Kategori' },
+      { key: 'alici', label: 'Alıcı / Kurum' },
+      { key: 'tutar', label: 'Plan Tutarı' },
+      { key: 'odenen', label: 'Ödenen' },
+      { key: 'kanal', label: 'Ödeme Kanalı' },
+      { key: 'durum', label: 'Durum' },
+      { key: 'aciklama', label: 'Açıklama' }
+    ];
+    const rows = inMonth.map((p) => ({
+      tarih: p.dueDate,
+      tip: PAYMENT_CATEGORY_LABELS[p.category] || p.category,
+      alici: p.recipientName || p.institutionName || '—',
+      tutar: `${p.amount.toLocaleString('tr-TR')} ₺`,
+      odenen: `${(p.paidAmount ?? 0).toLocaleString('tr-TR')} ₺`,
+      kanal: p.paymentChannel ? (PAYMENT_CHANNEL_LABELS[p.paymentChannel] || p.paymentChannel) : '—',
+      durum: p.status === 'odendi' ? 'Ödendi' : p.status === 'iptal' ? 'İptal' : p.dueDate < today() ? 'Vadesi Geçti' : 'Bekliyor',
+      aciklama: p.description || ''
+    }));
+    const summaryStats = [
+      { label: 'Planlanan Toplam', value: money(monthTotals.planned) },
+      { label: 'Ödenen Tutar', value: money(monthTotals.paid) },
+      { label: 'Bekleyen Tutar', value: money(monthTotals.pending) },
+      { label: 'Vadesi Geçen Adet', value: `${monthTotals.overdueCount} Adet` }
+    ];
+    const title = `BİZİM VİNÇ Ödeme Planlama ve Nakit Akış Raporu (${month})`;
+    if (format === 'excel') downloadExcelReport('odeme-planlama-raporu', title, columns, rows, summaryStats);
+    else downloadHtmlReport('odeme-planlama-raporu', title, columns, rows, summaryStats);
+  };
+
   const createCollectionPlan = async (event: React.FormEvent) => {
     event.preventDefault();
     const customer = customers.find((item) => item.id === planCustomer);
@@ -164,7 +197,10 @@ export const PaymentPlanningPage: React.FC = () => {
   };
 
   if (!canView) {
-    return (
+    
+  
+
+return (
       <main className="animate-in fade-in duration-150">
         <section className="mx-auto max-w-lg rounded-[26px] border border-emerald-100 bg-white p-8 text-center shadow-sm">
           <Lock size={30} className="mx-auto text-emerald-600" />

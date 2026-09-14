@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bizim-vinc-erp
+    name: bizim-vinc
     runtime: static
     repo: https://github.com/sametatak9/bizim-vinc
     branch: main

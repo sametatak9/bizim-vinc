@@ -1,3 +1,4 @@
+import { BIZIM_VINC_LOGO_B64 } from '../lib/reporting';
 import React, { useState } from 'react';
 import { FileText, Plus, Printer, CheckCircle2 } from 'lucide-react';
 import { useERP } from '../lib/store';
@@ -12,7 +13,7 @@ export const QuotesPage: React.FC = () => {
   const [taxRate, setTaxRate] = useState(20);
   const [craneCode, setCraneCode] = useState('');
   const [hours, setHours] = useState(8);
-  const [terms, setTerms] = useState('İş makinesi kiralama; çalışma alanı güvenliği, operatör talimatları, ödeme vadesi ve tarafların sorumlulukları yazılı teklif ve sözleşme şartlarına tabidir. Nihai hukuki metin tarafların ve mali/hukuk danışmanının kontrolünden sonra imzalanmalıdır.');
+  const [terms, setTerms] = useState('MADDE 1: Mobil vinç ve ekipman kiralama hizmeti şantiye iş güvenliği mevzuatına tabidir.\nMADDE 2: Zemin etüdü, enerji hatları tedbirleri ve çevre güvenliği Kiracı sorumluluğundadır.\nMADDE 3: Hizmet bedeli 30 gün içinde ödenecektir. Uyuşmazlıklarda İstanbul Mahkemeleri yetkilidir.');
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     const customer = customers.find((item) => item.id === customerId);
