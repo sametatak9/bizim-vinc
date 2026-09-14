@@ -71,3 +71,21 @@ GROUP BY 1, 2 ORDER BY 1;
 ```
 
 Expect `rls_on = true` and `policies >= 1` on business tables. Anonymous users must not be able to read business data.
+
+## Toplu Veri Yükleme / Migrasyon Modülü (0028)
+
+`migrations/0028_bulk_import_migration.sql` ile eklenen tablolar:
+
+| Tablo | Amaç | Erişim |
+|---|---|---|
+| `import_batches` | Her migrasyon partisinin denetim kaydı (`import_type`, `total_rows`, `inserted_rows`, `status`) | okuma: founder/admin/yonetici/muhasebe · yazma: founder/admin |
+| `opening_balances` | Cari açılış bakiyeleri. `job_receipts` / `invoices` akışından tamamen bağımsızdır. `v3_fark_var` alanı muhasebeci teyidi bekleyen kayıtları işaretler | okuma: finans ekibi · yazma: founder/admin |
+| `personnel_health_data` | **KVKK izole sağlık verisi** (kan grubu, engellilik, sağlık notu). Genel `personnel` / `personnel_documents` tablolarına asla yazılmaz | yalnızca founder/admin + `isyeri_hekimi` |
+| `personnel_consents` | KVKK açık rıza durumu (`bekliyor` / `alindi` / `reddedildi` / `iptal`). Migrasyonda sahte onay üretilmez | founder/admin + kişinin kendisi (okuma) |
+| `kasa_hareket_log` | **Salt okunur** kasa/banka referansı. `hesap_dogrulanmadi` ve `para_birimi_dogrulanmadi` bayrakları taşır, hiçbir canlı bakiye/raporlama hesabına dahil edilmez (INSERT/UPDATE/DELETE politikası bilinçli olarak yoktur) | okuma: finans ekibi |
+
+Yeni roller ve yardımcılar: `profiles.role` içine `isyeri_hekimi` eklendi; `public.is_occupational_physician()` ve `public.is_finance_staff()` fonksiyonları (her ikisinde `anon` EXECUTE revoke edilmiştir).
+
+`customers` ve `personnel` tablolarına migrasyon alanları eklendi (`is_migrated`, `import_batch_id`, kaynak sistem alanları). `customers.phone` NOT NULL kısıtı kaldırıldı; `customers.vkn_tckn` ve `personnel.tc_hash` / `lower(personnel.email)` üzerinde kısmi unique index'ler upsert için kullanılır.
+
+Migrasyon her zaman `import_batch_id` bazında geri alınabilir; ayrıntılar ve 14.09.2026 yüklemesinin sonuçları için `docs/migrations/2026-09-14-toplu-veri-migrasyonu.md`.
