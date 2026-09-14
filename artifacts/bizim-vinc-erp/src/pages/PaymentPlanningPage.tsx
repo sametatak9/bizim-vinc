@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useERP } from '../lib/store';
 import { Payment } from '../types';
+import { getSupabase } from '../lib/supabase';
 import { CalendarClock, CircleDollarSign, FileWarning, Phone, Search, WalletCards, CheckCircle2 } from 'lucide-react';
 
 const money = (value: number) => `${value.toLocaleString('tr-TR')} ₺`;
@@ -54,6 +55,10 @@ export const PaymentPlanningPage: React.FC = () => {
     const total = Number(planAmount);
     const monthly = Math.round((total / count) * 100) / 100;
     const obligationId = crypto.randomUUID();
+    const sb = getSupabase();
+    if (!sb) return;
+    const { error: obligationError } = await sb.from('payment_obligations').insert({ id: obligationId, title: planTitle.trim() || planCategory, category: planCategory, recipient_name: planCustomer, total_amount: total, installment_count: count, payment_day: Number(planDate.slice(-2)), start_month: `${planDate.slice(0, 7)}-01`, reminder_days_before: Math.max(0, Number(reminderDays) || 2), recurring: planMode === 'recurring', notes: planNote || null });
+    if (obligationError) throw obligationError;
     for (let index = 0; index < count; index += 1) {
       const base = new Date(`${planDate}T12:00:00`); base.setMonth(base.getMonth() + index);
       await addPayment({ recipientType: 'tedarikci', recipientName: planTitle.trim() || planCustomer, category: planCategory, amount: index === count - 1 ? Math.round((total - monthly * (count - 1)) * 100) / 100 : monthly, dueDate: base.toISOString().slice(0, 10), paymentMethod: 'havale', status: 'bekliyor', obligationId, installmentNo: index + 1, installmentCount: count, reminderDaysBefore: Math.max(0, Number(reminderDays) || 2), recurring: planMode === 'recurring', notes: planNote || `${planTitle || planCategory} ${planMode === 'recurring' ? 'aylık tekrar' : 'taksitli'} ödeme planı` });
