@@ -431,8 +431,32 @@ export const CariPage: React.FC = () => {
                     return (
                       <tr key={cust.id} className="hover:bg-emerald-50/40 transition">
                         <td className="p-3.5">
-                          <div className="font-bold text-slate-900 text-sm">{cust.title || cust.name}</div>
-                          <div className="text-[11px] text-slate-500">{cust.address || 'Adres belirtilmedi'}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{cust.title || cust.name}</span>
+                            {cust.isEfaturaMukellefi && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                                E-Fatura
+                              </span>
+                            )}
+                            {cust.riskStatus === 'riskli' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-800">
+                                Yüksek Risk
+                              </span>
+                            ) : cust.riskStatus === 'dikkat' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">
+                                Takipte
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                Düşük Risk
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                            <span>{cust.address || 'Adres belirtilmedi'}</span>
+                            {cust.paymentTermDays ? <span>· {cust.paymentTermDays} gün vade</span> : null}
+                            {cust.creditLimit ? <span>· Limit: {cust.creditLimit.toLocaleString('tr-TR')} ₺</span> : null}
+                          </div>
                         </td>
                         <td className="p-3.5">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">

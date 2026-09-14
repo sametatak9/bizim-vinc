@@ -55,14 +55,14 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = [
     { label: 'Komuta Merkezi', path: '/', icon: LayoutDashboard },
     {
-      label: 'Makbuz & Fatura',
+      label: 'Ön Muhasebe & Fatura',
       path: '/faturalar',
       icon: FileText,
       badge: stats.unInvoicedReceiptsCount > 0 ? stats.unInvoicedReceiptsCount : undefined,
     },
     { label: 'Cari & Şantiyeler', path: '/cariler', icon: Building2 },
     { label: 'Personel & Maaş', path: '/personel', icon: Users },
-    { label: 'Puantaj', path: '/puantaj', icon: Calendar },
+    { label: 'Puantaj & Yoklama', path: '/puantaj', icon: Calendar },
     { label: 'Filo', path: '/filo', icon: Truck },
     { label: 'Personel Talepleri', path: '/operator', icon: Smartphone },
     { label: 'Finans', path: '/finans', icon: DollarSign },
