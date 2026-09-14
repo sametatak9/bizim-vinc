@@ -392,10 +392,42 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [collections, setCollections] = useState<Collection[]>(() =>
     loadStored('bv_collections', [])
   );
-  const [payments, commercialPapers, addCommercialPaper, updateCommercialPaperStatus, deleteCommercialPaper,
-    setPayments] = useState<Payment[]>(() =>
+  const [payments, setPayments] = useState<Payment[]>(() =>
     loadStored('bv_payments', [])
   );
+  const [commercialPapers, setCommercialPapers] = useState<CommercialPaper[]>(() =>
+    loadStored('bv_commercial_papers', [])
+  );
+
+  const addCommercialPaper = async (paper: Omit<CommercialPaper, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newPaper: CommercialPaper = {
+      ...paper,
+      id: `cp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setCommercialPapers((prev) => {
+      const next = [newPaper, ...prev];
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+  };
+
+  const updateCommercialPaperStatus = async (id: string, status: CommercialPaperStatus, note?: string) => {
+    setCommercialPapers((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, status, note: note !== undefined ? note : p.note, updatedAt: new Date().toISOString() } : p));
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+  };
+
+  const deleteCommercialPaper = async (id: string) => {
+    setCommercialPapers((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+  };
   const [obligations, setObligations] = useState<PaymentObligation[]>(() =>
     loadStored('bv_payment_obligations', [])
   );
