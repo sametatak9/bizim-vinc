@@ -658,6 +658,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notes: d.notes, obligationId: d.obligation_id, installmentNo: d.installment_no, installmentCount: d.installment_count, reminderDaysBefore: Number(d.reminder_days_before) || 2, recurring: Boolean(d.recurring), createdAt: d.created_at,
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const paymentAlerts = mappedPayments.filter((payment) => payment.status === 'bekliyor').filter((payment) => {
+        const due = new Date(`${payment.dueDate}T00:00:00`);
+        const reminder = new Date(due); reminder.setDate(reminder.getDate() - (payment.reminderDaysBefore ?? 2));
+        return today >= reminder && today <= due;
+      });
+      if (paymentAlerts.length) setNotifications((prev) => {
+        const next = [...prev];
+        paymentAlerts.forEach((payment) => {
+          const message = `${payment.recipientName} · ${payment.dueDate} · ₺${payment.amount.toLocaleString('tr-TR')} ödeme günü yaklaşıyor.`;
+          if (!next.some((item) => item.relatedUrl === `/finans-planlama?payment=${payment.id}` && !item.isRead)) next.unshift({ id: generateUuid(), userId: currentUser.id, title: 'Ödeme günü hatırlatması', message, type: 'warning', isRead: false, relatedUrl: `/finans-planlama?payment=${payment.id}`, createdAt: new Date().toISOString() });
+        });
+        saveStored('bv_notifications', next);
+        return next;
+      });
 
       setDbConnected(true);
     } catch (err) {
