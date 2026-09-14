@@ -25,6 +25,7 @@ import {
   History,
   Printer,
   Building2,
+  Receipt,
   Check,
   X,
   Download,
@@ -35,6 +36,10 @@ import { FINANCE_ROLES, roleLabel } from '../lib/permissions';
 export const PersonnelPage: React.FC = () => {
   const {
     personnel,
+    cranes,
+    customers,
+    addJobReceipt,
+    showToast,
     deletePerson,
     attendance,
     recordAttendance,
@@ -79,6 +84,58 @@ export const PersonnelPage: React.FC = () => {
   const [cardPersonId, setCardPersonId] = useState('');
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
 
+  // İş Makbuzu Modal State (Otomatik Çalışma Saati & Oturumdaki Operatör)
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptCustomer, setReceiptCustomer] = useState('');
+  const [receiptSite, setReceiptSite] = useState('');
+  const [receiptCraneCode, setReceiptCraneCode] = useState('');
+  const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [receiptStart, setReceiptStart] = useState('08:30');
+  const [receiptEnd, setReceiptEnd] = useState('17:30');
+  const [receiptNotes, setReceiptNotes] = useState('');
+
+  const calculateHoursDiff = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const minutes = (eh * 60 + em) - (sh * 60 + sm);
+    return minutes > 0 ? parseFloat((minutes / 60).toFixed(2)) : 0;
+  };
+
+  const calculatedReceiptHours = calculateHoursDiff(receiptStart, receiptEnd);
+
+    const handleCreateReceiptFromPersonnel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiptCustomer.trim()) {
+      showToast('Lütfen müşteri/firma adı belirtin');
+      return;
+    }
+    const matchedCustomer = customers.find((c) => c.name.toLowerCase() === receiptCustomer.trim().toLowerCase());
+    const matchedCrane = cranes.find((c) => c.code === receiptCraneCode || c.id === receiptCraneCode);
+    await addJobReceipt({
+      customerId: matchedCustomer?.id || 'cust-direct',
+      customerName: receiptCustomer.trim(),
+      siteName: receiptSite.trim() || 'Merkez Saha',
+      craneCode: matchedCrane?.code || receiptCraneCode || 'V-GENEL',
+      craneId: matchedCrane?.id,
+      operatorName: currentUser.fullName || currentUser.email || 'Aktif Operatör',
+      operatorId: currentUser.id,
+      date: receiptDate,
+      startTime: receiptStart,
+      endTime: receiptEnd,
+      workingHours: calculatedReceiptHours,
+      hoursWorked: calculatedReceiptHours,
+      amount: calculatedReceiptHours * 1500, // Varsayılan birim saat ücreti
+      description: receiptNotes.trim() || 'Personel modülünden düzenlenen iş makbuzu',
+      status: 'pending_approval',
+      invoiced: false,
+    });
+    showToast(`✓ ${calculatedReceiptHours} saatlik iş makbuzu onaya gönderildi`);
+    setIsReceiptModalOpen(false);
+    setReceiptNotes('');
+  };
+
+
   const filtered = personnel.filter((p) => {
     const matchesSearch =
       p.fullName.toLowerCase().includes(search.toLowerCase()) ||
@@ -89,6 +146,112 @@ export const PersonnelPage: React.FC = () => {
     return matchesSearch && matchesKind;
   });
 
+  
+    // Kurumsal Excel ve HTML Rapor İndirme Yardımcıları
+  const exportPersonnelList = (format: 'excel' | 'html') => {
+    const fn = format === 'excel' ? downloadExcelReport : downloadHtmlReport;
+    fn(
+      `Personel_Kadro_Listesi_${new Date().toISOString().slice(0, 10)}`,
+      'Personel Kadro ve Görev Listesi',
+      [
+        { key: 'employeeNo', label: 'Sicil No' },
+        { key: 'fullName', label: 'Ad Soyad' },
+        { key: 'title', label: 'Görev / Unvan' },
+        { key: 'phone', label: 'Telefon' },
+        { key: 'status', label: 'Durum' },
+      ],
+      filtered.map((p) => ({
+        employeeNo: p.employeeNo || '—',
+        fullName: p.fullName,
+        title: p.title || p.kind.toUpperCase(),
+        phone: p.phone || '—',
+        status: p.status.toUpperCase(),
+      })),
+      [
+        { label: 'Toplam Personel', value: `${totalPersonnel} kişi` },
+        { label: 'Aktif Personel', value: `${activeCount} kişi` },
+        { label: 'Sertifika Uyarısı', value: `${certAlertCount} kişi` },
+      ]
+    );
+  };
+
+  const exportPayrollReport = (format: 'excel' | 'html') => {
+    const activeRun = payrollRuns.find((r) => r.month === selectedPayrollMonth);
+    const items = payrollItems.filter((i) => i.runId === activeRun?.id);
+    const fn = format === 'excel' ? downloadExcelReport : downloadHtmlReport;
+    fn(
+      `Maas_Bordro_Raporu_${selectedPayrollMonth}`,
+      `Aylık Maaş ve Bordro Hesap Raporu (${selectedPayrollMonth})`,
+      [
+        { key: 'personName', label: 'Personel' },
+        { key: 'baseSalary', label: 'Temel Maaş' },
+        { key: 'netPayable', label: 'Net Tutar' },
+      ],
+      items.map((i) => ({
+        personName: i.personName || i.personnelName || '—',
+        baseSalary: `${(i.baseSalary || 0).toLocaleString('tr-TR')} ₺`,
+        netPayable: `${(i.netSalary || i.baseSalary || 0).toLocaleString('tr-TR')} ₺`,
+      })),
+      [
+        { label: 'Bordrolu Personel', value: `${items.length} kişi` },
+        { label: 'Toplam Bordro', value: `${items.reduce((s, i) => s + (i.baseSalary || 0), 0).toLocaleString('tr-TR')} ₺` },
+      ]
+    );
+  };
+
+  const exportPaymentsReport = (format: 'excel' | 'html') => {
+    const fn = format === 'excel' ? downloadExcelReport : downloadHtmlReport;
+    fn(
+      `Maas_Odemeleri_${new Date().toISOString().slice(0, 10)}`,
+      'Maaş ve Personel Ödemeleri Kaydı',
+      [
+        { key: 'date', label: 'Ödeme Tarihi' },
+        { key: 'method', label: 'Ödeme Şekli' },
+        { key: 'amount', label: 'Tutar' },
+        { key: 'note', label: 'Açıklama' },
+      ],
+      payrollPayments.map((p) => ({
+        date: new Date(p.paymentDate).toLocaleDateString('tr-TR'),
+        method: p.paymentMethod.toUpperCase(),
+        amount: `${p.amount.toLocaleString('tr-TR')} ₺`,
+        note: p.note || '—',
+      })),
+      [
+        { label: 'Toplam Ödeme', value: `${payrollPayments.length} adet` },
+        { label: 'Toplam Ödenen', value: `${payrollPayments.reduce((s, p) => s + p.amount, 0).toLocaleString('tr-TR')} ₺` },
+      ]
+    );
+  };
+
+  const exportAttendanceReport = (format: 'excel' | 'html') => {
+    const dateAttendance = attendance.filter((a) => a.date === attendanceDate);
+    const dateOvertimes = overtimes.filter((o) => o.date === attendanceDate);
+    const fn = format === 'excel' ? downloadExcelReport : downloadHtmlReport;
+    fn(
+      `Gunluk_Yoklama_${attendanceDate}`,
+      `Günlük Yoklama ve Mesai Raporu (${attendanceDate})`,
+      [
+        { key: 'fullName', label: 'Personel' },
+        { key: 'status', label: 'Yoklama Durumu' },
+        { key: 'times', label: 'Giriş-Çıkış' },
+        { key: 'overtime', label: 'Mesai Saati' },
+      ],
+      personnel.map((p) => {
+        const att = dateAttendance.find((a) => a.personId === p.id);
+        const ovt = dateOvertimes.find((o) => o.personId === p.id);
+        return {
+          fullName: p.fullName,
+          status: att?.status.toUpperCase() || 'KAYIT YOK',
+          times: att ? `${att.checkInTime || '08:00'} - ${att.checkOutTime || '17:00'}` : '—',
+          overtime: ovt ? `${ovt.totalHours} sa` : '0 sa',
+        };
+      }),
+      [
+        { label: 'Kayıtlı Yoklama', value: `${dateAttendance.length} kişi` },
+        { label: 'Mesai Yapan', value: `${dateOvertimes.length} kişi` },
+      ]
+    );
+  };
   const totalPersonnel = personnel.length;
   const activeCount = personnel.filter((p) => p.status === 'aktif').length;
   const inDutyCount = personnel.filter((p) => p.status === 'aktif').length;
@@ -189,7 +352,26 @@ export const PersonnelPage: React.FC = () => {
     <main className="space-y-6 animate-in fade-in duration-150" id="personnel-page">
       <section className="relative overflow-hidden rounded-[26px] bg-white border border-emerald-200 p-5 sm:p-6 shadow-sm">
         <div className="absolute -right-12 -top-20 h-52 w-52 rounded-full bg-emerald-100/70 blur-3xl" />
-        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">İnsan ve saha kaynağı</p><h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">Personel Yönetimi</h1><p className="mt-2 text-sm text-slate-500">Ekibinizi görsel bir dizinde yönetin; görev, durum, evrak ve puantaj akışını tek kayıttan takip edin.</p></div>{canManagePersonnel && <button onClick={handleCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700"><Plus size={16} /> Yeni Personel Kaydı</button>}</div>
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">İnsan ve saha kaynağı</p><h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">Personel Yönetimi</h1><p className="mt-2 text-sm text-slate-500">Ekibinizi görsel bir dizinde yönetin; görev, durum, evrak ve puantaj akışını tek kayıttan takip edin.</p></div>{canManagePersonnel && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(true)}
+                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-black text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/10 text-xs transition"
+              >
+                <Receipt size={16} />
+                <span>İş Makbuzu Kes</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700"
+              >
+                <Plus size={16} />
+                <span>Yeni Personel Kaydı</span>
+              </button>
+            </div>
+          )}</div>
         <div className="relative mt-4 flex flex-wrap gap-2 text-[11px] font-bold">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Oturum rolü: {roleLabel(currentUser.role)}</span>
           <span className={`rounded-full px-3 py-1 ${canSeeSalary ? 'bg-lime-50 text-lime-700' : 'bg-slate-100 text-slate-500'}`}>{canSeeSalary ? 'Maaş ve bordro görünür' : 'Maaş bilgileri gizli'}</span>
@@ -832,6 +1014,180 @@ export const PersonnelPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+    
+      {/* İş Makbuzu Kesme Modalı */}
+      {isReceiptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-emerald-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-emerald-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 font-bold">
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Saha İş Makbuzu Düzenle</h3>
+                  <p className="text-xs text-slate-500">Çalışma saati otomatik hesaplanır, operatör oturumdan alınır</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateReceiptFromPersonnel} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                  Müşteri / Firma Adı *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={receiptCustomer}
+                  onChange={(e) => setReceiptCustomer(e.target.value)}
+                  placeholder="Örn: Yapı İnşaat A.Ş."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                    Şantiye / Konum
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptSite}
+                    onChange={(e) => setReceiptSite(e.target.value)}
+                    placeholder="Şantiye / Bölge"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                    Görevli Vinç
+                  </label>
+                  <select
+                    value={receiptCraneCode}
+                    onChange={(e) => setReceiptCraneCode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 bg-white"
+                  >
+                    <option value="">Seçiniz</option>
+                    {cranes.map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.code} - {c.type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Operatör (Oturumdan Otomatik) */}
+              <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wide">
+                    Operatör (Aktif Oturum)
+                  </span>
+                  <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                    Otomatik Eşleşti
+                  </span>
+                </div>
+                <div className="mt-1 font-black text-slate-900 text-sm">
+                  {currentUser.fullName || currentUser.email || 'Aktif Oturum Kullanıcısı'}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  {currentUser.email} ({roleLabel(currentUser.role)})
+                </div>
+              </div>
+
+              {/* Saatler ve Otomatik Süre Hesabı */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                    İş Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={receiptDate}
+                    onChange={(e) => setReceiptDate(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                    Başlangıç
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={receiptStart}
+                    onChange={(e) => setReceiptStart(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                    Bitiş
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={receiptEnd}
+                    onChange={(e) => setReceiptEnd(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Hesaplanan Net Süre Vurgusu */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 text-white shadow-lg">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Hesaplanan Çalışma Süresi</div>
+                  <div className="text-xs text-slate-300">Başlangıç ve bitiş saati farkı</div>
+                </div>
+                <div className="text-2xl font-black text-emerald-400">
+                  {calculatedReceiptHours} <span className="text-xs text-slate-300 font-normal">saat</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1">
+                  Yapılan İş Açıklaması
+                </label>
+                <textarea
+                  rows={2}
+                  value={receiptNotes}
+                  onChange={(e) => setReceiptNotes(e.target.value)}
+                  placeholder="Kaldırılan yük, kanca tonajı veya saha notları..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5"
+                >
+                  <Check size={14} />
+                  <span>Makbuzu Onaya Gönder</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 };

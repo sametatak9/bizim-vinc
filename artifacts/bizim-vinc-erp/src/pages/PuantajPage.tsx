@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useERP } from '../lib/store';
 import { AttendanceStatus } from '../types';
+import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 
 export const PuantajPage: React.FC = () => {
   const {
@@ -224,7 +225,106 @@ export const PuantajPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-t border-emerald-100 p-4"><div className="flex items-center justify-between mb-3"><div><h3 className="text-xs font-black uppercase tracking-wide text-emerald-950">Aylık devam matrisi</h3><p className="text-[11px] text-slate-500">G: Geldi · Y: Gelmedi · İ: İzinli · R: Raporlu · —: Kayıt yok</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">{selectedMonth}</span></div><div className="overflow-x-auto"><table className="min-w-[1050px] w-full text-[10px]"><thead><tr className="text-slate-500"><th className="sticky left-0 bg-white text-left p-2 min-w-[150px]">Personel</th>{monthDays.map((day) => <th key={day} className="p-1 text-center font-bold">{day}</th>)}</tr></thead><tbody className="divide-y divide-emerald-50">{personnel.filter((p) => p.status === 'aktif').map((p) => <tr key={p.id}><td className="sticky left-0 bg-white p-2 font-bold text-emerald-900">{p.fullName}</td>{monthDays.map((day) => { const item = attendanceFor(p.id, day); const status = item?.status; const symbol = status === 'geldi' ? 'G' : status === 'gelmedi' ? 'Y' : status === 'izinli' ? 'İ' : status === 'raporlu' ? 'R' : status === 'tatil' ? 'T' : '—'; const cls = status === 'geldi' ? 'bg-emerald-500 text-white' : status === 'gelmedi' ? 'bg-rose-500 text-white' : status === 'izinli' ? 'bg-sky-400 text-white' : status === 'raporlu' ? 'bg-amber-400 text-amber-950' : status === 'tatil' ? 'bg-slate-200 text-slate-500' : 'bg-slate-50 text-slate-300'; return <td key={day} className="p-1 text-center"><button type="button" title={`${p.fullName} - ${day}. gün durumu değiştir`} onClick={() => {
+          <div className="border-t border-emerald-100 p-4"><div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wide text-emerald-950">Aylık Devam & Puantaj Matrisi</h3>
+                <p className="text-[11px] text-slate-500">G: Geldi · Y: Gelmedi · İ: İzinli · R: Raporlu · T: Tatil</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activePers = personnel.filter((p) => p.status === 'aktif');
+                    const totalDaysWorked = activePers.reduce((sum, p) => {
+                      const present = monthDays.filter((d) => attendanceFor(p.id, d)?.status === 'geldi').length;
+                      return sum + present;
+                    }, 0);
+                    const totalLeave = activePers.reduce((sum, p) => {
+                      const l = monthDays.filter((d) => ['izinli', 'raporlu'].includes(attendanceFor(p.id, d)?.status || '')).length;
+                      return sum + l;
+                    }, 0);
+
+                    downloadHtmlReport(
+                      `Aylik_Puantaj_${selectedMonth}`,
+                      `Aylık Resmi Puantaj ve Devam Çizelgesi (${selectedMonth})`,
+                      [
+                        { key: 'fullName', label: 'Personel' },
+                        { key: 'role', label: 'Görev / Unvan' },
+                        { key: 'daysWorked', label: 'Çalışılan Gün' },
+                        { key: 'leaveDays', label: 'İzin / Rapor' },
+                        { key: 'status', label: 'Resmi Durum' },
+                      ],
+                      activePers.map((p) => {
+                        const present = monthDays.filter((d) => attendanceFor(p.id, d)?.status === 'geldi').length;
+                        const leave = monthDays.filter((d) => ['izinli', 'raporlu'].includes(attendanceFor(p.id, d)?.status || '')).length;
+                        return {
+                          fullName: p.fullName,
+                          role: p.title || p.kind.toUpperCase(),
+                          daysWorked: `${present} gün`,
+                          leaveDays: `${leave} gün`,
+                          status: 'ONAYLANDI / RESMİ',
+                        };
+                      }),
+                      [
+                        { label: 'Aktif Personel', value: `${activePers.length} kişi` },
+                        { label: 'Toplam Çalışılan Gün', value: `${totalDaysWorked} gün` },
+                        { label: 'Toplam İzin / Rapor', value: `${totalLeave} gün` },
+                      ]
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold hover:bg-emerald-50 shadow-sm transition"
+                >
+                  <Printer size={13} className="text-emerald-600" />
+                  <span>Resmi HTML Yazdır</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activePers = personnel.filter((p) => p.status === 'aktif');
+                    const totalDaysWorked = activePers.reduce((sum, p) => {
+                      const present = monthDays.filter((d) => attendanceFor(p.id, d)?.status === 'geldi').length;
+                      return sum + present;
+                    }, 0);
+                    const totalLeave = activePers.reduce((sum, p) => {
+                      const l = monthDays.filter((d) => ['izinli', 'raporlu'].includes(attendanceFor(p.id, d)?.status || '')).length;
+                      return sum + l;
+                    }, 0);
+
+                    downloadExcelReport(
+                      `Aylik_Puantaj_${selectedMonth}`,
+                      `Aylık Resmi Puantaj ve Devam Çizelgesi (${selectedMonth})`,
+                      [
+                        { key: 'fullName', label: 'Personel' },
+                        { key: 'role', label: 'Görev / Unvan' },
+                        { key: 'daysWorked', label: 'Çalışılan Gün' },
+                        { key: 'leaveDays', label: 'İzin / Rapor' },
+                        { key: 'status', label: 'Resmi Durum' },
+                      ],
+                      activePers.map((p) => {
+                        const present = monthDays.filter((d) => attendanceFor(p.id, d)?.status === 'geldi').length;
+                        const leave = monthDays.filter((d) => ['izinli', 'raporlu'].includes(attendanceFor(p.id, d)?.status || '')).length;
+                        return {
+                          fullName: p.fullName,
+                          role: p.title || p.kind.toUpperCase(),
+                          daysWorked: `${present} gün`,
+                          leaveDays: `${leave} gün`,
+                          status: 'ONAYLANDI / RESMİ',
+                        };
+                      }),
+                      [
+                        { label: 'Aktif Personel', value: `${activePers.length} kişi` },
+                        { label: 'Toplam Çalışılan Gün', value: `${totalDaysWorked} gün` },
+                        { label: 'Toplam İzin / Rapor', value: `${totalLeave} gün` },
+                      ]
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition"
+                >
+                  <FileSpreadsheet size={13} />
+                  <span>Puantaj Excel İndir</span>
+                </button>
+              </div>
+            </div><div className="overflow-x-auto"><table className="min-w-[1050px] w-full text-[10px]"><thead><tr className="text-slate-500"><th className="sticky left-0 bg-white text-left p-2 min-w-[150px]">Personel</th>{monthDays.map((day) => <th key={day} className="p-1 text-center font-bold">{day}</th>)}</tr></thead><tbody className="divide-y divide-emerald-50">{personnel.filter((p) => p.status === 'aktif').map((p) => <tr key={p.id}><td className="sticky left-0 bg-white p-2 font-bold text-emerald-900">{p.fullName}</td>{monthDays.map((day) => { const item = attendanceFor(p.id, day); const status = item?.status; const symbol = status === 'geldi' ? 'G' : status === 'gelmedi' ? 'Y' : status === 'izinli' ? 'İ' : status === 'raporlu' ? 'R' : status === 'tatil' ? 'T' : '—'; const cls = status === 'geldi' ? 'bg-emerald-500 text-white' : status === 'gelmedi' ? 'bg-rose-500 text-white' : status === 'izinli' ? 'bg-sky-400 text-white' : status === 'raporlu' ? 'bg-amber-400 text-amber-950' : status === 'tatil' ? 'bg-slate-200 text-slate-500' : 'bg-slate-50 text-slate-300'; return <td key={day} className="p-1 text-center"><button type="button" title={`${p.fullName} - ${day}. gün durumu değiştir`} onClick={() => {
   const next = status === 'geldi' ? 'izinli' : status === 'izinli' ? 'raporlu' : status === 'raporlu' ? 'gelmedi' : status === 'gelmedi' ? 'tatil' : 'geldi';
   recordAttendance(p.id, next, '08:00', '17:00');
   showToast(`✓ ${p.fullName} (${day}. gün): ${next.toUpperCase()}`);

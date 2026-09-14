@@ -27,7 +27,129 @@ export const PaymentPlanningPage: React.FC = () => {
     addCollection, markCollectionReceived, cancelPayment, getPaymentDocumentUrl, currentUser,
   } = useERP();
 
-  const [tab, setTab] = useState<'month' | 'obligations' | 'report' | 'new' | 'collections' | 'receipts' | 'checks'>('month');
+  const [tab, setTab] = useState<'month' | 'obligations' | 'report' | 'new' | 'collections' | 'receipts' | 'checks' | 'custom_lists'>('month');
+  // Özel Ödeme ve Tahsilat Listeleri Yönetimi (localStorage)
+  interface CustomListItem {
+    id: string;
+    title: string;
+    amount: number;
+    dueDate: string;
+    party: string; // Cari / Kişi
+    note?: string;
+  }
+  interface CustomList {
+    id: string;
+    name: string;
+    kind: 'odeme' | 'tahsilat';
+    createdAt: string;
+    items: CustomListItem[];
+  }
+  const [customLists, setCustomLists] = useState<CustomList[]>(() => {
+    try {
+      const saved = localStorage.getItem('bv_custom_payment_lists');
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 'list-1',
+          name: 'Haftalık Acil Şantiye Ödemeleri',
+          kind: 'odeme',
+          createdAt: new Date().toISOString(),
+          items: [
+            { id: 'item-1', title: 'Vinç-04 Mazot ve Yakıt Bedeli', amount: 34500, dueDate: new Date().toISOString().slice(0, 10), party: 'Petrol Ofisi A.Ş.' },
+            { id: 'item-2', title: 'Operatör Harcırah Avansları', amount: 12000, dueDate: new Date().toISOString().slice(0, 10), party: 'Saha Ekibi' }
+          ]
+        },
+        {
+          id: 'list-2',
+          name: 'Bu Ay Kesinleşen Tahsilatlar',
+          kind: 'tahsilat',
+          createdAt: new Date().toISOString(),
+          items: [
+            { id: 'item-3', title: 'Kalyon İnşaat Hakediş Tahsilatı', amount: 185000, dueDate: new Date().toISOString().slice(0, 10), party: 'Kalyon Holding' }
+          ]
+        }
+      ];
+    } catch {
+      return [];
+    }
+  });
+  const [activeCustomListId, setActiveCustomListId] = useState<string>(() => customLists[0]?.id || '');
+  const [newListName, setNewListName] = useState('');
+  const [newListKind, setNewListKind] = useState<'odeme' | 'tahsilat'>('odeme');
+  const [newItemTitle, setNewItemTitle] = useState('');
+  const [newItemParty, setNewItemParty] = useState('');
+  const [newItemAmount, setNewItemAmount] = useState('');
+  const [newItemDueDate, setNewItemDueDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const saveCustomLists = (lists: CustomList[]) => {
+    setCustomLists(lists);
+    localStorage.setItem('bv_custom_payment_lists', JSON.stringify(lists));
+  };
+
+  const handleCreateList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) return;
+    const newList: CustomList = {
+      id: `list-${Date.now()}`,
+      name: newListName.trim(),
+      kind: newListKind,
+      createdAt: new Date().toISOString(),
+      items: [],
+    };
+    const updated = [newList, ...customLists];
+    saveCustomLists(updated);
+    setActiveCustomListId(newList.id);
+    setNewListName('');
+  };
+
+  const handleDeleteList = (id: string) => {
+    const updated = customLists.filter((l) => l.id !== id);
+    saveCustomLists(updated);
+    if (activeCustomListId === id) {
+      setActiveCustomListId(updated[0]?.id || '');
+    }
+  };
+
+  const handleAddItemToList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemTitle.trim() || !newItemAmount) return;
+    const num = parseFloat(newItemAmount) || 0;
+    const updated = customLists.map((l) => {
+      if (l.id === activeCustomListId) {
+        return {
+          ...l,
+          items: [
+            ...l.items,
+            {
+              id: `item-${Date.now()}`,
+              title: newItemTitle.trim(),
+              party: newItemParty.trim() || 'Genel Cari',
+              amount: num,
+              dueDate: newItemDueDate,
+            },
+          ],
+        };
+      }
+      return l;
+    });
+    saveCustomLists(updated);
+    setNewItemTitle('');
+    setNewItemParty('');
+    setNewItemAmount('');
+  };
+
+  const handleRemoveItemFromList = (listId: string, itemId: string) => {
+    const updated = customLists.map((l) => {
+      if (l.id === listId) {
+        return {
+          ...l,
+          items: l.items.filter((i) => i.id !== itemId),
+        };
+      }
+      return l;
+    });
+    saveCustomLists(updated);
+  };
+
   const [month, setMonth] = useState(monthKey(new Date()));
   const [search, setSearch] = useState('');
   const [settleTarget, setSettleTarget] = useState<Payment | null>(null);

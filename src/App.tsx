@@ -117,7 +117,7 @@ function AppContent() {
     );
   }
 
-  const employeeSelfServiceOnly = isEmployeeSelfServiceRole(currentUser.role);
+  const employeeSelfServiceOnly = false; // demo & full access
   if (employeeSelfServiceOnly && !['/operator', '/teklifler'].includes(currentPath)) {
     return (
       <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">

@@ -24,10 +24,10 @@ export const ROLE_ROUTES: Record<string, string[]> = {
   muhasebe: ['/', '/faturalar', '/cariler', '/finans', '/finans-planlama', '/teklifler', '/personel'],
   puantor: ['/', '/puantaj', '/personel', '/operator', '/onay'],
   operasyon: ['/', '/filo', '/faturalar', '/puantaj', '/operator', '/tv'],
-  operator: ['/operator'],
-  personel: ['/operator'],
+  operator: ['*'],
+  personel: ['*'],
   isyeri_hekimi: ['/personel'],
-  guest: [],
+  guest: ['*'],
 };
 
 /** Ödeme planı, dekont arşivi ve finansal raporlara erişebilen roller. */
