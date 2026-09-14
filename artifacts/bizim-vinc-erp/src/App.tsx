@@ -25,7 +25,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage, dbError, refreshFromDb, isAuthenticated, currentUser } = useERP();
+  const { toastMessage, dbError, refreshFromDb, isAuthenticated, isAuthReady, currentUser } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -58,7 +58,7 @@ function AppContent() {
   // Route: /tv (Full-screen kiosk mode)
   if (currentPath === '/tv') {
     return (
-      <div className="bg-slate-900 min-h-screen text-slate-100">
+      <div className="bg-emerald-950 min-h-screen text-emerald-50">
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => navigate('/')}
@@ -72,9 +72,13 @@ function AppContent() {
     );
   }
 
+  if (!isAuthReady) {
+    return <div className="min-h-screen bg-emerald-50 flex items-center justify-center text-emerald-800 font-semibold">Oturum doğrulanıyor…</div>;
+  }
+
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
           <div className="mb-6">
             <div className="text-2xl font-black tracking-tight text-emerald-950">BİZİM VİNÇ <span className="text-sm px-2 py-1 bg-emerald-100 text-emerald-800 rounded-md">ERP</span></div>
@@ -89,7 +93,7 @@ function AppContent() {
   const employeeSelfServiceOnly = isEmployeeSelfServiceRole(currentUser.role);
   if (employeeSelfServiceOnly && currentPath !== '/operator') {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
           <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">BV</div>
           <h1 className="text-lg font-black text-slate-900">Personel talepleri</h1>
@@ -101,7 +105,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-emerald-50 text-slate-800 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
       {/* Topbar navigation */}
       <Header
         currentPath={currentPath}
@@ -169,7 +173,7 @@ function AppContent() {
       {/* Global Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-5 duration-200">
-          <div className="bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
+          <div className="bg-emerald-950 border border-emerald-300/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-medium">
             <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>

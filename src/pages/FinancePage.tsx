@@ -14,15 +14,15 @@ export const FinancePage: React.FC = () => {
   const [company, setCompany] = useState('');
   const [amount, setAmount] = useState('');
   const [receiptStatus, setReceiptStatus] = useState<'kesildi' | 'birikti'>('kesildi');
-  const [craneCode, setCraneCode] = useState(cranes[0]?.code || 'V-204');
-  const [site, setSite] = useState('Ataşehir Metro Şantiyesi');
+  const [craneCode, setCraneCode] = useState(cranes[0]?.code || '');
+  const [site, setSite] = useState('');
 
   // New expense form state
   const [expenseCategory, setExpenseCategory] = useState<'yakit' | 'masraf'>('yakit');
-  const [expenseTitle, setExpenseTitle] = useState('Dizel Yakıt Dolumu');
+  const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseDetail, setExpenseDetail] = useState('');
-  const [station, setStation] = useState('Shell Ataşehir');
+  const [station, setStation] = useState('');
 
   const handleSaveReceipt = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export const FinancePage: React.FC = () => {
     });
 
     setIsExpenseModalOpen(false);
-    setExpenseTitle('Dizel Yakıt Dolumu');
+    setExpenseTitle('');
     setExpenseAmount('');
     setExpenseDetail('');
   };

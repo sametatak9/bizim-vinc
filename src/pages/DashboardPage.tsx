@@ -168,9 +168,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      <section className="bg-slate-950 text-white rounded-2xl p-4 shadow-xl border border-amber-500/30">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-bold">Yönetici karar akışı</div><h2 className="text-lg font-black mt-1">Onaylar ve gün sonu raporu</h2></div><div className="flex items-center gap-2 text-xs"><span className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-black">Bekleyen {stats.pendingApprovalsCount}</span><span className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200">Bugün {approvedToday.length}</span><span className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200">Ay {approvedThisMonth.length}</span></div></div>
-        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">{approvals.filter((a) => a.status === 'approved').slice(0, 4).map((a) => <div key={a.id} className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs"><div className="font-bold text-slate-100 truncate">{a.title}</div><div className="text-slate-400 mt-1">Onaylayan: {a.approvedBy || '—'}</div></div>)}</div>
+      <section className="bg-white text-emerald-950 rounded-2xl p-4 shadow-sm border border-emerald-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.25em] text-emerald-600 font-bold">Yönetici karar akışı</div><h2 className="text-lg font-black mt-1">Onaylar ve gün sonu raporu</h2></div><div className="flex items-center gap-2 text-xs"><span className="px-3 py-2 rounded-xl bg-emerald-600 text-white font-black">Bekleyen {stats.pendingApprovalsCount}</span><span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800">Bugün {approvedToday.length}</span><span className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800">Ay {approvedThisMonth.length}</span></div></div>
+        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">{approvals.filter((a) => a.status === 'approved').slice(0, 4).map((a) => <div key={a.id} className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs"><div className="font-bold text-emerald-950 truncate">{a.title}</div><div className="text-emerald-700 mt-1">Onaylayan: {a.approvedBy || '—'}</div></div>)}</div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

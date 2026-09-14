@@ -53,6 +53,7 @@ interface ERPContextType {
   // Auth & Roles
   currentUser: UserProfile;
   isAuthenticated: boolean;
+  isAuthReady: boolean;
   userProfiles: UserProfile[];
   activeRole: AppRole;
   setActiveRole: (role: AppRole) => void;
@@ -240,6 +241,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadStored('bv_user_profiles', [])
   );
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile>(GUEST_PROFILE);
   const [activeRole, setActiveRole] = useState<AppRole>(currentUser.role);
 
@@ -691,24 +693,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setMemberships([]);
     }
     const sb = getSupabase();
-    if (!sb) return;
+    if (!sb) { setIsAuthReady(true); return; }
     let cancelled = false;
     const restore = async () => {
       const { data } = await sb.auth.getSession();
       if (cancelled) return;
       const authUser = data.session?.user;
       if (!authUser) {
-        setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); return;
+        setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); setIsAuthReady(true); return;
       }
       const { data: profileRow, error } = await sb.from('profiles').select('id,email,full_name,role,phone,status,personnel_id,avatar_url,created_at,updated_at').eq('id', authUser.id).maybeSingle();
       if (error || !profileRow || profileRow.status !== 'aktif') {
-        await sb.auth.signOut(); setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); return;
+        await sb.auth.signOut(); setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setIsAuthReady(true); return;
       }
       const profile: UserProfile = { id: profileRow.id, email: profileRow.email || authUser.email || '', fullName: profileRow.full_name || authUser.email?.split('@')[0] || 'Kullanıcı', role: profileRow.role as AppRole, phone: profileRow.phone || undefined, personnelId: profileRow.personnel_id || undefined, avatarUrl: profileRow.avatar_url || undefined, status: profileRow.status, createdAt: profileRow.created_at || authUser.created_at, updatedAt: profileRow.updated_at || undefined };
-      setCurrentUser(profile); setIsAuthenticated(true); setActiveRole(profile.role); saveStored('bv_current_user', profile); await refreshFromDb();
+      setCurrentUser(profile); setIsAuthenticated(true); setActiveRole(profile.role); saveStored('bv_current_user', profile); await refreshFromDb(); setIsAuthReady(true);
     };
     void restore();
-    const { data: authListener } = sb.auth.onAuthStateChange((event, session) => { if (event === 'SIGNED_OUT' || !session) { setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); } });
+    const { data: authListener } = sb.auth.onAuthStateChange((event, session) => { if (event === 'SIGNED_OUT' || !session) { setCurrentUser(GUEST_PROFILE); setIsAuthenticated(false); setActiveRole(GUEST_PROFILE.role); setIsAuthReady(true); } });
     return () => { cancelled = true; authListener.subscription.unsubscribe(); };
   }, [refreshFromDb]);
 
@@ -2585,6 +2587,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         isAuthenticated,
+        isAuthReady,
         userProfiles,
         activeRole,
         setActiveRole,

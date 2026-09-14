@@ -72,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
     : navItems;
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-950 border-b-2 border-amber-500/70 text-slate-100 shadow-xl">
+    <header className="sticky top-0 z-50 bg-white/95 border-b border-emerald-200 text-emerald-950 shadow-sm backdrop-blur">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Brand with green tower crane + Slogan */}
         <div

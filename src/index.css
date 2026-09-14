@@ -20,15 +20,15 @@
     --radius: 0.75rem;
     --app-font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --app-font-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, monospace;
-    --cmd-bg: #eef2f7;
-    --cmd-primary: #f59e0b;
-    --cmd-dark: #0f172a;
+    --cmd-bg: #f4fbf7;
+    --cmd-primary: #16a34a;
+    --cmd-dark: #14532d;
     --cmd-card: #ffffff;
   }
 
   body {
-    background-color: #eef2f7;
-    color: #172033;
+    background-color: #f4fbf7;
+    color: #163326;
     font-family: var(--app-font-sans);
     margin: 0;
     padding: 0;
@@ -42,7 +42,7 @@
 }
 
 .dashboard-shell {
-  background: #eef2f7 !important;
+  background: #f4fbf7 !important;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
