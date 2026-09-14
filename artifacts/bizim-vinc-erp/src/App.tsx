@@ -16,7 +16,7 @@ import { TvBoardPage } from './pages/TvBoardPage';
 import { InvoiceReceiptPage } from './pages/InvoiceReceiptPage';
 import { CariPage } from './pages/CariPage';
 import { QuotesPage } from './pages/QuotesPage';
-import { CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { isEmployeeSelfServiceRole } from './types';
 
 function AppContent() {
@@ -25,7 +25,7 @@ function AppContent() {
   });
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { toastMessage, dbError, refreshFromDb, isAuthenticated, isAuthReady, currentUser } = useERP();
+  const { toastMessage, isAuthenticated, isAuthReady, currentUser } = useERP();
 
   // Listen to browser popstate (back/forward navigation)
   useEffect(() => {
@@ -113,35 +113,6 @@ function AppContent() {
         onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
-
-      {/* Database Error Banner (Requirement: No silent fallback to localStorage for DB errors; must show net error/retry) */}
-      {dbError && (
-        <div className="bg-rose-50 border-b border-rose-200 text-rose-900 px-4 py-2.5 shadow-2xs">
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="text-rose-600 shrink-0" size={16} />
-              <span>
-                <strong>Veritabanı Uyarısı:</strong> {dbError}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => refreshFromDb()}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition"
-              >
-                <RefreshCw size={12} />
-                <span>Yeniden Dene</span>
-              </button>
-              <button
-                onClick={() => setIsSupabaseModalOpen(true)}
-                className="underline hover:text-rose-950 font-semibold"
-              >
-                Bağlantı Ayarları
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Dynamic Views */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">

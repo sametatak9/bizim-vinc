@@ -150,16 +150,16 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-white rounded-2xl border border-emerald-200 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between">
+        <div className="px-6 py-5 bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-600 text-white border-b border-emerald-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-white/15 text-white font-bold flex items-center justify-center text-sm shadow-sm border border-white/20">
               {person ? person.initials : 'Y'}
             </div>
             <div>
-              <h2 className="text-base font-bold text-emerald-950">
+              <h2 className="text-base font-black text-white">
                 {person ? `${person.fullName} Düzenle` : 'Yeni Personel Ekle'}
               </h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-emerald-100/80">
                 {person ? `Sicil: ${person.employeeNo}` : 'Sisteme yeni operatör/yardımcı kaydet'}
               </p>
             </div>

@@ -56,84 +56,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   return (
     <main className="space-y-6 animate-in fade-in duration-150" id="dashboard-page">
-      {/* Canlı TV — üst menüden taşındı */}
-      <section className="bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm" aria-label="Canlı TV">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <MonitorPlay size={22} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-emerald-950">Canlı TV / Saha Kiosk</h2>
-              <p className="text-xs text-slate-500">Filo durumu, onaylar ve operasyon özeti — TV / büyük ekran için</p>
-            </div>
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 text-white p-6 sm:p-8 shadow-xl">
+        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-lime-300/20 blur-3xl" />
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-7">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-3 mb-5"><img src="/branding/bizim-vinc-logo-horizontal.png" alt="BİZİM VİNÇ ERP" className="h-10 w-auto rounded-lg bg-white/95 px-2 object-contain" /><span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-lime-100">Komuta merkezi</span></div>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-lime-200">Bugünün operasyon özeti</p>
+            <h1 className="mt-2 text-3xl sm:text-4xl font-black tracking-tight">Sahadaki gücü, tek ekrandan yönetin.</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50/80">Filo, personel, puantaj ve yönetici kararlarını sade bir akışta takip edin. Önce onay bekleyen işleri görün, sonra operasyonu yönlendirin.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate?.('/tv')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
-          >
-            <Tv size={16} />
-            Canlı TV Aç
-          </button>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => onNavigate?.('/tv')} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-emerald-900 shadow-sm hover:bg-lime-50"><MonitorPlay size={16} /> Canlı TV</button><button type="button" onClick={handleAddNewCrane} className="inline-flex items-center gap-2 rounded-xl bg-lime-300 px-4 py-2.5 text-xs font-black text-emerald-950 shadow-sm hover:bg-lime-200"><Plus size={16} /> Vinç ekle</button></div>
         </div>
+        <div className="relative mt-7 grid grid-cols-2 sm:grid-cols-4 gap-2"><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-[10px] text-emerald-100">Bekleyen onay</span><b className="mt-1 block text-2xl">{stats.pendingApprovalsCount}</b></div><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-[10px] text-emerald-100">Bugün onaylanan</span><b className="mt-1 block text-2xl">{approvedToday.length}</b></div><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-[10px] text-emerald-100">Aktif vinç</span><b className="mt-1 block text-2xl">{stats.activeCranesCount}</b></div><div className="rounded-2xl bg-white/10 border border-white/15 p-3"><span className="text-[10px] text-emerald-100">Bu ay karar</span><b className="mt-1 block text-2xl">{approvedThisMonth.length}</b></div></div>
       </section>
 
-      {/* Action Shortcut Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-base">
-            <TrendingUp size={20} />
-          </div>
-          <div>
-            <h1 className="text-base font-black text-slate-800">Bizim Vinç ERP Komuta Merkezi</h1>
-            <p className="text-xs text-slate-500">Filo operasyonu, şantiyeler, makbuz/fatura ve personel puantaj özeti</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {onNavigate && (
-            <>
-              <button
-                onClick={() => onNavigate('/faturalar')}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-              >
-                <FileText size={14} />
-                <span>Makbuz & Fatura</span>
-                {unInvoicedReceipts.length > 0 && (
-                  <span className="bg-white text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full">
-                    {unInvoicedReceipts.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => onNavigate('/cariler')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-              >
-                <Building2 size={14} />
-                <span>Cari & Şantiyeler</span>
-              </button>
-
-              <button
-                onClick={() => onNavigate('/puantaj')}
-                className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-              >
-                <Calendar size={14} />
-                <span>Günlük Puantaj</span>
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={handleAddNewCrane}
-            className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            <span>Yeni Vinç Ekle</span>
-          </button>
-        </div>
-      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Hızlı erişim</p><p className="mt-1 text-xs text-slate-500">Operasyonun en sık kullanılan ekranları</p></div><div className="flex flex-wrap gap-2">{onNavigate && <><button onClick={() => onNavigate('/faturalar')} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><FileText size={14} /> Makbuz & Fatura</button><button onClick={() => onNavigate('/personel')} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Users size={14} /> Personel</button><button onClick={() => onNavigate('/puantaj')} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Calendar size={14} /> Aylık Puantaj</button><button onClick={() => onNavigate('/cariler')} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Building2 size={14} /> Cari</button></>}</div></div>
 
       {/* 6 Top KPIs */}
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" aria-label="Operasyonel Özet">
@@ -200,9 +137,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   Marmara & Ege Şantiye Noktaları, Araç Durumları ve Operatör Konumları
                 </div>
               </div>
-              <button onClick={() => onNavigate('/tv')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-amber-300 rounded-xl text-xs font-bold transition shadow-xs">Operasyon TV’ye git</button>
+              <button onClick={() => onNavigate('/tv')} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-lime-100 rounded-xl text-xs font-bold transition shadow-xs">Operasyon TV’ye git</button>
             </header>
-            <div className="flex-1 min-h-[500px] flex items-center justify-center bg-slate-950 text-white rounded-b-2xl p-8">
+            <div className="flex-1 min-h-[500px] flex items-center justify-center bg-emerald-950 text-white rounded-b-2xl p-8">
               <div className="text-center max-w-md"><div className="text-amber-400 text-xs uppercase tracking-[0.25em] font-bold">Tek canlı harita ekranı</div><div className="text-2xl font-black mt-2">Harita Operasyon TV’ye taşındı</div><p className="text-slate-400 text-sm mt-2">Saha konumları, aktif vinçler ve onay akışı için tek canlı ekranı kullanın.</p><button onClick={() => onNavigate('/tv')} className="mt-5 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 text-sm font-black">TV ekranını aç</button></div>
             </div>
           </div>

@@ -152,6 +152,10 @@ export const PersonnelPage: React.FC = () => {
 
   return (
     <main className="space-y-6 animate-in fade-in duration-150" id="personnel-page">
+      <section className="relative overflow-hidden rounded-[26px] bg-white border border-emerald-200 p-5 sm:p-6 shadow-sm">
+        <div className="absolute -right-12 -top-20 h-52 w-52 rounded-full bg-emerald-100/70 blur-3xl" />
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">İnsan ve saha kaynağı</p><h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-emerald-950">Personel Yönetimi</h1><p className="mt-2 text-sm text-slate-500">Ekibinizi görsel bir dizinde yönetin; görev, durum, evrak ve puantaj akışını tek kayıttan takip edin.</p></div><button onClick={handleCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700"><Plus size={16} /> Yeni Personel Kaydı</button></div>
+      </section>
       {/* Top summary cards */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-xs">
@@ -294,8 +298,8 @@ export const PersonnelPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={exportPersonnelExcel} className="px-3 py-2 rounded-xl bg-slate-900 text-amber-300 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"><Download size={13} /> Excel</button>
-              <button type="button" onClick={printPersonnelReport} className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"><Printer size={13} /> PDF / Yazdır</button>
+              <button type="button" onClick={exportPersonnelExcel} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-100"><Download size={13} /> Excel</button>
+              <button type="button" onClick={printPersonnelReport} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-700"><Printer size={13} /> PDF / Yazdır</button>
             </div>
           </div>
 
@@ -772,7 +776,7 @@ export const PersonnelPage: React.FC = () => {
                         </button>
                         <button
                           onClick={() => payPayrollRun(run.id, 'nakit')}
-                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                          className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                         >
                           <DollarSign size={14} />
                           <span>Elden Nakit Öde</span>

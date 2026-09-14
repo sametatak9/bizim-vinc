@@ -33,7 +33,10 @@ export const PuantajPage: React.FC = () => {
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<'puantaj' | 'yoklama'>('puantaj');
-  const [selectedMonth, setSelectedMonth] = useState('2026-09');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [lockNote, setLockNote] = useState('');
   const [showLockModal, setShowLockModal] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -94,13 +97,13 @@ export const PuantajPage: React.FC = () => {
       {/* Top Header & Controls */}
       <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-emerald-950">Puantaj & Devam Takip Merkezi</h1>
+                <h1 className="text-xl font-black text-emerald-950">Aylık Puantaj Merkezi</h1>
                 <p className="text-xs text-slate-600">
                   Yoklama, mesai ve izinlerin otomatik hakedişe dönüştürülmesi ve dönem kilitleme
                 </p>
@@ -125,8 +128,8 @@ export const PuantajPage: React.FC = () => {
               <span
                 className={`text-xs px-2.5 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 border ${
                   isLocked
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 }`}
               >
                 {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
@@ -136,7 +139,7 @@ export const PuantajPage: React.FC = () => {
               {(activeRole === 'admin' || activeRole === 'muhasebe') && (
                 <button
                   onClick={() => setShowLockModal(true)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-neutral-700 text-emerald-950 transition border border-neutral-700 flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-950 transition border border-emerald-200 flex items-center gap-1"
                 >
                   {isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                   {isLocked ? 'Kilidi Aç' : 'Dönemi Kilitle'}
@@ -148,7 +151,7 @@ export const PuantajPage: React.FC = () => {
             <button
               onClick={handleAutoGenerate}
               disabled={isLocked}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/10 disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-md shadow-emerald-500/10 disabled:opacity-50"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Otomatik Puantajı Derle</span>
@@ -156,13 +159,15 @@ export const PuantajPage: React.FC = () => {
 
             <button
               onClick={exportCSV}
-              className="p-2 rounded-xl bg-emerald-50 hover:bg-neutral-700 text-emerald-900 border border-neutral-700 transition"
+              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition"
               title="CSV İndir"
             >
               <FileSpreadsheet className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2"><div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><span className="text-[10px] text-slate-500">Aktif personel</span><b className="block mt-1 text-lg text-emerald-950">{personnel.filter((p) => p.status === 'aktif').length}</b></div><div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><span className="text-[10px] text-slate-500">Çalışma günü</span><b className="block mt-1 text-lg text-emerald-950">{currentMonthRecords.reduce((sum, r) => sum + r.workDays, 0)}</b></div><div className="rounded-xl bg-lime-50 border border-lime-100 p-3"><span className="text-[10px] text-slate-500">Fazla mesai</span><b className="block mt-1 text-lg text-lime-800">{currentMonthRecords.reduce((sum, r) => sum + r.overtimeHours, 0)} sa</b></div><div className="rounded-xl bg-white border border-emerald-100 p-3"><span className="text-[10px] text-slate-500">Dönem</span><b className="block mt-1 text-lg text-emerald-950">{selectedMonth}</b></div></div>
 
         {/* Lock Banner if locked */}
         {isLocked && (
@@ -232,7 +237,7 @@ export const PuantajPage: React.FC = () => {
                   <th className="py-3 px-4 text-right">İşlem</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody className="divide-y divide-emerald-50">
                 {personnel
                   .filter((p) => p.status === 'aktif')
                   .map((p) => {
@@ -266,7 +271,7 @@ export const PuantajPage: React.FC = () => {
                               type="number"
                               value={editWorkDays}
                               onChange={(e) => setEditWorkDays(Number(e.target.value))}
-                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-neutral-700 rounded text-center text-xs text-emerald-950"
+                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-center text-xs text-emerald-950"
                             />
                           ) : (
                             <span className="font-medium text-emerald-950">{workDays} gün</span>
@@ -279,7 +284,7 @@ export const PuantajPage: React.FC = () => {
                               type="number"
                               value={editOtHours}
                               onChange={(e) => setEditOtHours(Number(e.target.value))}
-                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-neutral-700 rounded text-center text-xs text-emerald-600"
+                              className="w-14 px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-center text-xs text-emerald-600"
                             />
                           ) : otHours > 0 ? (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
@@ -310,7 +315,7 @@ export const PuantajPage: React.FC = () => {
                                   });
                                   setEditingRecordId(null);
                                 }}
-                                className="px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-[11px]"
+                                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
                               >
                                 Kaydet
                               </button>
@@ -329,7 +334,7 @@ export const PuantajPage: React.FC = () => {
                                 setEditWorkDays(workDays);
                                 setEditOtHours(otHours);
                               }}
-                              className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-neutral-700 text-emerald-900 transition disabled:opacity-30"
+                              className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition disabled:opacity-30"
                             >
                               Düzenle
                             </button>
@@ -374,7 +379,7 @@ export const PuantajPage: React.FC = () => {
                 return (
                   <div
                     key={p.id}
-                    className="bg-white border border-emerald-100 rounded-2xl p-4 hover:border-neutral-700 transition"
+                    className="bg-white border border-emerald-100 rounded-2xl p-4 hover:border-emerald-200 transition"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2.5">
@@ -395,8 +400,8 @@ export const PuantajPage: React.FC = () => {
                           onClick={() => recordAttendance(p.id, 'geldi', '08:00', '17:00')}
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'geldi'
-                              ? 'bg-emerald-500 text-neutral-950 font-bold'
-                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
+                              ? 'bg-emerald-600 text-white font-bold'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-emerald-100'
                           }`}
                         >
                           Geldi
@@ -405,8 +410,8 @@ export const PuantajPage: React.FC = () => {
                           onClick={() => recordAttendance(p.id, 'izinli')}
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'izinli'
-                              ? 'bg-sky-500 text-neutral-950 font-bold'
-                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
+                              ? 'bg-sky-500 text-white font-bold'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-emerald-100'
                           }`}
                         >
                           İzinli
@@ -415,8 +420,8 @@ export const PuantajPage: React.FC = () => {
                           onClick={() => recordAttendance(p.id, 'raporlu')}
                           className={`py-1.5 px-2 rounded-lg font-medium transition ${
                             currentStatus === 'raporlu'
-                              ? 'bg-rose-500 text-neutral-950 font-bold'
-                              : 'bg-emerald-50 text-slate-600 hover:bg-neutral-700'
+                              ? 'bg-rose-500 text-white font-bold'
+                              : 'bg-emerald-50 text-slate-600 hover:bg-emerald-100'
                           }`}
                         >
                           Raporlu
@@ -472,7 +477,7 @@ export const PuantajPage: React.FC = () => {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowLockModal(false)}
-                className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:text-emerald-950 bg-emerald-50 hover:bg-neutral-700 transition"
+                className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 transition"
               >
                 Vazgeç
               </button>
@@ -480,7 +485,7 @@ export const PuantajPage: React.FC = () => {
                 onClick={handleToggleLock}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
                   isLocked
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-neutral-950'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-rose-500 hover:bg-rose-400 text-white'
                 }`}
               >
