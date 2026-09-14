@@ -467,7 +467,7 @@ export interface Payment {
   recipientType: 'personel' | 'tedarikci' | 'diger';
   recipientId?: string;
   recipientName: string;
-  category: 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'diger';
+  category: 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'leasing' | 'kredi' | 'kredi_karti' | 'petrol_dbs' | 'kdv_vergi' | 'elektrik_su' | 'diger';
   amount: number;
   dueDate: string;
   paidDate?: string;
@@ -476,6 +476,9 @@ export interface Payment {
   status: 'bekliyor' | 'odendi' | 'iptal';
   payrollItemId?: string;
   notes?: string;
+  obligationId?: string;
+  installmentNo?: number;
+  installmentCount?: number;
   createdAt: string;
 }
 

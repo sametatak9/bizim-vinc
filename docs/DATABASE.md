@@ -30,6 +30,7 @@ Use **`/migrations`** only. Filenames are globally unique and must remain strict
 | `0021_exit_document_type.sql` | Repo pending | Exit-document type constraint |
 | `0022_crane_telemetry.sql` | Repo pending | Crane GPS telemetry history and RLS |
 | `0023_public_card_documents.sql` | Uygulandı (`public_card_documents`) | Safe public-card document metadata RPC; files remain private |
+| `0024_payment_obligations.sql` | Uygulandı (`payment_obligations`) | Leasing, kredi, kart, petrol/DBS and tax payment installments |
 
 ### Why the filenames changed
 
@@ -49,7 +50,7 @@ The full tool output is retained in the session artifact store; this document re
 
 ## Future naming rule
 
-The next new canonical migration must use **`0024_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
+The next new canonical migration must use **`0025_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
 
 ## Deprecated
 

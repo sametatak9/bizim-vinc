@@ -34,7 +34,7 @@ pnpm dev
 
 ## Veritabanı
 
-**Canonical migrations:** `/migrations` (`0002` … `0023`, production durumları için [`docs/DATABASE.md`](docs/DATABASE.md)).
+**Canonical migrations:** `/migrations` (`0002` … `0024`, production durumları için [`docs/DATABASE.md`](docs/DATABASE.md)).
 Ayrıntı: [`docs/DATABASE.md`](docs/DATABASE.md).
 
 Production güvenlik script’i (zorunlu):

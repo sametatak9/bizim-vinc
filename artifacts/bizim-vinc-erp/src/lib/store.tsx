@@ -653,7 +653,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: d.id, recipientType: d.recipient_type, recipientId: d.recipient_id, recipientName: d.recipient_name,
         category: d.category, amount: Number(d.amount) || 0, dueDate: d.due_date, paidDate: d.paid_date,
         paymentDate: d.payment_date, paymentMethod: d.payment_method, status: d.status, payrollItemId: d.payroll_item_id,
-        notes: d.notes, createdAt: d.created_at,
+        notes: d.notes, obligationId: d.obligation_id, installmentNo: d.installment_no, installmentCount: d.installment_count, createdAt: d.created_at,
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
 
@@ -2065,6 +2065,10 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id,
       createdAt: new Date().toISOString(),
     };
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Tahsilat kaydedilemedi.');
+    const { error } = await sb.from('collections').insert({ id, customer_id: newCol.customerId || null, customer_name: newCol.customerName, invoice_id: newCol.invoiceId || null, invoice_no: newCol.invoiceNo || null, amount: newCol.amount, due_date: newCol.dueDate || null, date: newCol.date, payment_method: newCol.paymentMethod, status: newCol.status, notes: newCol.notes || null });
+    if (error) throw error;
     setCollections((prev) => {
       const next = [newCol, ...prev];
       saveStored('bv_collections', next);
@@ -2089,9 +2093,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const col = collections.find((c) => c.id === id);
     if (!col) return;
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const receivedDate = new Date().toISOString().split('T')[0];
+    const { error } = await sb.from('collections').update({ status: 'tahsil_edildi', date: receivedDate }).eq('id', id);
+    if (error) throw error;
+
     setCollections((prev) => {
       const next = prev.map((c) =>
-        c.id === id ? { ...c, status: 'tahsil_edildi' as const, date: new Date().toISOString().split('T')[0] } : c
+        c.id === id ? { ...c, status: 'tahsil_edildi' as const, date: receivedDate } : c
       );
       saveStored('bv_collections', next);
       return next;
@@ -2131,11 +2141,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addPayment = async (payData: Omit<Payment, 'id' | 'createdAt'>) => {
     const id = generateUuid();
-    const newPay: Payment = {
-      ...payData,
-      id,
-      createdAt: new Date().toISOString(),
-    };
+    const newPay: Payment = { ...payData, id, createdAt: new Date().toISOString() };
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Ödeme planı kaydedilemedi.');
+    const { error } = await sb.from('payments').insert({ id, recipient_type: newPay.recipientType, recipient_id: newPay.recipientId || null, recipient_name: newPay.recipientName, category: newPay.category, amount: newPay.amount, due_date: newPay.dueDate, paid_date: newPay.paidDate || null, payment_date: newPay.paymentDate || null, payment_method: newPay.paymentMethod || 'havale', status: newPay.status, payroll_item_id: newPay.payrollItemId || null, obligation_id: newPay.obligationId || null, installment_no: newPay.installmentNo || null, installment_count: newPay.installmentCount || null, notes: newPay.notes || null });
+    if (error) throw error;
     setPayments((prev) => {
       const next = [newPay, ...prev];
       saveStored('bv_payments', next);
@@ -2148,9 +2158,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pay = payments.find((p) => p.id === id);
     if (!pay) return;
 
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const paidDate = new Date().toISOString().split('T')[0];
+    const { error } = await sb.from('payments').update({ status: 'odendi', payment_date: paidDate, paid_date: paidDate }).eq('id', id);
+    if (error) throw error;
+
     setPayments((prev) => {
       const next = prev.map((p) =>
-        p.id === id ? { ...p, status: 'odendi' as const, paymentDate: new Date().toISOString().split('T')[0] } : p
+        p.id === id ? { ...p, status: 'odendi' as const, paymentDate: paidDate, paidDate } : p
       );
       saveStored('bv_payments', next);
       return next;
