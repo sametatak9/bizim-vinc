@@ -294,10 +294,11 @@ export const OperatorPage: React.FC = () => {
           >
             Dijital kart
           </a>
+          <a href="/teklifler" className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm">Teklif / Sözleşme</a>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+      <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 p-4 sm:p-5 text-white shadow-lg shadow-emerald-900/10"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4"><div><h2 className="text-base sm:text-lg font-black">Personel Talep Merkezi</h2><p className="text-xs text-emerald-100/80">Gönderdiğiniz tüm talepler yönetici onayından sonra kesinleşir.</p></div><span className="w-fit rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] font-bold">Onaylı işlem zorunlu</span></div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
         <button type="button" disabled={busy} onClick={() => handleAttendance('geldi')} className={actionBtn}>
           <CheckCircle className="text-emerald-600" size={22} />
           <span className="text-xs font-bold text-emerald-950">Geldi</span>
@@ -326,7 +327,7 @@ export const OperatorPage: React.FC = () => {
           <Fuel className="text-rose-600" size={22} />
           <span className="text-xs font-bold text-emerald-950">Masraf</span>
         </button>
-      </div>
+      </div></div>
 
       <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
         <h2 className="text-sm font-bold text-emerald-950 mb-3 flex items-center gap-2">

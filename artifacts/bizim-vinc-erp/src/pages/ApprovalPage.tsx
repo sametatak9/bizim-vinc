@@ -14,6 +14,7 @@ import {
   Filter,
   Plus,
 } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 export const ApprovalPage: React.FC = () => {
   const { approvals, approveRequest, rejectRequest, showToast, addApproval, personnel } = useERP();
@@ -22,6 +23,8 @@ export const ApprovalPage: React.FC = () => {
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'queue' | 'archive' | 'logs'>('queue');
+  const [search, setSearch] = useState('');
 
   // Yeni Manuel Talep State
   const [newKind, setNewKind] = useState<ApprovalKind>('avans');
@@ -38,8 +41,17 @@ export const ApprovalPage: React.FC = () => {
   const filtered = approvals.filter((a) => {
     const matchStatus = statusFilter === 'hepsi' || a.status === statusFilter;
     const matchKind = kindFilter === 'all' || a.kind === kindFilter;
-    return matchStatus && matchKind;
+    const matchesSearch = !search.trim() || `${a.title} ${a.personName} ${a.approvedBy || ''} ${a.rejectedBy || ''}`.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'));
+    const matchesView = viewMode === 'queue' ? a.status === 'pending' : viewMode === 'archive' ? a.status !== 'pending' : Boolean(a.approvedBy || a.rejectedBy || a.approvedAt || a.rejectedAt);
+    return matchStatus && matchKind && matchesSearch && matchesView;
   });
+
+  const exportApprovalArchive = (format: 'excel' | 'html' | 'print') => {
+    const columns = [{ key: 'tarih', label: 'Talep Tarihi' }, { key: 'tur', label: 'Talep Türü' }, { key: 'talep', label: 'Talep Eden' }, { key: 'baslik', label: 'Başlık' }, { key: 'durum', label: 'Durum' }, { key: 'karar', label: 'Onaylayan / Reddeden' }, { key: 'kararTarihi', label: 'Karar Tarihi' }];
+    const rows = filtered.map((item) => ({ tarih: new Date(item.createdAt).toLocaleString('tr-TR'), tur: item.kind, talep: item.personName, baslik: item.title, durum: item.status, karar: item.approvedBy || item.rejectedBy || '-', kararTarihi: item.approvedAt || item.rejectedAt || '-' }));
+    const title = viewMode === 'queue' ? 'BİZİM VİNÇ Bekleyen Personel Talepleri' : viewMode === 'archive' ? 'BİZİM VİNÇ Onay Arşivi' : 'BİZİM VİNÇ Gönderen / Onaylayan Logları';
+    if (format === 'excel') downloadExcelReport('onay-arsivi', title, columns, rows); else if (format === 'html') downloadHtmlReport('onay-arsivi', title, columns, rows); else printReport(title, columns, rows);
+  };
 
   const handleOpenReview = (approval: Approval) => {
     setSelectedApproval(approval);
@@ -99,7 +111,8 @@ export const ApprovalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => { setViewMode('queue'); setStatusFilter('pending'); }} className={`px-3 py-2 rounded-xl text-xs font-bold ${viewMode === 'queue' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'}`}>Bekleyenler</button><button onClick={() => { setViewMode('archive'); setStatusFilter('hepsi'); }} className={`px-3 py-2 rounded-xl text-xs font-bold ${viewMode === 'archive' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'}`}>Onay Arşivi</button><button onClick={() => { setViewMode('logs'); setStatusFilter('hepsi'); }} className={`px-3 py-2 rounded-xl text-xs font-bold ${viewMode === 'logs' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'}`}>Üyelik Logları</button><button onClick={() => exportApprovalArchive('excel')} className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-800">Excel</button><button onClick={() => exportApprovalArchive('html')} className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-800">HTML</button><button onClick={() => exportApprovalArchive('print')} className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-950 text-white">PDF</button>
             <button
               onClick={() => setIsNewModalOpen(true)}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/10"
@@ -160,7 +173,7 @@ export const ApprovalPage: React.FC = () => {
 
         {/* Separate request tabs */}
         <div className="mt-4 pt-4 border-t border-emerald-100">
-          <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-emerald-950"><Filter className="w-3.5 h-3.5" /> Talep sekmeleri</div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 text-xs font-bold text-emerald-950"><div className="flex items-center gap-1.5"><Filter className="w-3.5 h-3.5" /> Talep sekmeleri</div><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Talep eden, başlık veya yönetici ara" className="sm:ml-auto w-full sm:w-72 rounded-xl border border-emerald-200 px-3 py-2 text-xs font-normal outline-none focus:ring-2 focus:ring-emerald-100" /></div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
           {(['all', 'makbuz', 'avans', 'izin', 'mesai', 'yoklama', 'yakit', 'genel'] as const).map((k) => (
             <button
