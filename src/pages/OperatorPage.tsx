@@ -10,6 +10,10 @@ import {
   Receipt,
   Fuel,
   Link2Off,
+  BriefcaseBusiness,
+  MapPin,
+  FileCheck2,
+  Bell,
 } from 'lucide-react';
 import { LeaveType, OvertimeType } from '../types';
 
@@ -32,6 +36,7 @@ export const OperatorPage: React.FC = () => {
   const {
     currentUser,
     personnel,
+    personnelDocuments,
     approvals,
     recordAttendance,
     createAdvanceRequest,
@@ -275,28 +280,20 @@ export const OperatorPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto w-full space-y-5 overflow-x-hidden">
-      <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-emerald-500 text-neutral-950 font-bold flex items-center justify-center text-lg shadow-lg shadow-emerald-500/20">
-              {myPerson.initials}
+      <section className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-sm">
+        <div className="h-24 sm:h-32 bg-[radial-gradient(circle_at_78%_18%,rgba(190,242,100,.55),transparent_28%),linear-gradient(120deg,#064e3b,#047857_55%,#84cc16)]" />
+        <div className="relative px-4 pb-5 sm:px-6">
+          <div className="-mt-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex items-end gap-3 min-w-0">
+              <div className="w-20 h-20 shrink-0 rounded-[24px] border-4 border-white bg-emerald-100 text-emerald-900 font-black flex items-center justify-center text-2xl shadow-lg">{myPerson.initials}</div>
+              <div className="min-w-0 pb-1"><h1 className="text-xl sm:text-2xl font-black text-emerald-950 truncate">{myPerson.fullName}</h1><p className="text-xs text-emerald-700 truncate">{myPerson.title} · Sicil {myPerson.employeeNo}</p></div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-emerald-950 truncate">{myPerson.fullName}</h1>
-              <p className="text-xs text-emerald-800/80 truncate">
-                {myPerson.title} · Sicil {myPerson.employeeNo}
-              </p>
-            </div>
+            <div className="flex flex-wrap gap-2"><a href={`/kart/${myPerson.cardSlug || myPerson.employeeNo.toLowerCase()}`} className="inline-flex items-center justify-center gap-1.5 min-h-10 px-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-100"><FileCheck2 size={14} /> Dijital profil</a><a href="/teklifler" className="inline-flex items-center justify-center gap-1.5 min-h-10 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm"><BriefcaseBusiness size={14} /> Teklif / Sözleşme</a></div>
           </div>
-          <a
-            href={`/kart/${myPerson.cardSlug || myPerson.employeeNo.toLowerCase()}`}
-            className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl bg-emerald-50 text-emerald-800 text-sm font-semibold border border-emerald-100"
-          >
-            Dijital kart
-          </a>
-          <a href="/teklifler" className="inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-sm">Teklif / Sözleşme</a>
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2"><div className="rounded-2xl bg-emerald-50 p-3"><span className="text-[10px] font-bold text-emerald-600">Hesap durumu</span><b className="block mt-1 text-sm text-emerald-950">Aktif üye</b></div><div className="rounded-2xl bg-lime-50 p-3"><span className="text-[10px] font-bold text-lime-700">Bu ay talepler</span><b className="block mt-1 text-sm text-emerald-950">{myApprovals.filter((a) => a.createdAt.slice(0, 7) === new Date().toISOString().slice(0, 7)).length}</b></div><div className="rounded-2xl bg-amber-50 p-3"><span className="text-[10px] font-bold text-amber-700">Bekleyen karar</span><b className="block mt-1 text-sm text-emerald-950">{myApprovals.filter((a) => a.status === 'pending').length}</b></div><div className="rounded-2xl bg-sky-50 p-3"><span className="text-[10px] font-bold text-sky-700">Belgeler</span><b className="block mt-1 text-sm text-emerald-950">{personnelDocuments.filter((d) => d.personnelId === myPerson.id).length}</b></div></div>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-slate-500"><span><BriefcaseBusiness size={13} className="inline mr-1 text-emerald-600" />{myPerson.department || 'Operasyon'}</span><span><MapPin size={13} className="inline mr-1 text-emerald-600" />{myPerson.address || 'Adres bilgisi profil panelinden eklenebilir'}</span><span><Bell size={13} className="inline mr-1 text-emerald-600" />Bildirimler ve kararlar aktif</span></div>
         </div>
-      </div>
+      </section>
 
       <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-600 p-4 sm:p-5 text-white shadow-lg shadow-emerald-900/10"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4"><div><h2 className="text-base sm:text-lg font-black">Personel Talep Merkezi</h2><p className="text-xs text-emerald-100/80">Gönderdiğiniz tüm talepler yönetici onayından sonra kesinleşir.</p></div><span className="w-fit rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] font-bold">Onaylı işlem zorunlu</span></div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
         <button type="button" disabled={busy} onClick={() => handleAttendance('geldi')} className={actionBtn}>
