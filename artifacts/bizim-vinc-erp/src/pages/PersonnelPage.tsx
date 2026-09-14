@@ -19,6 +19,7 @@ import {
   Send,
   Calculator,
   FileSpreadsheet,
+  FileText,
   ArrowRight,
   CreditCard,
   History,
@@ -28,7 +29,7 @@ import {
   X,
   Download,
 } from 'lucide-react';
-import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 export const PersonnelPage: React.FC = () => {
   const {
@@ -166,6 +167,14 @@ export const PersonnelPage: React.FC = () => {
     const content = ['Sicil\tAd Soyad\tGörev\tTelefon\tDurum\tMaaş\tİşe Giriş\tÇıkış', ...rows.map((r) => r.join('\t'))].join('\n');
     const blob = new Blob([`\ufeff${content}`], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `bizim-vinc-personel-${new Date().toISOString().slice(0,10)}.xls`; a.click(); URL.revokeObjectURL(url);
+  };
+  const exportPersonnelReport = (format: 'excel' | 'html' | 'print') => {
+    const columns = [{ key: 'sicil', label: 'Sicil' }, { key: 'ad', label: 'Ad Soyad' }, { key: 'gorev', label: 'Görev' }, { key: 'telefon', label: 'Telefon' }, { key: 'durum', label: 'Durum' }, { key: 'maas', label: 'Maaş' }];
+    const rows = filtered.map((p) => ({ sicil: p.employeeNo, ad: p.fullName, gorev: p.title, telefon: p.phone, durum: p.status, maas: `${(p.salary || 0).toLocaleString('tr-TR')} ₺` }));
+    const title = 'BİZİM VİNÇ Personel Arşivi';
+    if (format === 'excel') downloadExcelReport('personel-arsivi', title, columns, rows);
+    else if (format === 'html') downloadHtmlReport('personel-arsivi', title, columns, rows);
+    else printReport(title, columns, rows);
   };
   const printPersonnelReport = () => { setActiveTab('list'); setTimeout(() => window.print(), 0); };
 
@@ -317,8 +326,9 @@ export const PersonnelPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={exportPersonnelExcel} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-100"><Download size={13} /> Excel</button>
-              <button type="button" onClick={printPersonnelReport} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-700"><Printer size={13} /> PDF / Yazdır</button>
+              <button type="button" onClick={() => exportPersonnelReport('excel')} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-100"><FileSpreadsheet size={13} /> Excel</button>
+              <button type="button" onClick={() => exportPersonnelReport('html')} className="px-3 py-2 rounded-xl bg-white text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-50"><FileText size={13} /> HTML</button>
+              <button type="button" onClick={() => exportPersonnelReport('print')} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap hover:bg-emerald-700"><Printer size={13} /> PDF / Yazdır</button>
             </div>
           </div>
 

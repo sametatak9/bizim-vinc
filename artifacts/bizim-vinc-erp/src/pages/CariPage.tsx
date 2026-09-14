@@ -17,9 +17,10 @@ import {
   CreditCard,
   X,
   History,
+  Printer,
 } from 'lucide-react';
 import { FileSpreadsheet, FileCode2 } from 'lucide-react';
-import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 export const CariPage: React.FC = () => {
   const {
@@ -212,13 +213,14 @@ export const CariPage: React.FC = () => {
   const paidTotal = payments.filter((p) => p.status === 'odendi').reduce((sum, p) => sum + p.amount, 0);
   const netCashBalance = receivedTotal - paidTotal;
 
-  const exportCari = (format: 'excel' | 'html') => {
+  const exportCari = (format: 'excel' | 'html' | 'print') => {
     const isSites = activeTab === 'sites';
     const columns = isSites ? [{ key: 'name', label: 'Şantiye' }, { key: 'customer', label: 'Cari' }, { key: 'location', label: 'Lokasyon' }, { key: 'status', label: 'Durum' }] : [{ key: 'title', label: 'Cari Ünvanı' }, { key: 'type', label: 'Tip' }, { key: 'contact', label: 'Yetkili' }, { key: 'phone', label: 'Telefon' }, { key: 'balance', label: 'Bakiye' }];
     const rows = isSites ? filteredSites.map((s) => ({ name: s.name, customer: s.customerName || '-', location: s.location || s.address || '-', status: s.status })) : filteredCustomers.map((c) => ({ title: c.title || c.name, type: c.type, contact: c.authorizedPerson || c.contactName || '-', phone: c.phone || '-', balance: `${(c.balance || 0).toLocaleString('tr-TR')} ₺` }));
     const title = isSites ? 'Bizim Vinç Şantiye Arşivi' : 'Bizim Vinç Cari Kart Arşivi';
     if (format === 'excel') downloadExcelReport(`cari-arsiv-${new Date().toISOString().slice(0, 10)}`, title, columns, rows);
-    else downloadHtmlReport(`cari-arsiv-${new Date().toISOString().slice(0, 10)}`, title, columns, rows);
+    else if (format === 'html') downloadHtmlReport(`cari-arsiv-${new Date().toISOString().slice(0, 10)}`, title, columns, rows);
+    else printReport(title, columns, rows);
   };
   const exportCustomerStatement = (format: 'excel' | 'html') => {
     if (!selectedCustomerForEkstre) return;
@@ -385,7 +387,7 @@ export const CariPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-2"><button type="button" onClick={() => exportCari('excel')} className="px-2.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1"><FileSpreadsheet size={13} /> Excel</button><button type="button" onClick={() => exportCari('html')} className="px-2.5 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center gap-1"><FileCode2 size={13} /> HTML</button>
+        <div className="flex items-center gap-2"><button type="button" onClick={() => exportCari('excel')} className="px-2.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1"><FileSpreadsheet size={13} /> Excel</button><button type="button" onClick={() => exportCari('html')} className="px-2.5 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center gap-1"><FileCode2 size={13} /> HTML</button><button type="button" onClick={() => exportCari('print')} className="px-2.5 py-2 rounded-xl bg-emerald-950 text-white text-[11px] font-bold inline-flex items-center gap-1"><Printer size={13} /> PDF</button>
         {/* Search */}
         <div className="relative w-64">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

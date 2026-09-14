@@ -12,6 +12,7 @@ import {
   Clock,
   Building2,
 } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 type DocTab = 'makbuz' | 'irsaliye' | 'fatura';
 
@@ -242,6 +243,16 @@ export const InvoiceReceiptPage: React.FC = () => {
     }
   };
 
+  const exportDocuments = (format: 'excel' | 'html' | 'print') => {
+    const isInvoice = tab === 'fatura';
+    const columns = isInvoice ? [{ key: 'no', label: 'Fatura No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'amount', label: 'Tutar' }, { key: 'status', label: 'Durum' }] : [{ key: 'no', label: 'Belge No' }, { key: 'date', label: 'Tarih' }, { key: 'customer', label: 'Cari' }, { key: 'crane', label: 'Vinç' }, { key: 'site', label: 'Şantiye' }, { key: 'status', label: 'Durum' }];
+    const rows = isInvoice ? filteredInvoices.map((item) => ({ no: item.invoiceNo, date: item.issueDate, customer: item.customerName, amount: `${item.totalAmount.toLocaleString('tr-TR')} ₺`, status: item.status })) : filteredReceipts.map((item) => ({ no: item.receiptNo, date: item.date, customer: item.customerName, crane: item.craneCode, site: item.siteName || '-', status: item.status }));
+    const title = tab === 'makbuz' ? 'Bizim Vinç İş Makbuzu Arşivi' : tab === 'irsaliye' ? 'Bizim Vinç İrsaliye Arşivi' : 'Bizim Vinç Fatura Arşivi';
+    if (format === 'excel') downloadExcelReport(`belge-arsivi-${tab}`, title, columns, rows);
+    else if (format === 'html') downloadHtmlReport(`belge-arsivi-${tab}`, title, columns, rows);
+    else printReport(title, columns, rows);
+  };
+
   const tabBtn = (id: DocTab, label: string, icon: React.ReactNode) => (
     <button
       type="button"
@@ -333,6 +344,7 @@ export const InvoiceReceiptPage: React.FC = () => {
             ))}
           </div>
         )}
+        <div className="flex gap-1 sm:ml-auto"><button type="button" onClick={() => exportDocuments('excel')} className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">Excel</button><button type="button" onClick={() => exportDocuments('html')} className="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold">HTML</button><button type="button" onClick={() => exportDocuments('print')} className="px-2.5 py-1.5 rounded-lg bg-emerald-950 text-white text-[11px] font-bold"><Printer size={12} className="inline mr-1" />PDF / Yazdır</button></div>
       </div>
 
       {tab === 'makbuz' && (

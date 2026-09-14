@@ -4,7 +4,7 @@ import { Crane, CraneStatus } from '../types';
 import { CraneModal } from '../components/CraneModal';
 import { Plus, Search, Truck, MapPin, User, Wrench, AlertTriangle, History, Printer } from 'lucide-react';
 import { FileSpreadsheet, FileText } from 'lucide-react';
-import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
+import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
 export const FleetPage: React.FC = () => {
   const { cranes, updateCraneStatus, jobReceipts, expenses, approvals } = useERP();
@@ -44,11 +44,12 @@ export const FleetPage: React.FC = () => {
     updateCraneStatus(id, newStatus);
   };
 
-  const exportFleet = (format: 'excel' | 'html') => {
+  const exportFleet = (format: 'excel' | 'html' | 'print') => {
     const columns = [{ key: 'kod', label: 'Vinç Kodu' }, { key: 'tur', label: 'Tür' }, { key: 'operator', label: 'Operatör' }, { key: 'saha', label: 'Şantiye' }, { key: 'durum', label: 'Durum' }, { key: 'bakim', label: 'Son Bakım' }];
     const rows = filtered.map((c) => ({ kod: c.code, tur: `${c.type} ${c.capacity}`, operator: c.operator || '-', saha: c.site || 'Garaj', durum: c.status, bakim: c.lastService || '-' }));
     if (format === 'excel') downloadExcelReport(`filo-arsiv-${new Date().toISOString().slice(0, 10)}`, 'Bizim Vinç Filo Arşivi', columns, rows);
-    else downloadHtmlReport(`filo-arsiv-${new Date().toISOString().slice(0, 10)}`, 'Bizim Vinç Filo Arşivi', columns, rows);
+    else if (format === 'html') downloadHtmlReport(`filo-arsiv-${new Date().toISOString().slice(0, 10)}`, 'Bizim Vinç Filo Arşivi', columns, rows);
+    else printReport('Bizim Vinç Filo Arşivi', columns, rows);
   };
   const exportCraneHistory = (format: 'excel' | 'html') => {
     if (!selectedHistoryCrane) return;
@@ -130,7 +131,7 @@ export const FleetPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => exportFleet('excel')} className="px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1.5"><FileSpreadsheet size={14} /> Excel</button><button type="button" onClick={() => exportFleet('html')} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"><FileText size={14} /> HTML</button>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => exportFleet('excel')} className="px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1.5"><FileSpreadsheet size={14} /> Excel</button><button type="button" onClick={() => exportFleet('html')} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"><FileText size={14} /> HTML</button><button type="button" onClick={() => exportFleet('print')} className="px-3 py-2 bg-emerald-950 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"><Printer size={14} /> PDF</button>
             <button
               onClick={handleCreate}
               className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap"
