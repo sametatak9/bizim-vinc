@@ -4,7 +4,7 @@ import { Truck, CheckCircle, Clock, MapPin, Activity } from 'lucide-react';
 import { CraneMap } from '../components/CraneMap';
 
 export const TvBoardPage: React.FC = () => {
-  const { cranes, approvals, stats } = useERP();
+  const { cranes, approvals, stats, jobReceipts } = useERP();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -14,6 +14,8 @@ export const TvBoardPage: React.FC = () => {
 
   const activeCranes = cranes.filter((c) => c.status === 'sahada');
   const pendingApprovals = approvals.filter((a) => a.status === 'pending');
+  const activeWorkFor = (code: string) => jobReceipts.filter((receipt) => receipt.craneCode === code && !receipt.invoiced && (receipt.status === 'approved' || (receipt.status as string) === 'onaylandi')).sort((a, b) => `${b.date} ${b.startTime || ''}`.localeCompare(`${a.date} ${a.startTime || ''}`))[0];
+  const workedHours = (receipt: ReturnType<typeof activeWorkFor>) => { if (!receipt) return 0; if (receipt.workingHours || receipt.hoursWorked) return receipt.workingHours || receipt.hoursWorked || 0; if (receipt.date !== new Date().toISOString().slice(0, 10) || !receipt.startTime) return 0; const [hour, minute] = receipt.startTime.split(':').map(Number); return Math.max(0, (time.getHours() * 60 + time.getMinutes() - (hour * 60 + minute)) / 60); };
 
   return (
     <main className="p-3 sm:p-6 max-w-[1800px] mx-auto min-h-screen flex flex-col gap-4 sm:gap-6 overflow-x-hidden" id="tv-board-page">
@@ -109,9 +111,7 @@ export const TvBoardPage: React.FC = () => {
                     {c.site}
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 mt-4 pt-3 border-t border-emerald-200/60 font-medium">
-                  Operatör: <strong className="text-gray-900">{c.operator || 'Atanmadı'}</strong>
-                </div>
+                <div className="text-xs text-gray-600 mt-4 pt-3 border-t border-emerald-200/60 font-medium space-y-1"><div>Operatör: <strong className="text-gray-900">{c.operator || 'Atanmadı'}</strong></div>{activeWorkFor(c.code) ? <><div>Firma: <strong className="text-gray-900">{activeWorkFor(c.code)?.customerName}</strong></div><div>İş: <strong className="text-emerald-800">{workedHours(activeWorkFor(c.code)).toFixed(1)} sa · {activeWorkFor(c.code)?.siteName || c.site || 'Saha'}</strong></div></> : <div className="text-slate-400">Aktif iş makbuzu bağlantısı bekleniyor</div>}</div>
               </div>
             ))}
           </div>

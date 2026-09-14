@@ -172,7 +172,7 @@ export const ApprovalPage: React.FC = () => {
                   : 'bg-emerald-50 text-slate-600 hover:text-emerald-950'
               }`}
             >
-              {k === 'all' ? 'Tümü' : k === 'makbuz' ? 'Makbuzlar' : k === 'avans' ? 'Avanslar' : k === 'izin' ? 'İzinler' : k === 'mesai' ? 'Mesailer' : k === 'yoklama' ? 'Yoklamalar' : k === 'yakit' ? 'Yakıt / Fiş' : 'Genel'}
+              {k === 'all' ? 'Tümü' : k === 'makbuz' ? 'Makbuz Bildirimleri' : k === 'avans' ? 'Avanslar' : k === 'izin' ? 'İzin / Yıllık İzin' : k === 'mesai' ? 'Mesai Faaliyetleri' : k === 'yoklama' ? 'Günlük Yoklamalar' : k === 'yakit' ? 'Yakıt / Fiş' : 'Genel'}
             </button>
           ))}
           </div>

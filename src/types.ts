@@ -62,7 +62,7 @@ export interface Person {
   updatedAt?: string;
 }
 
-export type PersonnelDocumentType = 'isg' | 'myk' | 'ehliyet' | 'src' | 'saglik' | 'adli_sicil' | 'diger';
+export type PersonnelDocumentType = 'isg' | 'myk' | 'ehliyet' | 'src' | 'saglik' | 'adli_sicil' | 'isten_cikis' | 'diger';
 
 export interface PersonnelDocument {
   id: string;
@@ -97,7 +97,7 @@ export interface Crane {
   meterHours?: number;
   nextServiceHours?: number;
   nextServiceDate?: string;
-  telemetryProvider?: 'manual' | 'nav_api';
+  telemetryProvider?: 'manual' | 'nav_api' | 'vakif_telematics';
   telemetryLastSeen?: string;
   notes?: string;
   createdAt?: string;

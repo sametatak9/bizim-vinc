@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Person, PersonKind, PersonStatus, PoolStatus, PersonnelDocumentType } from '../types';
+import { Person, PersonKind, PersonStatus, PersonnelDocumentType } from '../types';
 import { X, Check, Copy, ExternalLink, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useERP } from '../lib/store';
 
@@ -10,14 +10,14 @@ interface PersonModalProps {
 }
 
 export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClose }) => {
-  const { addPerson, updatePerson, deletePerson, showToast, personnelDocuments, uploadPersonnelDocument, currentUser } = useERP();
+  const { addPerson, updatePerson, deletePerson, showToast, personnelDocuments, uploadPersonnelDocument, currentUser, personnelTypes, addPersonnelType } = useERP();
 
   const [fullName, setFullName] = useState('');
   const [employeeNo, setEmployeeNo] = useState('');
   const [phone, setPhone] = useState('');
   const [kind, setKind] = useState<PersonKind>('operator');
   const [status, setStatus] = useState<PersonStatus>('aktif');
-  const [poolStatus, setPoolStatus] = useState<PoolStatus>('musait');
+  const [personnelTypeId, setPersonnelTypeId] = useState('');
   const [title, setTitle] = useState('');
   const [salary, setSalary] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -35,7 +35,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setPhone(person.phone);
       setKind(person.kind);
       setStatus(person.status);
-      setPoolStatus(person.poolStatus);
+      setPersonnelTypeId(person.personnelTypeId || '');
       setTitle(person.title);
       setSalary(person.salary === undefined ? '' : String(person.salary));
       setStartDate(person.startDate || '');
@@ -48,7 +48,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       setPhone('+90 5');
       setKind('operator');
       setStatus('aktif');
-      setPoolStatus('musait');
+      setPersonnelTypeId('');
       setTitle('Mobil Vinç Operatörü');
       setSalary('');
       setStartDate('');
@@ -80,6 +80,10 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
       showToast('Pasif personel için İşten Çıkış Tarihi zorunludur.');
       return;
     }
+    if (status === 'pasif' && (!person || !personnelDocuments.some((document) => document.personnelId === person.id && document.documentType === 'isten_cikis'))) {
+      showToast('Pasif personel için önce İşten Çıkış Evrakı yüklenmelidir. Mevcut kaydı düzenleyip belgeyi ekleyin.');
+      return;
+    }
     if (status !== 'pasif' && endDate) {
       showToast('Aktif personel için İşten Çıkış Tarihi boş bırakılmalıdır.');
       return;
@@ -92,7 +96,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         phone,
         kind,
         status,
-        poolStatus,
+        personnelTypeId: personnelTypeId || undefined,
         title,
         salary: Number(salary),
         startDate,
@@ -115,7 +119,8 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
         phone,
         kind,
         status,
-        poolStatus,
+        poolStatus: 'musait',
+        personnelTypeId: personnelTypeId || undefined,
         title,
         salary: Number(salary),
         startDate,
@@ -222,7 +227,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-bold text-emerald-950 mb-1">Personel Türü</label>
               <select
@@ -234,6 +239,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
                 <option value="yardimci">Yardımcı / Yağcı</option>
                 <option value="idari">İdari / Şef</option>
               </select>
+              <div className="mt-2 flex gap-1"><select value={personnelTypeId} onChange={(e) => setPersonnelTypeId(e.target.value)} className="min-w-0 flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-[11px]"><option value="">Tanımlı tür seç</option>{personnelTypes.filter((type) => type.isActive).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select><button type="button" onClick={async () => { const name = window.prompt('Yeni personel türü'); if (name?.trim()) { await addPersonnelType(name.trim()); showToast('Personel türü eklendi.'); } }} className="shrink-0 px-2 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-black">+</button></div>
             </div>
             <div>
               <label className="block text-xs font-bold text-emerald-950 mb-1">Personel Durumu</label>
@@ -292,6 +298,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ person, isOpen, onClos
                   <option value="ehliyet">Sürücü Belgesi</option>
                   <option value="saglik">Sağlık Raporu</option>
                   <option value="adli_sicil">Adli Sicil Kaydı</option>
+                  <option value="isten_cikis">İşten Çıkış Evrakı</option>
                   <option value="diger">Diğer</option>
                 </select>
                 <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setDocumentFile(e.target.files?.[0] || null)} className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-2 file:py-1.5 file:text-xs" />

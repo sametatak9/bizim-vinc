@@ -297,7 +297,7 @@ export const InvoiceReceiptPage: React.FC = () => {
             }}
             className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
           >
-            <Plus size={14} /> Yeni Belge
+            <Plus size={14} /> Yeni Makbuz
           </button>
           {tab === 'fatura' && selectedIds.length > 0 && (
             <button
@@ -433,7 +433,7 @@ export const InvoiceReceiptPage: React.FC = () => {
       {tab === 'irsaliye' && (
         <div className="bg-white rounded-2xl border border-emerald-100 p-6 no-print">
           <p className="text-xs text-emerald-800/80 mb-4">
-            İrsaliye kayıtları makbuz hattı üzerinden takip edilir. Yeni irsaliye için «Yeni Belge» kullanın; önizlemede A4 çıktı alınır.
+            İrsaliye kayıtları makbuz hattı üzerinden takip edilir. Yeni belge için «Yeni Makbuz» kullanın; önizlemede A4 çıktı alınır.
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {filteredReceipts.slice(0, 6).map((r) => (
