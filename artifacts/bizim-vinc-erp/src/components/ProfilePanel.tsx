@@ -39,7 +39,7 @@ export const ProfilePanel: React.FC<Props> = ({ onClose }) => {
   const avatar = currentUser.avatarUrl;
   const initials = currentUser.fullName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 
-  return <div className="fixed inset-0 z-[70] bg-emerald-950/45 backdrop-blur-sm flex justify-end" onClick={onClose}>
+  return <div className="fixed inset-0 z-[100000] bg-emerald-950/45 backdrop-blur-sm flex justify-end" onClick={onClose}>
     <aside className="h-full w-full max-w-xl overflow-y-auto bg-[#f7fffb] text-emerald-950 border-l border-emerald-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
       <header className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 bg-white/95 backdrop-blur border-b border-emerald-100"><div><div className="text-[10px] uppercase tracking-[0.24em] text-emerald-600 font-black">Bizim Vinç · Profil</div><h2 className="text-xl font-black mt-1">Hesap ve Evrak Merkezi</h2></div><button onClick={onClose} className="p-2 rounded-xl hover:bg-emerald-50"><X size={18} /></button></header>
       <div className="p-4 sm:p-6 space-y-5">

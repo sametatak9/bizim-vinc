@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
     : navItems;
 
   return (
-    <header className="sticky top-0 z-[100] bg-white/95 border-b border-emerald-200 text-emerald-950 shadow-sm backdrop-blur">
+    <header className="sticky top-0 z-[1000] bg-white/95 border-b border-emerald-200 text-emerald-950 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Canva brand lockup */}
         <div
@@ -339,7 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </div>
       )}
-      {profileOpen && <ProfilePanel onClose={() => setProfileOpen(false)} />}
+      {profileOpen && <div className="fixed inset-0 z-[99999]"><ProfilePanel onClose={() => setProfileOpen(false)} /></div>}
     </header>
   );
 };
