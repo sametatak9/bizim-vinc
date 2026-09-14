@@ -74,63 +74,16 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-50 bg-white/95 border-b border-emerald-200 text-emerald-950 shadow-sm backdrop-blur">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        {/* Brand with green tower crane + Slogan */}
+        {/* Canva brand lockup */}
         <div
-          className="flex items-center gap-3 cursor-pointer select-none shrink-0"
+          className="flex items-center gap-2 cursor-pointer select-none shrink-0"
           onClick={() => onNavigate('/')}
         >
-          <div className="w-11 h-11 rounded-xl bg-white border-2 border-emerald-400 flex items-center justify-center text-emerald-700 shadow-lg shadow-emerald-900/30">
-            <svg viewBox="0 0 64 64" width="28" height="28" fill="none">
-              <path
-                d="M20 54h24M24 54l4-8h8l4 8M28 46h8"
-                stroke="#15803D"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M32 46V12M28 16h8M28 24h8M28 32h8M28 40h8"
-                stroke="#15803D"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M28 16l8 8M36 16l-8 8M28 24l8 8M36 24l-8 8M28 32l8 8M36 32l-8 8"
-                stroke="#22C55E"
-                strokeWidth="1.6"
-              />
-              <path
-                d="M12 14h42M12 14v4M48 14v10"
-                stroke="#15803D"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M32 6l-20 8M32 6l16 8M32 6l22 8"
-                stroke="#22C55E"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-              <path
-                d="M48 24v12M48 36c-2 0-3.5 1.5-3.5 3.5 0 2 1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5"
-                stroke="#15803D"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <rect x="33" y="15" width="5" height="6" rx="1" fill="#DCFCE7" stroke="#15803D" strokeWidth="1.5" />
-            </svg>
-          </div>
-          <div>
-            <div className="text-base font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
-              <span>BİZİM VİNÇ</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono font-bold rounded-md">
-                ERP
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium tracking-tight mt-0.5 hidden sm:block">
-              En derinden, en yükseklere
-            </div>
-          </div>
+          <img
+            src="/branding/bizim-vinc-logo-horizontal.png"
+            alt="BİZİM VİNÇ ERP — En derinden, en yükseklere"
+            className="h-12 w-auto max-w-[220px] object-contain object-left"
+          />
         </div>
 
         {/* Navigation - Desktop */}
