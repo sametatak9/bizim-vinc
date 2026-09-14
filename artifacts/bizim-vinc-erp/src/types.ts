@@ -298,6 +298,10 @@ export interface Receipt {
 // CARİ (CUSTOMERS) & ŞANTİYELER
 // -------------------------------------------------------------
 export interface Customer {
+  creditLimit?: number;
+  riskStatus?: "normal" | "dikkat" | "riskli";
+  isEfaturaMukellefi?: boolean;
+  paymentTermDays?: number;
   id: string;
   title: string; // Ünvan
   name?: string; // alias for title
@@ -425,7 +429,39 @@ export type InvoiceStatus =
   | 'partial'
   | 'cancelled';
 
+
+export interface InvoiceLine {
+  id?: string;
+  invoiceId?: string;
+  itemType: 'saatlik_kiralama' | 'gunluk_kiralama' | 'operator' | 'sefer' | 'yakit' | 'hasar' | 'diger';
+  description: string;
+  quantity: number;
+  unit: 'saat' | 'gun' | 'sefer' | 'adet' | 'litre';
+  unitPrice: number;
+  taxRate: number;
+  taxAmount?: number;
+  totalAmount?: number;
+  craneId?: string;
+}
+
+export interface PrintTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  isDefault: boolean;
+  headerColor: string;
+  logoUrl?: string;
+  footerNote?: string;
+}
+
 export interface Invoice {
+  lines?: InvoiceLine[];
+  printedAt?: string;
+  templateId?: string;
+  category?: string;
+  eStatus?: "taslak" | "e-arsiv" | "e-fatura";
+  withholdingRate?: number;
+  withholdingAmount?: number;
   id: string;
   invoiceNo: string; // e.g. FT-2026-0015
   customerId: string;
