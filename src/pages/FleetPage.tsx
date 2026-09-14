@@ -3,6 +3,8 @@ import { useERP } from '../lib/store';
 import { Crane, CraneStatus } from '../types';
 import { CraneModal } from '../components/CraneModal';
 import { Plus, Search, Truck, MapPin, User, Wrench, AlertTriangle, History, Printer } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 
 export const FleetPage: React.FC = () => {
   const { cranes, updateCraneStatus, jobReceipts, expenses, approvals } = useERP();
@@ -40,6 +42,20 @@ export const FleetPage: React.FC = () => {
 
   const handleQuickStatusChange = (id: string, newStatus: CraneStatus) => {
     updateCraneStatus(id, newStatus);
+  };
+
+  const exportFleet = (format: 'excel' | 'html') => {
+    const columns = [{ key: 'kod', label: 'Vinç Kodu' }, { key: 'tur', label: 'Tür' }, { key: 'operator', label: 'Operatör' }, { key: 'saha', label: 'Şantiye' }, { key: 'durum', label: 'Durum' }, { key: 'bakim', label: 'Son Bakım' }];
+    const rows = filtered.map((c) => ({ kod: c.code, tur: `${c.type} ${c.capacity}`, operator: c.operator || '-', saha: c.site || 'Garaj', durum: c.status, bakim: c.lastService || '-' }));
+    if (format === 'excel') downloadExcelReport(`filo-arsiv-${new Date().toISOString().slice(0, 10)}`, 'Bizim Vinç Filo Arşivi', columns, rows);
+    else downloadHtmlReport(`filo-arsiv-${new Date().toISOString().slice(0, 10)}`, 'Bizim Vinç Filo Arşivi', columns, rows);
+  };
+  const exportCraneHistory = (format: 'excel' | 'html') => {
+    if (!selectedHistoryCrane) return;
+    const columns = [{ key: 'date', label: 'Tarih' }, { key: 'type', label: 'Hareket' }, { key: 'text', label: 'Detay' }, { key: 'detail', label: 'Açıklama' }];
+    const title = `${selectedHistoryCrane.code} Operasyon Arşivi`;
+    if (format === 'excel') downloadExcelReport(`vinc-${selectedHistoryCrane.code}-arsiv`, title, columns, craneHistory);
+    else downloadHtmlReport(`vinc-${selectedHistoryCrane.code}-arsiv`, title, columns, craneHistory);
   };
 
   const selectedHistoryCrane = cranes.find((crane) => crane.id === historyCraneId);
@@ -114,12 +130,13 @@ export const FleetPage: React.FC = () => {
               ))}
             </div>
 
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => exportFleet('excel')} className="px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1.5"><FileSpreadsheet size={14} /> Excel</button><button type="button" onClick={() => exportFleet('html')} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5"><FileText size={14} /> HTML</button>
             <button
               onClick={handleCreate}
               className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap"
             >
               <Plus size={14} /> Yeni Vinç
-            </button>
+            </button></div>
           </div>
         </div>
 
@@ -236,7 +253,7 @@ export const FleetPage: React.FC = () => {
         <section className="bg-white border border-sky-100 rounded-2xl shadow-xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-sky-100 pb-3">
             <div><h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><History size={17} className="text-sky-700" /> {selectedHistoryCrane.code} Operasyon Geçmişi</h2><p className="text-xs text-slate-500 mt-1">İş, yakıt, masraf, bakım ve onay kayıtları.</p></div>
-            <div className="flex gap-2"><button onClick={() => window.print()} className="p-2 rounded-lg bg-sky-50 text-sky-800 print:hidden" title="Yazdır / PDF"><Printer size={14} /></button><button onClick={() => setHistoryCraneId(null)} className="px-2 py-1 rounded-lg text-xs text-slate-500 print:hidden">Kapat</button></div>
+            <div className="flex gap-2"><button onClick={() => exportCraneHistory('excel')} className="p-2 rounded-lg bg-emerald-50 text-emerald-800 print:hidden" title="Excel"><FileSpreadsheet size={14} /></button><button onClick={() => exportCraneHistory('html')} className="p-2 rounded-lg bg-emerald-600 text-white print:hidden" title="HTML"><FileText size={14} /></button><button onClick={() => window.print()} className="p-2 rounded-lg bg-sky-50 text-sky-800 print:hidden" title="Yazdır / PDF"><Printer size={14} /></button><button onClick={() => setHistoryCraneId(null)} className="px-2 py-1 rounded-lg text-xs text-slate-500 print:hidden">Kapat</button></div>
           </div>
           {craneHistory.length === 0 ? <div className="p-8 text-center text-xs text-slate-500">Bu vinç için henüz operasyon geçmişi yok.</div> : <div className="space-y-2">{craneHistory.map((entry, index) => <div key={`${entry.type}-${entry.date}-${index}`} className="flex gap-3 border-l-2 border-sky-200 pl-4 py-2"><div className="w-20 shrink-0 text-[11px] font-mono text-slate-500">{entry.date}</div><div><div className="text-xs font-bold text-sky-800">{entry.type}</div><div className="text-sm text-slate-800">{entry.text}</div>{entry.detail && <div className="text-xs text-slate-500">{entry.detail}</div>}</div></div>)}</div>}
         </section>

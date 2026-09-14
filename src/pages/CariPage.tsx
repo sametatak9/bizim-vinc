@@ -18,6 +18,8 @@ import {
   X,
   History,
 } from 'lucide-react';
+import { FileSpreadsheet, FileCode2 } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 
 export const CariPage: React.FC = () => {
   const {
@@ -210,6 +212,24 @@ export const CariPage: React.FC = () => {
   const paidTotal = payments.filter((p) => p.status === 'odendi').reduce((sum, p) => sum + p.amount, 0);
   const netCashBalance = receivedTotal - paidTotal;
 
+  const exportCari = (format: 'excel' | 'html') => {
+    const isSites = activeTab === 'sites';
+    const columns = isSites ? [{ key: 'name', label: 'Şantiye' }, { key: 'customer', label: 'Cari' }, { key: 'location', label: 'Lokasyon' }, { key: 'status', label: 'Durum' }] : [{ key: 'title', label: 'Cari Ünvanı' }, { key: 'type', label: 'Tip' }, { key: 'contact', label: 'Yetkili' }, { key: 'phone', label: 'Telefon' }, { key: 'balance', label: 'Bakiye' }];
+    const rows = isSites ? filteredSites.map((s) => ({ name: s.name, customer: s.customerName || '-', location: s.location || s.address || '-', status: s.status })) : filteredCustomers.map((c) => ({ title: c.title || c.name, type: c.type, contact: c.authorizedPerson || c.contactName || '-', phone: c.phone || '-', balance: `${(c.balance || 0).toLocaleString('tr-TR')} ₺` }));
+    const title = isSites ? 'Bizim Vinç Şantiye Arşivi' : 'Bizim Vinç Cari Kart Arşivi';
+    if (format === 'excel') downloadExcelReport(`cari-arsiv-${new Date().toISOString().slice(0, 10)}`, title, columns, rows);
+    else downloadHtmlReport(`cari-arsiv-${new Date().toISOString().slice(0, 10)}`, title, columns, rows);
+  };
+  const exportCustomerStatement = (format: 'excel' | 'html') => {
+    if (!selectedCustomerForEkstre) return;
+    const customerInvoices = invoices.filter((i) => i.customerId === selectedCustomerForEkstre.id).map((i) => ({ tarih: i.issueDate, hareket: 'Fatura', belge: i.invoiceNo, tutar: `${i.totalAmount.toLocaleString('tr-TR')} ₺`, durum: i.status }));
+    const customerCollections = collections.filter((c) => c.customerId === selectedCustomerForEkstre.id).map((c) => ({ tarih: c.date, hareket: 'Tahsilat', belge: c.paymentMethod, tutar: `${c.amount.toLocaleString('tr-TR')} ₺`, durum: c.status }));
+    const columns = [{ key: 'tarih', label: 'Tarih' }, { key: 'hareket', label: 'Hareket' }, { key: 'belge', label: 'Belge / Yöntem' }, { key: 'tutar', label: 'Tutar' }, { key: 'durum', label: 'Durum' }];
+    const title = `${selectedCustomerForEkstre.title || selectedCustomerForEkstre.name} Cari Ekstresi`;
+    if (format === 'excel') downloadExcelReport('cari-ekstre', title, columns, [...customerInvoices, ...customerCollections]);
+    else downloadHtmlReport('cari-ekstre', title, columns, [...customerInvoices, ...customerCollections]);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
       {/* Top Banner */}
@@ -365,6 +385,7 @@ export const CariPage: React.FC = () => {
           </button>
         </div>
 
+        <div className="flex items-center gap-2"><button type="button" onClick={() => exportCari('excel')} className="px-2.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1"><FileSpreadsheet size={13} /> Excel</button><button type="button" onClick={() => exportCari('html')} className="px-2.5 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center gap-1"><FileCode2 size={13} /> HTML</button>
         {/* Search */}
         <div className="relative w-64">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -375,7 +396,7 @@ export const CariPage: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 bg-white border border-emerald-100 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500 shadow-2xs"
           />
-        </div>
+        </div></div>
       </div>
 
       {/* TAB 1: CARİ KARTLAR */}
@@ -918,7 +939,7 @@ export const CariPage: React.FC = () => {
                 <div className="text-lg font-bold text-slate-900">{selectedCustomerForEkstre.name}</div>
                 <div className="text-xs text-slate-500">Cari Hesap Hareketleri & Ekstre</div>
               </div>
-              <div className="text-right">
+              <div className="text-right"><div className="flex justify-end gap-2 mb-2"><button type="button" onClick={() => exportCustomerStatement('excel')} className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold"><FileSpreadsheet size={12} /></button><button type="button" onClick={() => exportCustomerStatement('html')} className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold"><FileCode2 size={12} /></button></div>
                 <div className="text-xs text-slate-500">Toplam Bakiye</div>
                 <div className="text-xl font-black font-mono text-emerald-950">
                   {(selectedCustomerForEkstre.balance || 0).toLocaleString('tr-TR')} ₺

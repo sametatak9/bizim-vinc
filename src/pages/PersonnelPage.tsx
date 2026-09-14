@@ -28,6 +28,7 @@ import {
   X,
   Download,
 } from 'lucide-react';
+import { downloadExcelReport, downloadHtmlReport } from '../lib/reporting';
 
 export const PersonnelPage: React.FC = () => {
   const {
@@ -141,6 +142,24 @@ export const PersonnelPage: React.FC = () => {
     ...payrollItems.filter((item) => (item.personId || item.personnelId) === selectedCardPerson.id).map((item) => ({ date: item.month || '', type: 'Bordro', text: `₺${item.netSalary.toLocaleString('tr-TR')}`, detail: 'Aylık hakediş' })),
   ].sort((a, b) => b.date.localeCompare(a.date)) : [];
 
+  const cardFinance = selectedCardPerson ? {
+    approvedAdvance: advances.filter((a) => a.personId === selectedCardPerson.id && a.status === 'approved').reduce((sum, a) => sum + a.amount, 0),
+    pendingAdvance: advances.filter((a) => a.personId === selectedCardPerson.id && a.status === 'pending').reduce((sum, a) => sum + a.amount, 0),
+    approvedOvertime: overtimes.filter((o) => o.personId === selectedCardPerson.id && o.status === 'approved').reduce((sum, o) => sum + o.totalHours, 0),
+    pendingOvertime: overtimes.filter((o) => o.personId === selectedCardPerson.id && o.status === 'pending').reduce((sum, o) => sum + o.totalHours, 0),
+    approvedApprovals: approvals.filter((a) => a.personId === selectedCardPerson.id && a.status === 'approved').length,
+    rejectedApprovals: approvals.filter((a) => a.personId === selectedCardPerson.id && a.status === 'rejected').length,
+  } : null;
+
+  const exportCard = (format: 'excel' | 'html') => {
+    if (!selectedCardPerson) return;
+    const rows = cardHistory.map((entry) => ({ tarih: entry.date, hareket: entry.type, detay: entry.text, aciklama: entry.detail }));
+    const columns = [{ key: 'tarih', label: 'Tarih' }, { key: 'hareket', label: 'Hareket' }, { key: 'detay', label: 'Detay' }, { key: 'aciklama', label: 'Açıklama' }];
+    const title = `${selectedCardPerson.fullName} Personel Kart Arşivi`;
+    if (format === 'excel') downloadExcelReport(`personel-kart-${selectedCardPerson.employeeNo}`, title, columns, rows);
+    else downloadHtmlReport(`personel-kart-${selectedCardPerson.employeeNo}`, title, columns, rows);
+  };
+
   const printPersonnelCard = () => window.print();
   const exportPersonnelExcel = () => {
     const rows = filtered.map((p) => [p.employeeNo, p.fullName, p.title, p.phone, p.status, p.salary ?? 0, p.startDate || '', p.endDate || '']);
@@ -217,7 +236,7 @@ export const PersonnelPage: React.FC = () => {
             }`}
           >
             <Calendar size={14} />
-            <span>Günlük Yoklama & Mesai</span>
+            <span>Yoklama & Mesai</span>
           </button>
 
           <button
@@ -463,7 +482,7 @@ export const PersonnelPage: React.FC = () => {
               <h2 className="text-base font-bold text-slate-900">Personel Kartı — Kronolojik Arşiv</h2>
               <p className="text-xs text-slate-500 mt-1">İzin, yoklama, mesai, avans, onay, makbuz ve bordro hareketleri.</p>
             </div>
-            <button onClick={printPersonnelCard} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold print:hidden"><Printer size={14} /> PDF / HTML yazdır</button>
+            <div className="flex flex-wrap gap-2 print:hidden"><button onClick={() => exportCard('excel')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold"><FileSpreadsheet size={14} /> Excel</button><button onClick={() => exportCard('html')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"><FileText size={14} /> HTML</button><button onClick={printPersonnelCard} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-950 text-white text-xs font-bold"><Printer size={14} /> Yazdır / PDF</button></div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <select value={cardPersonId || selectedCardPerson?.id || ''} onChange={(e) => setCardPersonId(e.target.value)} className="flex-1 px-3 py-2 border border-emerald-200 rounded-xl text-sm">
@@ -471,7 +490,7 @@ export const PersonnelPage: React.FC = () => {
             </select>
             <div className="flex items-center gap-2 text-xs text-slate-500"><span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">Aktif: {personnel.filter((p) => p.status === 'aktif').length}</span><span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600">Pasif: {personnel.filter((p) => p.status === 'pasif').length}</span></div>
           </div>
-          {selectedCardPerson && <div className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4"><div className="font-bold text-emerald-950">{selectedCardPerson.fullName}</div><div className="text-xs text-slate-600 mt-1">{selectedCardPerson.title} · {selectedCardPerson.employeeNo} · Maaş: ₺{(selectedCardPerson.salary || 0).toLocaleString('tr-TR')}</div></div>}
+          {selectedCardPerson && cardFinance && <><div className="rounded-2xl bg-gradient-to-r from-emerald-950 to-emerald-700 text-white p-4"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><div className="font-black text-lg">{selectedCardPerson.fullName}</div><div className="text-xs text-emerald-100">{selectedCardPerson.title} · {selectedCardPerson.employeeNo} · Temel maaş: ₺{(selectedCardPerson.salary || 0).toLocaleString('tr-TR')}</div></div><span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold">{selectedCardPerson.status === 'aktif' ? 'Aktif' : 'Pasif'}</span></div></div><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"><div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><span className="text-[10px] text-slate-500">Onaylı avans</span><b className="block mt-1 text-sm text-emerald-900">₺{cardFinance.approvedAdvance.toLocaleString('tr-TR')}</b></div><div className="rounded-xl bg-amber-50 border border-amber-100 p-3"><span className="text-[10px] text-slate-500">Bekleyen avans</span><b className="block mt-1 text-sm text-amber-800">₺{cardFinance.pendingAdvance.toLocaleString('tr-TR')}</b></div><div className="rounded-xl bg-lime-50 border border-lime-100 p-3"><span className="text-[10px] text-slate-500">Onaylı mesai</span><b className="block mt-1 text-sm text-lime-800">{cardFinance.approvedOvertime} sa</b></div><div className="rounded-xl bg-amber-50 border border-amber-100 p-3"><span className="text-[10px] text-slate-500">Bekleyen mesai</span><b className="block mt-1 text-sm text-amber-800">{cardFinance.pendingOvertime} sa</b></div><div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><span className="text-[10px] text-slate-500">Onaylanan</span><b className="block mt-1 text-sm text-emerald-900">{cardFinance.approvedApprovals}</b></div><div className="rounded-xl bg-rose-50 border border-rose-100 p-3"><span className="text-[10px] text-slate-500">Reddedilen</span><b className="block mt-1 text-sm text-rose-800">{cardFinance.rejectedApprovals}</b></div></div></>}
           <div className="space-y-2">
             {cardHistory.length === 0 ? <div className="p-8 text-center text-xs text-slate-500">Bu personel için henüz kayıtlı geçmiş yok.</div> : cardHistory.map((entry, index) => <div key={`${entry.type}-${entry.date}-${index}`} className="flex gap-3 border-l-2 border-emerald-200 pl-4 py-2"><div className="w-20 shrink-0 text-[11px] font-mono text-slate-500">{entry.date}</div><div><div className="text-xs font-bold text-emerald-800">{entry.type}</div><div className="text-sm text-slate-800">{entry.text}</div>{entry.detail && <div className="text-xs text-slate-500">{entry.detail}</div>}</div></div>)}
           </div>
@@ -483,7 +502,7 @@ export const PersonnelPage: React.FC = () => {
         <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-emerald-100">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Günlük Saha Yoklaması ve Fazla Mesai</h2>
+              <h2 className="text-base font-bold text-slate-900">Yoklama ve Mesai Yönetimi</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Operatör ve yardımcıların günlük devam durumunu ve mesai saatlerini girin.
               </p>
