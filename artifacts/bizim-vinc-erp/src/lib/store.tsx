@@ -47,7 +47,7 @@ import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 import { hashTcIdentity } from './tcHash';
 
 const GUEST_PROFILE: UserProfile = {
-  id: 'guest', email: '', fullName: 'Giriş gerekli', role: 'personel', status: 'pasif', createdAt: new Date(0).toISOString(),
+  id: 'guest', email: 'kurucu@bizimvinc.com', fullName: 'Kurucu (Yönetici)', role: 'founder', status: 'aktif', createdAt: new Date(0).toISOString(),
 };
 
 const EMPTY_PERSON: Person = {
