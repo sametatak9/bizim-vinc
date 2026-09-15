@@ -167,6 +167,15 @@ export const PuantajPage: React.FC = () => {
             >
               <FileSpreadsheet className="w-4 h-4" />
             </button>
+
+            <a
+              href="/admin"
+              onClick={() => sessionStorage.setItem('bv_admin_initial_tab', 'attendance')}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 transition flex items-center gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Bekleyen onaylar → Yönetim'de gör</span>
+            </a>
           </div>
         </div>
 
