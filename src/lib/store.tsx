@@ -42,6 +42,9 @@ import {
   PersonnelDocument,
   PersonnelDocumentType,
   PersonnelType,
+  PersonnelLedgerEntry,
+  PersonnelLedgerEntryType,
+  PaymentList,
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 import { hashTcIdentity } from './tcHash';
@@ -86,6 +89,15 @@ interface ERPContextType {
   uploadPersonnelDocument: (personnelId: string, type: PersonnelDocumentType, file: File, isSensitive?: boolean) => Promise<void>;
   personnelTypes: PersonnelType[];
   addPersonnelType: (name: string) => Promise<void>;
+  paymentLists: PaymentList[];
+  personnelLedgerEntries: PersonnelLedgerEntry[];
+  addLedgerEntry: (entry: {
+    personnelId: string;
+    entryType: PersonnelLedgerEntryType;
+    entryDate: string;
+    amount: number;
+    description?: string;
+  }) => Promise<void>;
 
   // Üyelik & Eşleştirme
   memberships: Membership[];
@@ -360,6 +372,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadStored('bv_personnel_documents', [])
   );
   const [personnelTypes, setPersonnelTypes] = useState<PersonnelType[]>(() => loadStored('bv_personnel_types', []));
+  const [personnelLedgerEntries, setPersonnelLedgerEntries] = useState<PersonnelLedgerEntry[]>(() => loadStored('bv_personnel_ledger_entries', []));
+  const [paymentLists, setPaymentLists] = useState<PaymentList[]>(() => loadStored('bv_payment_lists', []));
   const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>(() => loadStored('bv_payroll_payments', []));
   const [cranes, setCranes] = useState<Crane[]>(() =>
     loadStored('bv_cranes', [])
@@ -601,6 +615,26 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPersonnelTypes(mappedTypes);
       saveStored('bv_personnel_types', mappedTypes);
 
+      const { data: ledgerData, error: ledgerError } = await sb
+        .from('personnel_ledger_entries')
+        .select('id, personnel_id, entry_type, entry_date, amount, description, reference_table, reference_id, created_by, created_at')
+        .order('entry_date', { ascending: false });
+      if (ledgerError) throw ledgerError;
+      const mappedLedger: PersonnelLedgerEntry[] = (ledgerData || []).map((d: any) => ({
+        id: d.id,
+        personnelId: d.personnel_id,
+        entryType: d.entry_type,
+        entryDate: d.entry_date,
+        amount: Number(d.amount) || 0,
+        description: d.description,
+        referenceTable: d.reference_table,
+        referenceId: d.reference_id,
+        createdBy: d.created_by,
+        createdAt: d.created_at,
+      }));
+      setPersonnelLedgerEntries(mappedLedger);
+      saveStored('bv_personnel_ledger_entries', mappedLedger);
+
       const { data: payrollPaymentData, error: payrollPaymentError } = await sb.from('payroll_payments').select('id, payroll_item_id, payroll_run_id, personnel_id, amount, payment_method, payment_date, note, paid_by, created_at').order('created_at', { ascending: false });
       if (payrollPaymentError) throw payrollPaymentError;
       const mappedPayrollPayments: PayrollPayment[] = (payrollPaymentData || []).map((d: any) => ({ id: d.id, payrollItemId: d.payroll_item_id, payrollRunId: d.payroll_run_id, personnelId: d.personnel_id, amount: Number(d.amount), paymentMethod: d.payment_method, paymentDate: d.payment_date, note: d.note, paidBy: d.paid_by, createdAt: d.created_at }));
@@ -777,8 +811,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         referenceNo: d.reference_no || undefined, institutionName: d.institution_name || undefined,
         invoiceNo: d.invoice_no || undefined, documentPath: d.document_path || undefined,
         currency: d.currency || 'TRY',
+        title: d.title || undefined, kind: d.kind || undefined, sourceListId: d.source_list_id || undefined,
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
+
+      const { data: paymentListData, error: paymentListsError } = await sb
+        .from('payment_lists')
+        .select('id, name, kind, year, source, notes, created_at')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (paymentListsError) throw paymentListsError;
+      const mappedPaymentLists: PaymentList[] = (paymentListData || []).map((d: any) => ({
+        id: d.id, name: d.name, kind: d.kind, year: d.year || undefined, source: d.source || undefined,
+        notes: d.notes || undefined, createdAt: d.created_at,
+      }));
+      setPaymentLists(mappedPaymentLists); saveStored('bv_payment_lists', mappedPaymentLists);
 
       // Ödeme yükümlülükleri (leasing / kredi / abonelik sözleşmeleri)
       const { data: obligationData } = await sb.from('payment_obligations').select('*').order('created_at', { ascending: false });
@@ -1155,6 +1202,49 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const type: PersonnelType = { id: data.id, name: data.name, isActive: Boolean(data.is_active) };
     setPersonnelTypes((prev) => { const next = [...prev, type].sort((a, b) => a.name.localeCompare(b.name, 'tr')); saveStored('bv_personnel_types', next); return next; });
     showToast(`✓ ${normalized} personel türü eklendi.`);
+  };
+
+  const addLedgerEntry = async (entry: {
+    personnelId: string;
+    entryType: PersonnelLedgerEntryType;
+    entryDate: string;
+    amount: number;
+    description?: string;
+  }) => {
+    if (!entry.amount) throw new Error('Tutar sıfır olamaz.');
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok. Defter kaydı remote yazılamadı.');
+    const { data, error } = await sb
+      .from('personnel_ledger_entries')
+      .insert({
+        personnel_id: entry.personnelId,
+        entry_type: entry.entryType,
+        entry_date: entry.entryDate,
+        amount: entry.amount,
+        description: entry.description,
+        created_by: currentUser.id,
+      })
+      .select('id, personnel_id, entry_type, entry_date, amount, description, reference_table, reference_id, created_by, created_at')
+      .single();
+    if (error) throw error;
+    const mapped: PersonnelLedgerEntry = {
+      id: data.id,
+      personnelId: data.personnel_id,
+      entryType: data.entry_type,
+      entryDate: data.entry_date,
+      amount: Number(data.amount) || 0,
+      description: data.description,
+      referenceTable: data.reference_table,
+      referenceId: data.reference_id,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+    };
+    setPersonnelLedgerEntries((prev) => {
+      const next = [mapped, ...prev];
+      saveStored('bv_personnel_ledger_entries', next);
+      return next;
+    });
+    showToast('✓ Defter kaydı eklendi.');
   };
 
   const deletePerson = async (id: string, soft = true) => {
@@ -3131,6 +3221,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         uploadPersonnelDocument,
         personnelTypes,
         addPersonnelType,
+        personnelLedgerEntries,
+        addLedgerEntry,
+        paymentLists,
         memberships,
         requestMembership,
         approveMembership,

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useERP } from '../lib/store';
 import { CraneModal } from '../components/CraneModal';
-import { Crane, PAYMENT_CATEGORY_LABELS, PaymentCategory } from '../types';
+import { PaymentCommandCenter } from '../components/dashboard/PaymentCommandCenter';
+import { Crane } from '../types';
 import {
   Plus,
   ArrowUpRight,
@@ -27,7 +28,7 @@ interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
-  const { stats, receipts, expenses, cranes, jobReceipts, approvals, customers, invoices, payments, obligations, currentUser } = useERP();
+  const { stats, receipts, expenses, cranes, jobReceipts, approvals, customers, invoices, currentUser } = useERP();
   const [selectedCrane, setSelectedCrane] = useState<Crane | null>(null);
   const [isCraneModalOpen, setIsCraneModalOpen] = useState(false);
 
@@ -44,28 +45,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
   const debtReminders = customers.filter((customer) => customer.balance > 0 || invoices.some((invoice) => invoice.customerId === customer.id && !['paid', 'odendi', 'cancelled'].includes(invoice.status))).slice(0, 5);
-  const activePaymentPlans = payments.filter((payment) => payment.status === 'bekliyor');
-  const paymentReminderDate = new Date(); paymentReminderDate.setDate(paymentReminderDate.getDate() + 3);
-  const paymentReminders = activePaymentPlans
-    .filter((payment) => new Date(`${payment.dueDate}T12:00:00`) <= paymentReminderDate)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    .slice(0, 6);
 
-  // Ana sayfa ödeme planı widget'ı (yalnızca finans rolleri)
+  // Yönetici Komuta Merkezi (aylık/yıllık ödeme-tahsilat-çek-senet) yalnızca finans rolleri için.
   const financeVisible = ['founder', 'admin', 'yonetici', 'muhasebe'].includes(currentUser?.role || '');
-  const currentMonthLabel = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-  const monthPayments = payments.filter(
-    (payment) => ((payment.periodMonth ? payment.periodMonth.slice(0, 7) : payment.dueDate.slice(0, 7)) === monthKey) && payment.status !== 'iptal'
-  );
-  const monthPlanned = monthPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const monthPaid = monthPayments.filter((payment) => payment.status === 'odendi').reduce((sum, payment) => sum + (payment.paidAmount ?? payment.amount), 0);
-  const monthPending = monthPayments.filter((payment) => payment.status === 'bekliyor').reduce((sum, payment) => sum + payment.amount, 0);
-  const overduePayments = activePaymentPlans.filter((payment) => payment.dueDate < todayKey);
-  const monthProgress = monthPlanned > 0 ? Math.min(100, Math.round((monthPaid / monthPlanned) * 100)) : 0;
-  const topCategories = [...monthPayments.reduce((map, payment) => {
-    map.set(payment.category, (map.get(payment.category) || 0) + payment.amount);
-    return map;
-  }, new Map<PaymentCategory, number>()).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   const handleOpenCrane = (c: Crane) => {
     setSelectedCrane(c);
@@ -145,70 +127,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       </section>
 
       <section className="grid lg:grid-cols-2 gap-4"><div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4"><div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-black text-rose-950">Tahsilat hatırlatmaları</h2><p className="text-xs text-rose-800 mt-1">Borçlu cariler ve iletişim bilgileri</p></div><button onClick={() => onNavigate?.('/finans-planlama')} className="rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white">Planlamaya git</button></div><div className="space-y-2">{debtReminders.length ? debtReminders.map((customer) => <div key={customer.id} className="rounded-xl bg-white border border-rose-100 px-3 py-2 flex items-center justify-between gap-2"><div><b className="text-xs text-emerald-950">{customer.title}</b><div className="text-[10px] text-slate-500">{customer.authorizedPerson || 'Yetkili yok'} · {customer.phone || 'Telefon yok'}</div></div><strong className="text-xs text-rose-700">{customer.balance.toLocaleString('tr-TR')} ₺</strong></div>) : <div className="text-xs text-rose-800 text-center py-3">Borçlu cari bulunmuyor.</div>}</div></div><div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-black text-amber-950">Fatura unutma uyarısı</h2><p className="text-xs text-amber-800 mt-1">Onaylanmış, fatura edilmemiş işler</p></div><button onClick={() => onNavigate?.('/finans-planlama')} className="rounded-xl bg-amber-500 px-3 py-2 text-[11px] font-bold text-white">İşlemleri gör</button></div><div className="space-y-2">{unInvoicedReceipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-white border border-amber-100 px-3 py-2 flex items-center justify-between"><div><b className="text-xs text-emerald-950">{receipt.customerName}</b><div className="text-[10px] text-slate-500">{receipt.receiptNo} · {receipt.date} · {receipt.craneCode}</div></div><strong className="text-xs text-amber-700">Fatura bekliyor</strong></div>)}</div></div></section>
-      {financeVisible && (
-        <section className="rounded-2xl border-2 border-emerald-200 bg-white p-4 shadow-sm" id="dashboard-payment-plan">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">{currentMonthLabel} ödeme planı</div>
-              <h2 className="text-lg font-black text-emerald-950">Kredi, leasing, DBS, abonelik ve fatura ödemeleri</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                {obligations.length} aktif yükümlülük · bu ay {monthPayments.length} taksit planlandı · ödemeler dekont yüklenmeden kapatılamaz.
-              </p>
-            </div>
-            <button onClick={() => onNavigate?.('/finans-planlama')} className="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white">Ödeme planını aç</button>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
-              <span className="text-[10px] font-black uppercase text-slate-500">Ayın planı</span>
-              <b className="mt-1 block text-lg text-emerald-900">{monthPlanned.toLocaleString('tr-TR')} ₺</b>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-white p-3">
-              <span className="text-[10px] font-black uppercase text-slate-500">Ödenen</span>
-              <b className="mt-1 block text-lg text-emerald-700">{monthPaid.toLocaleString('tr-TR')} ₺</b>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-white p-3">
-              <span className="text-[10px] font-black uppercase text-slate-500">Bekleyen</span>
-              <b className="mt-1 block text-lg text-amber-700">{monthPending.toLocaleString('tr-TR')} ₺</b>
-            </div>
-            <div className={`rounded-xl border p-3 ${overduePayments.length ? 'border-rose-200 bg-rose-50' : 'border-emerald-100 bg-white'}`}>
-              <span className="text-[10px] font-black uppercase text-slate-500">Vadesi geçen</span>
-              <b className={`mt-1 block text-lg ${overduePayments.length ? 'text-rose-700' : 'text-emerald-700'}`}>{overduePayments.length}</b>
-            </div>
-          </div>
-
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-emerald-50">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${monthProgress}%` }} />
-          </div>
-          <span className="mt-1 block text-[10px] font-bold text-slate-500">Bu ayın ödeme planı %{monthProgress} tamamlandı</span>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {paymentReminders.length ? paymentReminders.map((payment) => (
-              <div key={payment.id} className={`rounded-xl border p-3 ${payment.dueDate < todayKey ? 'border-rose-200 bg-rose-50/60' : 'border-amber-200 bg-amber-50/50'}`}>
-                <div className="flex justify-between gap-2">
-                  <b className="text-xs text-emerald-950 break-words">{payment.recipientName}</b>
-                  <span className="shrink-0 text-[10px] font-black text-rose-700">{PAYMENT_CATEGORY_LABELS[payment.category]}</span>
-                </div>
-                <div className="mt-1 text-[10px] text-slate-600">
-                  Vade {payment.dueDate} · {payment.recurring ? 'Aylık tekrar' : `Taksit ${payment.installmentNo || 1}/${payment.installmentCount || 1}`}
-                  {payment.institutionName ? ` · ${payment.institutionName}` : ''}
-                </div>
-                <strong className="mt-1 block text-sm text-rose-700">{payment.amount.toLocaleString('tr-TR')} ₺</strong>
-              </div>
-            )) : <div className="text-xs text-slate-500 sm:col-span-2 lg:col-span-3 py-3">Önümüzdeki üç gün için ödeme hatırlatması yok.</div>}
-          </div>
-
-          {topCategories.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {topCategories.map(([category, total]) => (
-                <span key={category} className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-1.5 text-[10px] font-black text-emerald-800">
-                  {PAYMENT_CATEGORY_LABELS[category]}: {total.toLocaleString('tr-TR')} ₺
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      {financeVisible && <PaymentCommandCenter onNavigate={onNavigate} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 flex flex-col">

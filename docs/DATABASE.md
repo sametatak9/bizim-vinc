@@ -34,6 +34,10 @@ Use **`/migrations`** only. Filenames are globally unique and must remain strict
 | `0025_maintenance_expenses.sql` | Uygulandı (`expenses` genişletildi) | Servis, muayene, yağ bakımı, sayaç ve sonraki takip tarihi |
 | `0026_delivery_notes.sql` | Uygulandı (`delivery_notes`) | Makbuzdan bağımsız irsaliye arşivi |
 | `0027_recurring_payment_reminders.sql` | Uygulandı | Aylık tekrar, taksit ve vadesinden önce hatırlatma alanları |
+| `0035_payment_lists_and_import_keys.sql` | Uygulandı (2026-09-15) | Liste fabrikası (`payment_lists`/`payment_list_items`), import key/dedupe kolonları, `wipe_payment_plan_data()` RPC |
+| `0036_personnel_ledger.sql` | Uygulandı (2026-09-15) | FAZ1: `personnel_ledger_entries` (yevmiye/mesai/odeme/avans/izin cari defteri) |
+| `0037_faz4_monthly_payment_lists_data.sql` | Uygulandı, no-op (2026-09-15) | Denendi ama veri ayni gun daha erken zaten yuklenmisti; bkz. dosya ici not |
+| `0038_faz4_payment_lists_dedupe_cleanup.sql` | Uygulandı (2026-09-15) | 0037'nin yarattigi 5 yinelenen `payment_lists` satirini temizler |
 
 ### Why the filenames changed
 
@@ -53,7 +57,7 @@ The full tool output is retained in the session artifact store; this document re
 
 ## Future naming rule
 
-The next new canonical migration must use **`0028_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
+The next new canonical migration must use **`0039_<purpose>.sql`**. Never reuse a numeric prefix, create letter suffixes, or rename an already applied migration without recording the production version mapping here.
 
 ## Deprecated
 
@@ -89,3 +93,7 @@ Yeni roller ve yardımcılar: `profiles.role` içine `isyeri_hekimi` eklendi; `p
 `customers` ve `personnel` tablolarına migrasyon alanları eklendi (`is_migrated`, `import_batch_id`, kaynak sistem alanları). `customers.phone` NOT NULL kısıtı kaldırıldı; `customers.vkn_tckn` ve `personnel.tc_hash` / `lower(personnel.email)` üzerinde kısmi unique index'ler upsert için kullanılır.
 
 Migrasyon her zaman `import_batch_id` bazında geri alınabilir; ayrıntılar ve 14.09.2026 yüklemesinin sonuçları için `docs/migrations/2026-09-14-toplu-veri-migrasyonu.md`.
+
+## FAZ4 — Ödeme/Çek/Senet ve Yönetici Ana Sayfa (0035–0038)
+
+`payment_lists`/`payment_list_items` (liste fabrikası), import key/dedupe kolonları ve `wipe_payment_plan_data()` RPC'si `0035` ile eklendi. Excel paketinin (`BIZIM_VINC_ODEME_PAKET_2026/`) 357 satırlık ana havuzu ve 5 adlı aylık liste 15.09.2026'da (bu oturumdan önce) zaten yüklenmişti; `0037`/`0038` bunu doğrulayan ve yanlışlıkla oluşan 5 yinelenen liste satırını temizleyen düzeltme migration'ları. Ayrıntılar, veri kalitesi uyarıları (bir tarih hatası, ana havuz/liste örtüşme riski, yüklenmemiş `leasing_48ay` paketi) için `docs/migrations/2026-09-15-faz4-odeme-import-bulgulari.md`.
