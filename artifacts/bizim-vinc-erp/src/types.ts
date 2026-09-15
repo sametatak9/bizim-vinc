@@ -158,7 +158,18 @@ export interface CraneDocument {
   createdAt: string;
 }
 
-export type CompanyDocumentCategory = 'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit';
+export type CompanyDocumentCategory =
+  | 'sirket_kimlik'
+  | 'kiralama'
+  | 'satin_alma'
+  | 'yakit'
+  | 'muhasebe'
+  | 'ihale'
+  | 'ortaklik'
+  | 'tedarikci'
+  | 'ceza'
+  | 'sgk_vergi'
+  | 'musteri';
 
 export interface CompanyDocument {
   id: string;
