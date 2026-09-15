@@ -44,5 +44,10 @@
       "msw",
       "unrs-resolver"
     ]
+  },
+  "allowScripts": {
+    "protobufjs@7.6.6": true,
+    "@google/genai@2.22.0": true,
+    "esbuild@0.25.12": true
   }
 }

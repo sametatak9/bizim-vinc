@@ -20,7 +20,7 @@ export const roleLabel = (role?: string) => (role ? ROLE_LABELS[role] || role : 
 export const ROLE_ROUTES: Record<string, string[]> = {
   founder: ['*'],
   admin: ['*'],
-  yonetici: ['/', '/faturalar', '/cariler', '/personel', '/puantaj', '/onay', '/filo', '/operator', '/finans', '/finans-planlama', '/teklifler', '/tv'],
+  yonetici: ['/', '/faturalar', '/cariler', '/personel', '/puantaj', '/onay', '/filo', '/operator', '/finans', '/finans-planlama', '/teklifler', '/tv', '/admin'],
   muhasebe: ['/', '/faturalar', '/cariler', '/finans', '/finans-planlama', '/teklifler', '/personel'],
   puantor: ['/', '/puantaj', '/personel', '/operator', '/onay'],
   operasyon: ['/', '/filo', '/faturalar', '/puantaj', '/operator', '/tv'],
@@ -35,7 +35,7 @@ export const FINANCE_ROLES: AppRole[] = ['founder', 'admin', 'yonetici', 'muhase
 /** Personel kayıtlarını yönetebilen ofis rolleri. */
 export const OFFICE_ROLES: AppRole[] = ['founder', 'admin', 'yonetici', 'muhasebe', 'puantor', 'operasyon'];
 /** Üyelik başvurusu onaylayabilen roller. */
-export const MEMBERSHIP_APPROVER_ROLES: AppRole[] = ['founder', 'admin'];
+export const MEMBERSHIP_APPROVER_ROLES: AppRole[] = ['founder', 'admin', 'yonetici'];
 /** Onay taleplerine karar verebilen roller. */
 export const APPROVER_ROLES: AppRole[] = ['founder', 'admin', 'yonetici'];
 

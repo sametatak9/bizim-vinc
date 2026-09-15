@@ -1473,8 +1473,31 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const person = personnel.find((p) => p.id === personId);
     const personName = person ? person.fullName : 'Bilinmeyen';
     const date = new Date().toISOString().split('T')[0];
-
     const checkInTime = checkIn || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+    // Aynı gün için mükerrer yoklama kaydını önle — varsa güncelle, yoksa yeni oluştur
+    const existing = approvals.find(
+      (a) => a.kind === 'yoklama' && a.personId === personId && a.requestedDate === date
+    );
+    if (existing) {
+      const now = new Date().toISOString();
+      const updatedTitle = `Günlük Yoklama: ${status.toUpperCase()}`;
+      const updatedLabel = JSON.stringify({ checkInTime, checkOut, note });
+      setApprovals((prev) =>
+        prev.map((a) =>
+          a.id === existing.id
+            ? { ...a, title: updatedTitle, relatedLabel: updatedLabel, note: note || `Giriş: ${checkInTime}`, updatedAt: now }
+            : a
+        )
+      );
+      const sb = getSupabase();
+      if (sb) {
+        await sb.from('approvals').update({ title: updatedTitle, note: note || `Giriş: ${checkInTime}`, related_label: updatedLabel, updated_at: now }).eq('id', existing.id);
+      }
+      showToast(`✓ ${personName} yoklaması güncellendi (${status}).`);
+      return;
+    }
+
     await addApproval({
       kind: 'yoklama',
       status: 'pending',
