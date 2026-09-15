@@ -81,6 +81,17 @@ export interface PersonnelType {
   isActive: boolean;
 }
 
+/** 0035: Excel'deki adli odeme plani sayfalarinin (ör. "NİSAN 2026 ÖDEME PLANI") birebir karsiligi. */
+export interface PaymentList {
+  id: string;
+  name: string;
+  kind: 'odeme' | 'tahsilat' | 'cek_senet' | 'mixed';
+  year?: number;
+  source?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export type PersonnelLedgerEntryType = 'yevmiye' | 'mesai' | 'odeme' | 'avans' | 'izin' | 'diger';
 
 /** Personel cari hesabı: pozitif tutar hak ediş (yevmiye/mesai), negatif tutar ödeme/avans düşümüdür. */
@@ -575,6 +586,12 @@ export interface Payment {
   documentPath?: string;
   currency?: string;
   receiptCount?: number;
+  /** 0035: liste fabrikası / import izleme. sourceListId doluysa bu kalem bir
+   * payment_lists kaydına (ör. "NİSAN 2026 ÖDEME PLANI") bağlıdır ve yıllık
+   * ana havuz KPI toplamına dahil edilmez (çift sayım riski). */
+  title?: string;
+  kind?: string;
+  sourceListId?: string;
 }
 
 /** Ödeme yükümlülüğü: leasing sözleşmesi, kredi, abonelik, kira vb. */

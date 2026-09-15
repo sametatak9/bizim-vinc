@@ -44,6 +44,7 @@ import {
   PersonnelType,
   PersonnelLedgerEntry,
   PersonnelLedgerEntryType,
+  PaymentList,
 } from '../types';
 import { getSupabase, isSupabaseConfigured, generateUuid } from './supabase';
 import { hashTcIdentity } from './tcHash';
@@ -88,6 +89,7 @@ interface ERPContextType {
   uploadPersonnelDocument: (personnelId: string, type: PersonnelDocumentType, file: File, isSensitive?: boolean) => Promise<void>;
   personnelTypes: PersonnelType[];
   addPersonnelType: (name: string) => Promise<void>;
+  paymentLists: PaymentList[];
   personnelLedgerEntries: PersonnelLedgerEntry[];
   addLedgerEntry: (entry: {
     personnelId: string;
@@ -371,6 +373,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [personnelTypes, setPersonnelTypes] = useState<PersonnelType[]>(() => loadStored('bv_personnel_types', []));
   const [personnelLedgerEntries, setPersonnelLedgerEntries] = useState<PersonnelLedgerEntry[]>(() => loadStored('bv_personnel_ledger_entries', []));
+  const [paymentLists, setPaymentLists] = useState<PaymentList[]>(() => loadStored('bv_payment_lists', []));
   const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>(() => loadStored('bv_payroll_payments', []));
   const [cranes, setCranes] = useState<Crane[]>(() =>
     loadStored('bv_cranes', [])
@@ -808,8 +811,21 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         referenceNo: d.reference_no || undefined, institutionName: d.institution_name || undefined,
         invoiceNo: d.invoice_no || undefined, documentPath: d.document_path || undefined,
         currency: d.currency || 'TRY',
+        title: d.title || undefined, kind: d.kind || undefined, sourceListId: d.source_list_id || undefined,
       }));
       setPayments(mappedPayments); saveStored('bv_payments', mappedPayments);
+
+      const { data: paymentListData, error: paymentListsError } = await sb
+        .from('payment_lists')
+        .select('id, name, kind, year, source, notes, created_at')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (paymentListsError) throw paymentListsError;
+      const mappedPaymentLists: PaymentList[] = (paymentListData || []).map((d: any) => ({
+        id: d.id, name: d.name, kind: d.kind, year: d.year || undefined, source: d.source || undefined,
+        notes: d.notes || undefined, createdAt: d.created_at,
+      }));
+      setPaymentLists(mappedPaymentLists); saveStored('bv_payment_lists', mappedPaymentLists);
 
       // Ödeme yükümlülükleri (leasing / kredi / abonelik sözleşmeleri)
       const { data: obligationData } = await sb.from('payment_obligations').select('*').order('created_at', { ascending: false });
@@ -3207,6 +3223,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addPersonnelType,
         personnelLedgerEntries,
         addLedgerEntry,
+        paymentLists,
         memberships,
         requestMembership,
         approveMembership,
