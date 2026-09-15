@@ -33,11 +33,24 @@ import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/rep
 
 type AdminTab = 'approvals' | 'attendance' | 'receipts' | 'fleet' | 'memberships' | 'company_docs' | 'system';
 
+const COMPANY_DOC_CATEGORIES = [
+  'sirket_kimlik', 'kiralama', 'satin_alma', 'yakit', 'muhasebe',
+  'ihale', 'ortaklik', 'tedarikci', 'ceza', 'sgk_vergi', 'musteri',
+] as const;
+type CompanyDocCategory = (typeof COMPANY_DOC_CATEGORIES)[number];
+
 const companyDocCategoryLabel: Record<string, string> = {
   sirket_kimlik: 'Şirket Kimliği',
   kiralama: 'Kiralama Sözleşmeleri',
   satin_alma: 'Satın Alma',
   yakit: 'Yakıt Tedariki',
+  muhasebe: 'Muhasebe Ekleri',
+  ihale: 'İhale & Hakediş',
+  ortaklik: 'Ortaklık Hesapları',
+  tedarikci: 'Tedarikçi Fiyat Listeleri',
+  ceza: 'Cezalar & HGS',
+  sgk_vergi: 'SGK & Vergi',
+  musteri: 'Müşteri Evrakları',
 };
 
 const kindLabel: Record<string, string> = {
@@ -113,8 +126,8 @@ export const AdminPage: React.FC = () => {
   const canManageUsers = currentUser.role === 'founder' || currentUser.role === 'admin';
 
   // ─── ŞİRKET EVRAKLARI ───────────────────────────────────────
-  const [companyDocCategoryFilter, setCompanyDocCategoryFilter] = useState<'all' | 'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit'>('all');
-  const [companyDocUploadCategory, setCompanyDocUploadCategory] = useState<'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit'>('sirket_kimlik');
+  const [companyDocCategoryFilter, setCompanyDocCategoryFilter] = useState<'all' | CompanyDocCategory>('all');
+  const [companyDocUploadCategory, setCompanyDocUploadCategory] = useState<CompanyDocCategory>('sirket_kimlik');
   const [companyDocUploading, setCompanyDocUploading] = useState(false);
   const [companyDocOpening, setCompanyDocOpening] = useState<string | null>(null);
   const filteredCompanyDocuments = useMemo(
@@ -1063,7 +1076,7 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {(['all', 'sirket_kimlik', 'kiralama', 'satin_alma', 'yakit'] as const).map((cat) => (
+              {(['all', ...COMPANY_DOC_CATEGORIES] as const).map((cat) => (
                 <button key={cat} onClick={() => setCompanyDocCategoryFilter(cat)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${companyDocCategoryFilter === cat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
                   {cat === 'all' ? 'Tümü' : companyDocCategoryLabel[cat]}
@@ -1075,7 +1088,7 @@ export const AdminPage: React.FC = () => {
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
                 <select value={companyDocUploadCategory} onChange={(e) => setCompanyDocUploadCategory(e.target.value as typeof companyDocUploadCategory)}
                   className="bg-muted border border-border rounded-xl px-3 py-2 text-xs outline-none">
-                  {(['sirket_kimlik', 'kiralama', 'satin_alma', 'yakit'] as const).map((cat) => (
+                  {COMPANY_DOC_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{companyDocCategoryLabel[cat]}</option>
                   ))}
                 </select>
