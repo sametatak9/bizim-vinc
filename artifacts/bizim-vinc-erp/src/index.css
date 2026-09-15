@@ -51,6 +51,11 @@
     --cmd-primary: #16a34a;
     --cmd-dark: #14532d;
     --cmd-card: #ffffff;
+    /* Marka yeşili — Yönetici Komuta ana sayfası ve öne çıkan CTA'lar için.
+       Site genelindeki emerald-* Tailwind paletinden kasıtlı olarak ayrı
+       tutuldu (kapsam dışı global yeniden marka değişikliği yapılmadı). */
+    --brand-green-700: #15803d;
+    --brand-green-600: #16a34a;
   }
 
   body {

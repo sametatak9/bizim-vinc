@@ -130,24 +130,30 @@ export const PaymentCommandCenter: React.FC<PaymentCommandCenterProps> = ({ onNa
   ];
 
   return (
-    <section className="rounded-2xl border-2 border-emerald-200 bg-white p-4 sm:p-5 shadow-sm" id="yonetici-komuta-merkezi">
+    <section className="relative overflow-hidden rounded-2xl border bg-white p-4 sm:p-5 shadow-sm" style={{ borderColor: 'var(--brand-green-600)' }} id="yonetici-komuta-merkezi">
+      <div className="absolute inset-x-0 top-0 h-1" style={{ background: 'linear-gradient(90deg, var(--brand-green-700), var(--brand-green-600))' }} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Yönetici Komuta Merkezi</div>
-          <h2 className="text-lg font-black text-emerald-950">Aylık / Yıllık Ödeme, Tahsilat, Çek & Senet</h2>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: 'var(--brand-green-700)' }}><Wallet size={18} /></div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--brand-green-700)' }}>Yönetici Komuta Merkezi</div>
+            <h2 className="text-lg font-black text-emerald-950">Aylık / Yıllık Ödeme, Tahsilat, Çek & Senet</h2>
+          </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 p-1">
           <button
             onClick={() => setView('monthly')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${view === 'monthly' ? 'bg-emerald-600 text-white' : 'text-emerald-800 hover:bg-emerald-100'}`}
+            className="rounded-lg px-3 py-1.5 text-xs font-bold transition"
+            style={view === 'monthly' ? { background: 'var(--brand-green-600)', color: '#fff' } : undefined}
           >
-            Aylık görünüm
+            <span className={view === 'monthly' ? '' : 'text-emerald-800 hover:opacity-80'}>Aylık görünüm</span>
           </button>
           <button
             onClick={() => setView('yearly')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${view === 'yearly' ? 'bg-emerald-600 text-white' : 'text-emerald-800 hover:bg-emerald-100'}`}
+            className="rounded-lg px-3 py-1.5 text-xs font-bold transition"
+            style={view === 'yearly' ? { background: 'var(--brand-green-600)', color: '#fff' } : undefined}
           >
-            Yıllık özet
+            <span className={view === 'yearly' ? '' : 'text-emerald-800 hover:opacity-80'}>Yıllık özet</span>
           </button>
         </div>
       </div>
@@ -166,7 +172,7 @@ export const PaymentCommandCenter: React.FC<PaymentCommandCenterProps> = ({ onNa
         </div>
         <button onClick={() => goMonth(1)} className="rounded-lg border border-emerald-100 p-1.5 text-emerald-700 hover:bg-emerald-50"><ChevronRight size={16} /></button>
         {onNavigate && (
-          <button onClick={() => onNavigate('/finans-planlama')} className="ml-auto rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-700">
+          <button onClick={() => onNavigate('/finans-planlama')} className="ml-auto rounded-xl px-3 py-2 text-[11px] font-bold text-white transition hover:opacity-90" style={{ background: 'var(--brand-green-700)' }}>
             Ödeme & Tahsilat Planlamasını Aç
           </button>
         )}
