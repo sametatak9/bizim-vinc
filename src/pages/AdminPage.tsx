@@ -194,16 +194,21 @@ export const AdminPage: React.FC = () => {
   };
 
   // ─── MAKBUZ & FATURA ─────────────────────────────────────────
-  const [receiptStatusFilter, setReceiptStatusFilter] = useState<string>('pending_approval');
+  // Bilinçli olarak dar tutuldu: detay/arama/filtre /faturalar sayfasında kalıyor,
+  // burada sadece bugünün özeti + hızlı onay/faturalama aksiyonu var (Filo Takip
+  // sekmesindeki "özet + tam ekrana link" deseniyle aynı mantık).
   const [convertingId, setConvertingId] = useState<string | null>(null);
-  const [invoiceNote, setInvoiceNote] = useState<Record<string, string>>({});
   const [receiptRejectComment, setReceiptRejectComment] = useState<Record<string, string>>({});
   const [showReceiptReject, setShowReceiptReject] = useState<Record<string, boolean>>({});
 
-  const filteredReceipts = useMemo(() => {
-    if (receiptStatusFilter === 'all') return jobReceipts;
-    return jobReceipts.filter((r) => r.status === receiptStatusFilter);
-  }, [jobReceipts, receiptStatusFilter]);
+  const pendingReceipts = useMemo(
+    () => jobReceipts.filter((r) => r.status === 'pending_approval'),
+    [jobReceipts]
+  );
+  const awaitingInvoice = useMemo(
+    () => jobReceipts.filter((r) => (r.status === 'approved' || r.status === 'onaylandi') && !r.invoiced),
+    [jobReceipts]
+  );
 
   const handleApproveReceipt = async (id: string) => {
     await approveJobReceipt(id);
@@ -223,40 +228,13 @@ export const AdminPage: React.FC = () => {
     setConvertingId(receiptId);
     try {
       const dueDate = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-      await createInvoiceFromReceipts([receiptId], dueDate, invoiceNote[receiptId]);
+      await createInvoiceFromReceipts([receiptId], dueDate);
       showToast('✓ Makbuz faturaya dönüştürüldü.');
     } catch (e) {
       showToast(`Fatura dönüştürme hatası: ${e instanceof Error ? e.message : 'bilinmeyen'}`);
     } finally {
       setConvertingId(null);
     }
-  };
-
-  const exportReceipts = (format: 'excel' | 'html' | 'print') => {
-    const columns = [
-      { key: 'tarih', label: 'Tarih' },
-      { key: 'firma', label: 'Firma' },
-      { key: 'santiye', label: 'Şantiye' },
-      { key: 'operator', label: 'Operatör' },
-      { key: 'vinc', label: 'Vinç' },
-      { key: 'saat', label: 'Saat' },
-      { key: 'tutar', label: 'Tutar (₺)' },
-      { key: 'durum', label: 'Durum' },
-    ];
-    const rows = filteredReceipts.map((r) => ({
-      tarih: r.date,
-      firma: r.customerName,
-      santiye: r.siteName,
-      operator: r.operatorName,
-      vinc: r.craneCode,
-      saat: `${r.workingHours || r.hoursWorked || 0}`,
-      tutar: `${r.amount || 0}`,
-      durum: r.status,
-    }));
-    const title = `BİZİM VİNÇ Makbuz Raporu — ${new Date().toLocaleDateString('tr-TR')}`;
-    if (format === 'excel') downloadExcelReport('makbuz-raporu', title, columns, rows);
-    else if (format === 'html') downloadHtmlReport('makbuz-raporu', title, columns, rows);
-    else printReport(title, columns, rows);
   };
 
   // ─── FİLO TAKİP ──────────────────────────────────────────────
@@ -555,6 +533,9 @@ export const AdminPage: React.FC = () => {
               </button>
               <button onClick={() => exportAttendance('excel')} className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-700">XLS</button>
               <button onClick={() => exportAttendance('print')} className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-800 text-white">PDF</button>
+              <a href="/puantaj" className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-700 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5" />Aylık Matrisi Gör
+              </a>
             </div>
           </div>
 
@@ -644,103 +625,90 @@ export const AdminPage: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { value: 'pending_approval', label: 'Onay Bekleyen' },
-                { value: 'approved', label: 'Onaylanan' },
-                { value: 'rejected', label: 'Reddedilen' },
-                { value: 'invoiced', label: 'Faturalanan' },
-                { value: 'all', label: 'Tümü' },
-              ].map(({ value, label }) => (
-                <button key={value} onClick={() => setReceiptStatusFilter(value)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${receiptStatusFilter === value ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-700'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1.5">
-              <button onClick={() => exportReceipts('excel')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white border border-emerald-200 text-emerald-700">XLS</button>
-              <button onClick={() => exportReceipts('print')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-800 text-white">PDF</button>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-bold text-emerald-950">Hızlı Aksiyon</h2>
+            <a href="/faturalar" className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" />Tüm Makbuz &amp; Faturaları Gör
+            </a>
           </div>
 
-          <div className="space-y-2">
-            {filteredReceipts.length === 0 ? (
-              <div className="bg-white border border-emerald-100 rounded-2xl p-10 text-center text-sm text-slate-400">Bu filtre için makbuz yok.</div>
-            ) : filteredReceipts.map((r) => (
-              <div key={r.id} className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-emerald-950">{r.customerName}</span>
-                      <span className="text-[10px] text-slate-400">·</span>
-                      <span className="text-xs text-slate-600">{r.siteName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        r.status === 'pending_approval' ? 'bg-amber-50 text-amber-700'
-                        : r.status === 'approved' || r.status === 'onaylandi' ? 'bg-emerald-50 text-emerald-700'
-                        : r.status === 'invoiced' ? 'bg-sky-50 text-sky-700'
-                        : 'bg-rose-50 text-rose-700'
-                      }`}>
-                        {r.status === 'pending_approval' ? 'Onay Bekliyor'
-                          : r.status === 'approved' || r.status === 'onaylandi' ? 'Onaylandı'
-                          : r.status === 'invoiced' ? 'Faturalındı'
-                          : 'Reddedildi'}
-                      </span>
+          {/* Onay bekleyen — hızlı onayla/reddet */}
+          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-slate-500 mb-3">Onay Bekleyen ({pendingReceipts.length})</h3>
+            {pendingReceipts.length === 0 ? (
+              <p className="text-xs text-slate-400">Onay bekleyen makbuz yok.</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingReceipts.slice(0, 5).map((r) => (
+                  <div key={r.id} className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-emerald-950 truncate">{r.customerName} · {r.siteName}</p>
+                        <p className="text-[11px] text-slate-500">{r.date} · {r.operatorName} · {r.craneCode}</p>
+                      </div>
+                      {canApprove && (
+                        <div className="flex gap-1.5 shrink-0">
+                          <button onClick={() => setShowReceiptReject((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
+                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-rose-200 bg-rose-50 text-rose-700 flex items-center gap-1">
+                            <X className="w-3 h-3" />Reddet
+                          </button>
+                          <button onClick={() => handleApproveReceipt(r.id)}
+                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 text-white flex items-center gap-1">
+                            <Check className="w-3 h-3" />Onayla
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {r.date} · {r.operatorName} · {r.craneCode} · {r.workingHours || r.hoursWorked || 0} saat
-                      {r.amount ? ` · ₺${r.amount.toLocaleString('tr-TR')}` : ''}
-                    </p>
-                    {r.rejectionReason && <p className="text-[11px] text-rose-600 mt-0.5">Red: {r.rejectionReason}</p>}
-                  </div>
-
-                  <div className="flex flex-col gap-2 items-end">
-                    {r.status === 'pending_approval' && canApprove && (
-                      <div className="flex gap-2">
-                        <button onClick={() => setShowReceiptReject((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
-                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 flex items-center gap-1">
-                          <X className="w-3.5 h-3.5" />Reddet
-                        </button>
-                        <button onClick={() => handleApproveReceipt(r.id)}
-                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" />Onayla
-                        </button>
-                      </div>
-                    )}
-                    {(r.status === 'approved' || r.status === 'onaylandi') && !r.invoiced && canApprove && (
-                      <div className="flex gap-2">
-                        <input
-                          value={invoiceNote[r.id] || ''}
-                          onChange={(e) => setInvoiceNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                          placeholder="Fatura notu (opsiyonel)"
-                          className="px-2.5 py-1.5 rounded-xl border border-emerald-200 text-xs outline-none w-44"
-                        />
-                        <button
-                          onClick={() => handleConvertToInvoice(r.id)}
-                          disabled={convertingId === r.id}
-                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white flex items-center gap-1 disabled:opacity-50"
-                        >
-                          <FilePlus className="w-3.5 h-3.5" />Faturala
-                        </button>
-                      </div>
-                    )}
                     {showReceiptReject[r.id] && (
-                      <div className="flex gap-2 w-full">
+                      <div className="flex gap-2 mt-2">
                         <input
                           value={receiptRejectComment[r.id] || ''}
                           onChange={(e) => setReceiptRejectComment((prev) => ({ ...prev, [r.id]: e.target.value }))}
                           placeholder="Red gerekçesi..."
-                          className="flex-1 rounded-xl border border-rose-200 px-2.5 py-1.5 text-xs outline-none"
+                          className="flex-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs outline-none"
                         />
                         <button onClick={() => handleRejectReceipt(r.id)}
-                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white">Gönder</button>
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-rose-600 text-white">Gönder</button>
                       </div>
                     )}
                   </div>
-                </div>
+                ))}
+                {pendingReceipts.length > 5 && (
+                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-emerald-700 pt-1">+{pendingReceipts.length - 5} tane daha → /faturalar</a>
+                )}
               </div>
-            ))}
+            )}
+          </div>
+
+          {/* Onaylı ama faturalanmamış — hızlı faturala */}
+          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-slate-500 mb-3">Faturalanmayı Bekleyen ({awaitingInvoice.length})</h3>
+            {awaitingInvoice.length === 0 ? (
+              <p className="text-xs text-slate-400">Faturalanmayı bekleyen onaylı makbuz yok.</p>
+            ) : (
+              <div className="space-y-2">
+                {awaitingInvoice.slice(0, 5).map((r) => (
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-100 bg-sky-50/40 p-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-emerald-950 truncate">{r.customerName} · {r.siteName}</p>
+                      <p className="text-[11px] text-slate-500">{r.date} · {r.workingHours || r.hoursWorked || 0} saat{r.amount ? ` · ₺${r.amount.toLocaleString('tr-TR')}` : ''}</p>
+                    </div>
+                    {canApprove && (
+                      <button
+                        onClick={() => handleConvertToInvoice(r.id)}
+                        disabled={convertingId === r.id}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-600 text-white flex items-center gap-1 disabled:opacity-50 shrink-0"
+                      >
+                        <FilePlus className="w-3 h-3" />Faturala
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {awaitingInvoice.length > 5 && (
+                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-sky-700 pt-1">+{awaitingInvoice.length - 5} tane daha → /faturalar</a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
