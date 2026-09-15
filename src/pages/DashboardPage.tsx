@@ -19,8 +19,6 @@ import {
   Tv,
   MonitorPlay,
   ShieldCheck,
-  XCircle,
-  UserRound,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -40,8 +38,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const monthKey = todayKey.slice(0, 7);
   const approvedToday = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 10) === todayKey);
   const approvedThisMonth = approvals.filter((a) => a.status === 'approved' && (a.approvedAt || a.createdAt).slice(0, 7) === monthKey);
-  const pendingApprovals = approvals.filter((a) => a.status === 'pending').slice(0, 6);
-  const approvalArchive = approvals.filter((a) => a.status !== 'pending').slice(0, 8);
 
   const unInvoicedReceipts = jobReceipts.filter((r) => r.status === 'approved' || (r.status as string) === 'onaylandi');
   const debtReminders = customers.filter((customer) => customer.balance > 0 || invoices.some((invoice) => invoice.customerId === customer.id && !['paid', 'odendi', 'cancelled'].includes(invoice.status))).slice(0, 5);
@@ -116,13 +112,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       </section>
 
       <section className="bg-white text-emerald-950 rounded-2xl p-5 shadow-sm border-2 border-emerald-200">
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-          <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><ShieldCheck size={23} /></div><div><div className="text-[10px] uppercase tracking-[0.25em] text-emerald-600 font-bold">Yönetici karar akışı</div><h2 className="text-xl font-black mt-1">Onay Merkezi ve Günlük Akış</h2><p className="text-xs text-slate-500 mt-1">Talepler onaylanmadan yoklama, mesai, izin, avans ve iş makbuzu kesinleşmez.</p></div></div>
-          <div className="grid grid-cols-3 gap-2 text-xs"><div className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-center"><b className="block text-lg">{stats.pendingApprovalsCount}</b>Bekleyen</div><div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-center"><b className="block text-lg">{approvedToday.length}</b>Bugün</div><div className="px-3 py-2 rounded-xl bg-lime-50 text-lime-800 text-center"><b className="block text-lg">{approvedThisMonth.length}</b>Bu ay</div></div>
-        </div>
-        <div className="mt-5 grid lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3"><div className="flex items-center justify-between mb-2"><h3 className="text-xs font-black text-amber-900">Onay bekleyen talepler</h3><span className="text-[10px] font-bold text-amber-700">Yönetici işlemi gerekli</span></div><div className="space-y-2">{pendingApprovals.length ? pendingApprovals.map((a) => <div key={a.id} className="bg-white rounded-xl border border-amber-100 p-3 text-xs"><div className="flex items-start justify-between gap-2"><b className="text-emerald-950">{a.title}</b><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">{a.kind}</span></div><div className="mt-2 flex items-center gap-1.5 text-slate-600"><UserRound size={13} className="text-emerald-600" /> Gönderen: <strong>{a.personName}</strong></div><div className="text-[10px] text-slate-400 mt-1">{new Date(a.createdAt).toLocaleString('tr-TR')}</div></div>) : <div className="text-xs text-amber-800 py-4 text-center">Bekleyen talep bulunmuyor.</div>}</div></div>
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="flex items-center justify-between mb-2"><h3 className="text-xs font-black text-emerald-900">Onay arşivi</h3><span className="text-[10px] font-bold text-emerald-700">Gönderen • Onaylayan</span></div><div className="space-y-2">{approvalArchive.length ? approvalArchive.map((a) => <div key={a.id} className="bg-white rounded-xl border border-emerald-100 p-3 text-xs"><div className="flex items-center gap-2"><span className={`w-6 h-6 rounded-full flex items-center justify-center ${a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{a.status === 'approved' ? <ShieldCheck size={13} /> : <XCircle size={13} />}</span><b className="text-emerald-950 truncate">{a.title}</b></div><div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-500"><span>Gönderen: <strong className="text-slate-700">{a.personName}</strong></span><span>Karar: <strong className={a.status === 'approved' ? 'text-emerald-700' : 'text-rose-700'}>{a.approvedBy || a.rejectedBy || '—'}</strong></span></div></div>) : <div className="text-xs text-slate-500 py-4 text-center">Henüz arşivlenmiş karar yok.</div>}</div></div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><ShieldCheck size={23} /></div><div><div className="text-[10px] uppercase tracking-[0.25em] text-emerald-600 font-bold">Yönetici karar akışı</div><h2 className="text-xl font-black mt-1">Onay Merkezi</h2><p className="text-xs text-slate-500 mt-1">Talepler onaylanmadan yoklama, mesai, izin, avans ve iş makbuzu kesinleşmez.</p></div></div>
+          <div className="flex items-center gap-3">
+            <div className="grid grid-cols-3 gap-2 text-xs"><div className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-center"><b className="block text-lg">{stats.pendingApprovalsCount}</b>Bekleyen</div><div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-center"><b className="block text-lg">{approvedToday.length}</b>Bugün</div><div className="px-3 py-2 rounded-xl bg-lime-50 text-lime-800 text-center"><b className="block text-lg">{approvedThisMonth.length}</b>Bu ay</div></div>
+            <button onClick={() => onNavigate?.('/admin')} className="shrink-0 rounded-xl bg-emerald-800 hover:bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white transition">Yönetim'de aç</button>
+          </div>
         </div>
       </section>
 
@@ -130,25 +125,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       {financeVisible && <PaymentCommandCenter onNavigate={onNavigate} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-8 flex flex-col">
-          <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
+        <section className="lg:col-span-8 flex flex-col gap-4">
+          <div className="bg-white border border-emerald-100 rounded-2xl shadow-xs overflow-hidden">
             <header className="p-4 border-b border-emerald-100 flex items-center justify-between gap-3 bg-emerald-50/40">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>Canlı Filo Operasyonu</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
-                    Canlı GPS
-                  </span>
-                </h2>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  Marmara & Ege Şantiye Noktaları, Araç Durumları ve Operatör Konumları
-                </div>
-              </div>
-              <button onClick={() => onNavigate('/tv')} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-lime-100 rounded-xl text-xs font-bold transition shadow-xs">Operasyon TV’ye git</button>
+              <h2 className="text-sm font-bold text-slate-900">Filo Durumu</h2>
+              <button onClick={() => onNavigate('/filo')} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-lime-100 rounded-xl text-xs font-bold transition shadow-xs">Filoya git</button>
             </header>
-            <div className="flex-1 min-h-[500px] flex items-center justify-center bg-emerald-950 text-white rounded-b-2xl p-8">
-              <div className="text-center max-w-md"><div className="text-amber-400 text-xs uppercase tracking-[0.25em] font-bold">Tek canlı harita ekranı</div><div className="text-2xl font-black mt-2">Harita Operasyon TV’ye taşındı</div><p className="text-slate-400 text-sm mt-2">Saha konumları, aktif vinçler ve onay akışı için tek canlı ekranı kullanın.</p><button onClick={() => onNavigate('/tv')} className="mt-5 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 text-sm font-black">TV ekranını aç</button></div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4">
+              {([
+                { key: 'sahada', label: 'Sahada' },
+                { key: 'musait', label: 'Müsait' },
+                { key: 'bakimda', label: 'Bakımda' },
+                { key: 'arizali', label: 'Arızalı' },
+              ] as const).map(({ key, label }) => (
+                <div key={key} className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-3 text-center">
+                  <div className="text-xl font-mono font-black text-emerald-950">{cranes.filter((c) => c.status === key).length}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
