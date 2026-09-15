@@ -20,9 +20,9 @@ export const roleLabel = (role?: string) => (role ? ROLE_LABELS[role] || role : 
 export const ROLE_ROUTES: Record<string, string[]> = {
   founder: ['*'],
   admin: ['*'],
-  yonetici: ['/', '/faturalar', '/cariler', '/personel', '/puantaj', '/onay', '/filo', '/operator', '/finans', '/finans-planlama', '/teklifler', '/tv', '/admin'],
+  yonetici: ['/', '/faturalar', '/cariler', '/personel', '/puantaj', '/filo', '/operator', '/finans', '/finans-planlama', '/teklifler', '/tv', '/admin'],
   muhasebe: ['/', '/faturalar', '/cariler', '/finans', '/finans-planlama', '/teklifler', '/personel'],
-  puantor: ['/', '/puantaj', '/personel', '/operator', '/onay'],
+  puantor: ['/', '/puantaj', '/personel', '/operator', '/admin'],
   operasyon: ['/', '/filo', '/faturalar', '/puantaj', '/operator', '/tv'],
   operator: ['*'],
   personel: ['*'],
