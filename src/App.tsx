@@ -8,8 +8,10 @@ import { PersonnelPage } from './pages/PersonnelPage';
 import { PersonnelDetailPage } from './pages/PersonnelDetailPage';
 import { PuantajPage } from './pages/PuantajPage';
 import { FleetPage } from './pages/FleetPage';
+import { FleetDetailPage } from './pages/FleetDetailPage';
 import { OperatorPage } from './pages/OperatorPage';
 import { DigitalCardPage } from './pages/DigitalCardPage';
+import { FiloCardPage } from './pages/FiloCardPage';
 import { FinancePage } from './pages/FinancePage';
 import { PaymentPlanningPage } from './pages/PaymentPlanningPage';
 import { AdminPage } from './pages/AdminPage';
@@ -51,6 +53,17 @@ function AppContent() {
     const token = currentPath.replace('/kart/', '');
     return (
       <DigitalCardPage
+        token={token}
+        onNavigateHome={() => navigate('/')}
+      />
+    );
+  }
+
+  // Route: /filo-kart/:token
+  if (currentPath.startsWith('/filo-kart/')) {
+    const token = currentPath.replace('/filo-kart/', '');
+    return (
+      <FiloCardPage
         token={token}
         onNavigateHome={() => navigate('/')}
       />
@@ -179,7 +192,10 @@ function AppContent() {
           <PersonnelDetailPage personnelId={currentPath.replace('/personel/', '')} onNavigateBack={() => navigate('/personel')} />
         )}
         {currentPath === '/puantaj' && <PuantajPage />}
-        {currentPath === '/filo' && <FleetPage />}
+        {currentPath === '/filo' && <FleetPage onNavigateDetail={(id) => navigate(`/filo/${id}`)} />}
+        {currentPath.startsWith('/filo/') && (
+          <FleetDetailPage craneId={currentPath.replace('/filo/', '')} onNavigateBack={() => navigate('/filo')} onNavigate={navigate} />
+        )}
         {currentPath === '/operator' && <OperatorPage />}
         {currentPath === '/finans' && <FinancePage />}
         {currentPath === '/finans-planlama' && <PaymentPlanningPage />}
