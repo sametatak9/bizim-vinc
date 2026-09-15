@@ -33,7 +33,11 @@ import {
 import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 import { FINANCE_ROLES, roleLabel } from '../lib/permissions';
 
-export const PersonnelPage: React.FC = () => {
+interface PersonnelPageProps {
+  onNavigateDetail?: (personnelId: string) => void;
+}
+
+export const PersonnelPage: React.FC<PersonnelPageProps> = ({ onNavigateDetail }) => {
   const {
     personnel,
     cranes,
@@ -625,6 +629,15 @@ export const PersonnelPage: React.FC = () => {
 
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {onNavigateDetail && (
+                          <button
+                            onClick={() => onNavigateDetail(person.id)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                            title="Personel Detayı & Cari Defter"
+                          >
+                            <History size={16} />
+                          </button>
+                        )}
                         <a
                           href={`/kart/${person.cardSlug || person.employeeNo.toLowerCase()}`}
                           target="_blank"

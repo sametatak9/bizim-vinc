@@ -81,6 +81,22 @@ export interface PersonnelType {
   isActive: boolean;
 }
 
+export type PersonnelLedgerEntryType = 'yevmiye' | 'mesai' | 'odeme' | 'avans' | 'izin' | 'diger';
+
+/** Personel cari hesabı: pozitif tutar hak ediş (yevmiye/mesai), negatif tutar ödeme/avans düşümüdür. */
+export interface PersonnelLedgerEntry {
+  id: string;
+  personnelId: string;
+  entryType: PersonnelLedgerEntryType;
+  entryDate: string;
+  amount: number;
+  description?: string;
+  referenceTable?: string;
+  referenceId?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
 export type CraneStatus = 'sahada' | 'musait' | 'bakimda' | 'arizali' | 'pasif';
 
 export interface Crane {
