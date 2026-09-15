@@ -1,0 +1,18 @@
+{
+  "senet_rows": 21,
+  "list_rows_after_dedupe": 68,
+  "skipped_duplicates": 34,
+  "lists": [
+    "09.05.2026 ÖDEME PLANI",
+    "10.07.2026 ÖDEME LİSTESİ",
+    "13.05.2026 ÖDEME PLANI",
+    "18.05.2026 ÖDEME PLANI",
+    "NİSAN 2026 ÖDEME PLANI"
+  ],
+  "instruments": {
+    "odeme": 63,
+    "cek": 5,
+    "senet": 0
+  },
+  "note": "Mayıs planları birden fazla revizyon sayfası içeriyor; dedupe_family ile en yüksek revision_priority tutuldu."
+}
