@@ -6,7 +6,9 @@ import { Plus, Search, Truck, MapPin, User, Wrench, AlertTriangle, History, Prin
 import { FileSpreadsheet, FileText } from 'lucide-react';
 import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
-export const FleetPage: React.FC = () => {
+interface FleetPageProps { onNavigateDetail?: (id: string) => void; }
+
+export const FleetPage: React.FC<FleetPageProps> = ({ onNavigateDetail }) => {
   const { cranes, updateCraneStatus, jobReceipts, expenses, approvals } = useERP();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'hepsi' | CraneStatus>('hepsi');
@@ -227,6 +229,9 @@ export const FleetPage: React.FC = () => {
 
                   {/* Actions */}
                   <td className="py-3 px-4 text-right">
+                        {onNavigateDetail && (
+                          <button onClick={() => onNavigateDetail(crane.id)} className="mr-1 px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 rounded-lg text-xs font-bold transition">Detay</button>
+                        )}
                         <button
                           onClick={() => handleEdit(crane)}
                       className="px-3 py-1.5 border border-emerald-200 text-emerald-800 hover:bg-emerald-50 rounded-lg text-xs font-bold transition"

@@ -129,6 +129,33 @@ export interface Crane {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Filo kartvizit (0044_filo_kartvizit): plaka bazlı kimlik + sayaçlar
+  plate?: string;
+  team?: string;
+  tonnage?: number;
+  metre?: number;
+  brand?: string;
+  cardSlug?: string;
+  ruhsatNo?: string;
+  trafikSigortaBitis?: string;
+  kaskoBitis?: string;
+  muayeneBitis?: string;
+  periyodikKontrolBitis?: string;
+  bakimSonraki?: string;
+}
+
+export type CraneDocumentType = 'ruhsat' | 'trafik_sigorta' | 'kasko' | 'muayene' | 'tum_evraklar' | 'diger';
+
+export interface CraneDocument {
+  id: string;
+  craneId: string;
+  documentType: CraneDocumentType;
+  fileName: string;
+  storagePath: string;
+  documentDate?: string | null;
+  expiresAt?: string | null;
+  isSensitive: boolean;
+  createdAt: string;
 }
 
 export type ApprovalKind =

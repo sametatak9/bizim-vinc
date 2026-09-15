@@ -3,6 +3,8 @@ import {
   Person,
   Crane,
   CraneStatus,
+  CraneDocument,
+  CraneDocumentType,
   Approval,
   Receipt,
   Expense,
@@ -170,6 +172,8 @@ interface ERPContextType {
   updateCrane: (id: string, updates: Partial<Crane>) => Promise<void>;
   updateCraneStatus: (id: string, status: CraneStatus) => Promise<void>;
   deleteCrane: (id: string, soft?: boolean) => Promise<void>;
+  craneDocuments: CraneDocument[];
+  uploadCraneDocument: (craneId: string, type: CraneDocumentType, file: File) => Promise<void>;
 
   // Onay Merkezi
   approvals: Approval[];
@@ -377,6 +381,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>(() => loadStored('bv_payroll_payments', []));
   const [cranes, setCranes] = useState<Crane[]>(() =>
     loadStored('bv_cranes', [])
+  );
+  const [craneDocuments, setCraneDocuments] = useState<CraneDocument[]>(() =>
+    loadStored('bv_crane_documents', [])
   );
   const [approvals, setApprovals] = useState<Approval[]>(() =>
     loadStored('bv_approvals', [])
@@ -664,9 +671,39 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notes: d.notes,
           createdAt: d.created_at,
           updatedAt: d.updated_at,
+          plate: d.plate,
+          team: d.team,
+          tonnage: d.tonnage != null ? Number(d.tonnage) : undefined,
+          metre: d.metre != null ? Number(d.metre) : undefined,
+          brand: d.brand,
+          cardSlug: d.card_slug,
+          ruhsatNo: d.ruhsat_no,
+          trafikSigortaBitis: d.trafik_sigorta_bitis,
+          kaskoBitis: d.kasko_bitis,
+          muayeneBitis: d.muayene_bitis,
+          periyodikKontrolBitis: d.periyodik_kontrol_bitis,
+          bakimSonraki: d.bakim_sonraki,
         }));
         setCranes(mapped);
         saveStored('bv_cranes', mapped);
+      }
+
+      const { data: craneDocData, error: craneDocError } = await sb.from('crane_documents').select('id, crane_id, document_type, file_name, storage_path, document_date, expires_at, is_sensitive, created_at');
+      if (craneDocError) throw craneDocError;
+      {
+        const mapped: CraneDocument[] = (craneDocData || []).map((d: any) => ({
+          id: d.id,
+          craneId: d.crane_id,
+          documentType: d.document_type,
+          fileName: d.file_name,
+          storagePath: d.storage_path,
+          documentDate: d.document_date,
+          expiresAt: d.expires_at,
+          isSensitive: Boolean(d.is_sensitive),
+          createdAt: d.created_at,
+        }));
+        setCraneDocuments(mapped);
+        saveStored('bv_crane_documents', mapped);
       }
 
       // 3. Onaylar
@@ -1189,6 +1226,24 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (insertError) throw insertError;
     const document: PersonnelDocument = { id: data.id, personnelId: data.personnel_id, documentType: data.document_type, fileName: data.file_name, storagePath: data.storage_path, expiresAt: data.expires_at, isSensitive: Boolean(data.is_sensitive), createdAt: data.created_at };
     setPersonnelDocuments((prev) => { const next = [document, ...prev]; saveStored('bv_personnel_documents', next); return next; });
+    showToast(`✓ ${file.name} belgesi yüklendi.`);
+  };
+
+  const uploadCraneDocument = async (craneId: string, type: CraneDocumentType, file: File) => {
+    const sb = getSupabase();
+    if (!sb || !currentUser.id || currentUser.id === 'guest') throw new Error('Supabase bağlantısı veya oturum yok.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Belge boyutu en fazla 10 MB olabilir.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storagePath = `${craneId}/${type}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await sb.storage.from('filo-docs').upload(storagePath, file, { upsert: false });
+    if (uploadError) throw uploadError;
+    const { data, error: insertError } = await sb.from('crane_documents').insert({
+      crane_id: craneId, document_type: type, file_name: file.name, storage_path: storagePath,
+      is_sensitive: false, uploaded_by: currentUser.id,
+    }).select('id, crane_id, document_type, file_name, storage_path, document_date, expires_at, is_sensitive, created_at').single();
+    if (insertError) throw insertError;
+    const document: CraneDocument = { id: data.id, craneId: data.crane_id, documentType: data.document_type, fileName: data.file_name, storagePath: data.storage_path, documentDate: data.document_date, expiresAt: data.expires_at, isSensitive: Boolean(data.is_sensitive), createdAt: data.created_at };
+    setCraneDocuments((prev) => { const next = [document, ...prev]; saveStored('bv_crane_documents', next); return next; });
     showToast(`✓ ${file.name} belgesi yüklendi.`);
   };
 
@@ -3272,6 +3327,8 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCrane,
         updateCraneStatus,
         deleteCrane,
+        craneDocuments,
+        uploadCraneDocument,
         approvals,
         addApproval,
         approveRequest,
