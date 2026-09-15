@@ -22,13 +22,23 @@ import {
   BarChart3,
   Settings,
   Eye,
+  Building2,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import { useERP } from '../lib/store';
 import { AppRole } from '../types';
 import { MEMBERSHIP_APPROVER_ROLES, APPROVER_ROLES, roleLabel } from '../lib/permissions';
 import { downloadExcelReport, downloadHtmlReport, printReport } from '../lib/reporting';
 
-type AdminTab = 'approvals' | 'attendance' | 'receipts' | 'fleet' | 'memberships' | 'system';
+type AdminTab = 'approvals' | 'attendance' | 'receipts' | 'fleet' | 'memberships' | 'company_docs' | 'system';
+
+const companyDocCategoryLabel: Record<string, string> = {
+  sirket_kimlik: 'Şirket Kimliği',
+  kiralama: 'Kiralama Sözleşmeleri',
+  satin_alma: 'Satın Alma',
+  yakit: 'Yakıt Tedariki',
+};
 
 const kindLabel: Record<string, string> = {
   yoklama: 'Yoklama',
@@ -86,6 +96,9 @@ export const AdminPage: React.FC = () => {
     createInvoiceFromReceipts,
     customers,
     cranes,
+    companyDocuments,
+    uploadCompanyDocument,
+    getCompanyDocumentUrl,
   } = useERP();
 
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
@@ -98,6 +111,37 @@ export const AdminPage: React.FC = () => {
   // Kullanıcı rolü değiştirme / pasife alma — yalnızca founder/admin. Yönetici dahi
   // kendini veya başkasını admin'e yükseltemesin diye kasten APPROVER_ROLES'tan dar tutuldu.
   const canManageUsers = currentUser.role === 'founder' || currentUser.role === 'admin';
+
+  // ─── ŞİRKET EVRAKLARI ───────────────────────────────────────
+  const [companyDocCategoryFilter, setCompanyDocCategoryFilter] = useState<'all' | 'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit'>('all');
+  const [companyDocUploadCategory, setCompanyDocUploadCategory] = useState<'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit'>('sirket_kimlik');
+  const [companyDocUploading, setCompanyDocUploading] = useState(false);
+  const [companyDocOpening, setCompanyDocOpening] = useState<string | null>(null);
+  const filteredCompanyDocuments = useMemo(
+    () => companyDocuments.filter((d) => companyDocCategoryFilter === 'all' || d.category === companyDocCategoryFilter),
+    [companyDocuments, companyDocCategoryFilter]
+  );
+  const handleCompanyDocUpload = async (file: File) => {
+    setCompanyDocUploading(true);
+    try {
+      await uploadCompanyDocument(companyDocUploadCategory, file);
+    } catch (err) {
+      showToast(err instanceof Error ? `Hata: ${err.message}` : 'Belge yüklenemedi.');
+    } finally {
+      setCompanyDocUploading(false);
+    }
+  };
+  const handleCompanyDocOpen = async (documentId: string) => {
+    setCompanyDocOpening(documentId);
+    try {
+      const url = await getCompanyDocumentUrl(documentId);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      showToast(err instanceof Error ? `Hata: ${err.message}` : 'Belge açılamadı.');
+    } finally {
+      setCompanyDocOpening(null);
+    }
+  };
 
   // ─── ONAY MERKEZİ ───────────────────────────────────────────
   const [approvalKindFilter, setApprovalKindFilter] = useState<string>('all');
@@ -325,6 +369,7 @@ export const AdminPage: React.FC = () => {
     { id: 'receipts', label: 'Makbuz & Fatura', icon: <Receipt className="w-4 h-4" />, badge: jobReceipts.filter((r) => r.status === 'pending_approval').length },
     { id: 'fleet', label: 'Filo Takip', icon: <Truck className="w-4 h-4" /> },
     { id: 'memberships', label: 'Üyelik & Kullanıcılar', icon: <UserCheck className="w-4 h-4" />, badge: pendingMemberships.length },
+    { id: 'company_docs', label: 'Şirket Evrakları', icon: <Building2 className="w-4 h-4" /> },
     { id: 'system', label: 'Sistem & Denetim', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -1001,6 +1046,77 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────── */}
+      {/* TAB: ŞİRKET EVRAKLARI */}
+      {/* ──────────────────────────────────────────────────────── */}
+      {activeTab === 'company_docs' && (
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary"><Building2 className="w-5 h-5" /></div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Şirket Kimliği & Evrak Arşivi</h3>
+                <p className="text-xs text-muted-foreground">Vergi levhası, faaliyet belgesi, kiralama sözleşmeleri, satın alma ve yakıt tedarik evrakları — sadece ofis personeline açık, hassas belgeler yalnızca kurucu/yöneticiye görünür.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {(['all', 'sirket_kimlik', 'kiralama', 'satin_alma', 'yakit'] as const).map((cat) => (
+                <button key={cat} onClick={() => setCompanyDocCategoryFilter(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${companyDocCategoryFilter === cat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
+                  {cat === 'all' ? 'Tümü' : companyDocCategoryLabel[cat]}
+                  <span className="ml-1 opacity-70">({cat === 'all' ? companyDocuments.length : companyDocuments.filter((d) => d.category === cat).length})</span>
+                </button>
+              ))}
+            </div>
+            {canManageUsers && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                <select value={companyDocUploadCategory} onChange={(e) => setCompanyDocUploadCategory(e.target.value as typeof companyDocUploadCategory)}
+                  className="bg-muted border border-border rounded-xl px-3 py-2 text-xs outline-none">
+                  {(['sirket_kimlik', 'kiralama', 'satin_alma', 'yakit'] as const).map((cat) => (
+                    <option key={cat} value={cat}>{companyDocCategoryLabel[cat]}</option>
+                  ))}
+                </select>
+                <label className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground cursor-pointer hover:opacity-90">
+                  {companyDocUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  Belge Yükle
+                  <input type="file" accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png" className="hidden" disabled={companyDocUploading}
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCompanyDocUpload(file); e.target.value = ''; }} />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+            {filteredCompanyDocuments.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">Bu kategoride henüz belge yok.</div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {filteredCompanyDocuments.map((doc) => (
+                  <li key={doc.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-muted/40 transition">
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-primary shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-foreground truncate">{doc.fileName}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {companyDocCategoryLabel[doc.category]}
+                          {doc.documentDate ? ` · ${new Date(doc.documentDate).toLocaleDateString('tr-TR')}` : ''}
+                          {doc.isSensitive ? ' · Hassas (kurucu/yönetici)' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => handleCompanyDocOpen(doc.id)} disabled={companyDocOpening === doc.id}
+                      className="shrink-0 rounded-lg bg-muted px-2.5 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted/70 disabled:opacity-50 flex items-center gap-1">
+                      {companyDocOpening === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                      Görüntüle
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
