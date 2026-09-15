@@ -392,9 +392,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [collections, setCollections] = useState<Collection[]>(() =>
     loadStored('bv_collections', [])
   );
-  const [payments, commercialPapers, addCommercialPaper, updateCommercialPaperStatus, deleteCommercialPaper,
-    setPayments] = useState<Payment[]>(() =>
+  const [payments, setPayments] = useState<Payment[]>(() =>
     loadStored('bv_payments', [])
+  );
+  const [commercialPapers, setCommercialPapers] = useState<CommercialPaper[]>(() =>
+    loadStored('bv_commercial_papers', INITIAL_COMMERCIAL_PAPERS)
   );
   const [obligations, setObligations] = useState<PaymentObligation[]>(() =>
     loadStored('bv_payment_obligations', [])
@@ -2340,6 +2342,79 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     logAction('TAHSİLAT_ALINDI', 'Finans', id, `${col.customerName} cari hesabından ₺${col.amount.toLocaleString('tr-TR')} tahsil edildi.`);
     showToast(`✓ ₺${col.amount.toLocaleString('tr-TR')} Tahsilat Hesaba Geçti`);
+  };
+
+  const addCommercialPaper = async (paperData: Omit<CommercialPaper, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const id = generateUuid();
+    const now = new Date().toISOString();
+    const newPaper: CommercialPaper = { ...paperData, id, createdAt: now, updatedAt: now };
+    const sb = getSupabase();
+    if (sb) {
+      const { error } = await sb.from('commercial_papers').insert({
+        id,
+        type: newPaper.type,
+        document_no: newPaper.documentNo,
+        serial_no: newPaper.serialNo || null,
+        amount: newPaper.amount,
+        issue_date: newPaper.issueDate,
+        due_date: newPaper.dueDate,
+        debtor: newPaper.debtor,
+        debtor_tax_id: newPaper.debtorTaxId || null,
+        beneficiary: newPaper.beneficiary,
+        endorser: newPaper.endorser || null,
+        bank_name: newPaper.bankName || null,
+        bank_branch: newPaper.bankBranch || null,
+        account_no: newPaper.accountNo || null,
+        city: newPaper.city || null,
+        status: newPaper.status,
+        status_date: newPaper.statusDate || null,
+        notes: newPaper.notes || null,
+        document_url: newPaper.documentUrl || null,
+      });
+      if (error) throw error;
+    }
+    setCommercialPapers((prev) => {
+      const next = [newPaper, ...prev];
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+    showToast(`✓ ${newPaper.type.replace('_', ' ')} kaydedildi`);
+  };
+
+  const updateCommercialPaperStatus = async (id: string, status: CommercialPaperStatus, note?: string) => {
+    const now = new Date().toISOString();
+    const sb = getSupabase();
+    if (sb) {
+      const { error } = await sb.from('commercial_papers').update({
+        status,
+        status_date: now,
+        notes: note,
+        updated_at: now,
+      }).eq('id', id);
+      if (error) throw error;
+    }
+    setCommercialPapers((prev) => {
+      const next = prev.map((p) =>
+        p.id === id ? { ...p, status, statusDate: now, ...(note ? { notes: note } : {}), updatedAt: now } : p
+      );
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+    showToast('Çek/senet durumu güncellendi');
+  };
+
+  const deleteCommercialPaper = async (id: string) => {
+    const sb = getSupabase();
+    if (sb) {
+      const { error } = await sb.from('commercial_papers').delete().eq('id', id);
+      if (error) throw error;
+    }
+    setCommercialPapers((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      saveStored('bv_commercial_papers', next);
+      return next;
+    });
+    showToast('Evrak silindi');
   };
 
   const addPayment = async (payData: Omit<Payment, 'id' | 'createdAt'>) => {

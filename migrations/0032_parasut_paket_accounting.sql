@@ -74,17 +74,22 @@ ALTER TABLE public.invoice_lines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.print_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.incoming_documents ENABLE ROW LEVEL SECURITY;
 
-DO 748 BEGIN
-  CREATE POLICY "Staff can view and manage invoice lines" ON public.invoice_lines FOR ALL USING (true);
+DO $$ BEGIN
+  CREATE POLICY "Staff can view and manage invoice lines" ON public.invoice_lines FOR ALL TO authenticated
+    USING (public.is_office_staff()) WITH CHECK (public.is_office_staff());
 EXCEPTION WHEN duplicate_object THEN NULL;
-END 748;
+END $$;
 
-DO 748 BEGIN
-  CREATE POLICY "Staff can view print templates" ON public.print_templates FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY "Staff can view print templates" ON public.print_templates FOR SELECT TO authenticated
+    USING (public.is_active_staff());
 EXCEPTION WHEN duplicate_object THEN NULL;
-END 748;
+END $$;
 
-DO 748 BEGIN
-  CREATE POLICY "Staff can manage incoming documents" ON public.incoming_documents FOR ALL USING (true);
+DO $$ BEGIN
+  CREATE POLICY "Staff can manage incoming documents" ON public.incoming_documents FOR ALL TO authenticated
+    USING (public.is_office_staff()) WITH CHECK (public.is_office_staff());
 EXCEPTION WHEN duplicate_object THEN NULL;
-END 748;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
