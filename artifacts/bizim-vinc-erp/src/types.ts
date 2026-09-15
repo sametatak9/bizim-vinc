@@ -14,14 +14,14 @@ export const isEmployeeSelfServiceRole = (role: AppRole): boolean =>
   EMPLOYEE_SELF_SERVICE_ROLES.includes(role);
 
 export interface UserProfile {
-  id: string;
+  id: string; // auth.users id
   email: string;
   fullName: string;
   role: AppRole;
   phone?: string;
   department?: string;
   title?: string;
-  personnelId?: string;
+  personnelId?: string; // linked to Person
   avatarUrl?: string;
   status: 'aktif' | 'pasif';
   lastSignIn?: string;
@@ -35,7 +35,7 @@ export type PoolStatus = 'gorevli' | 'musait' | 'havuzda';
 
 export interface Person {
   id: string;
-  employeeNo: string;
+  employeeNo: string; // e.g. OP-204
   fullName: string;
   tcNo?: string;
   phone: string;
@@ -57,7 +57,7 @@ export interface Person {
   certExpiring: boolean;
   certificateExpiresAt?: string;
   notes?: string;
-  userId?: string;
+  userId?: string; // linked user profile
   createdAt?: string;
   updatedAt?: string;
 }
@@ -81,11 +81,38 @@ export interface PersonnelType {
   isActive: boolean;
 }
 
+/** 0035: Excel'deki adli odeme plani sayfalarinin (ör. "NİSAN 2026 ÖDEME PLANI") birebir karsiligi. */
+export interface PaymentList {
+  id: string;
+  name: string;
+  kind: 'odeme' | 'tahsilat' | 'cek_senet' | 'mixed';
+  year?: number;
+  source?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type PersonnelLedgerEntryType = 'yevmiye' | 'mesai' | 'odeme' | 'avans' | 'izin' | 'diger';
+
+/** Personel cari hesabı: pozitif tutar hak ediş (yevmiye/mesai), negatif tutar ödeme/avans düşümüdür. */
+export interface PersonnelLedgerEntry {
+  id: string;
+  personnelId: string;
+  entryType: PersonnelLedgerEntryType;
+  entryDate: string;
+  amount: number;
+  description?: string;
+  referenceTable?: string;
+  referenceId?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
 export type CraneStatus = 'sahada' | 'musait' | 'bakimda' | 'arizali' | 'pasif';
 
 export interface Crane {
   id: string;
-  code: string;
+  code: string; // e.g. V-204
   type: string;
   status: CraneStatus;
   capacity: string;
@@ -105,8 +132,18 @@ export interface Crane {
 }
 
 export type ApprovalKind =
-  | 'yoklama' | 'mesai' | 'avans' | 'makbuz' | 'makbuz_onay' | 'uyelik_onay'
-  | 'izin' | 'yakit' | 'genel' | 'vinc_hareket' | 'mesai_kaldi' | 'diger';
+  | 'yoklama'
+  | 'mesai'
+  | 'avans'
+  | 'makbuz'
+  | 'makbuz_onay'
+  | 'uyelik_onay'
+  | 'izin'
+  | 'yakit'
+  | 'genel'
+  | 'vinc_hareket'
+  | 'mesai_kaldi'
+  | 'diger';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -135,15 +172,21 @@ export interface Approval {
   updatedAt?: string;
 }
 
-export type AttendanceStatus = 'geldi' | 'gelmedi' | 'izinli' | 'raporlu' | 'tatil' | 'eksik';
+export type AttendanceStatus =
+  | 'geldi'
+  | 'gelmedi'
+  | 'izinli'
+  | 'raporlu'
+  | 'tatil'
+  | 'eksik';
 
 export interface AttendanceRecord {
   id: string;
   personId: string;
   personName: string;
-  date: string;
-  checkInTime?: string;
-  checkOutTime?: string;
+  date: string; // YYYY-MM-DD
+  checkInTime?: string; // HH:mm
+  checkOutTime?: string; // HH:mm
   status: AttendanceStatus;
   note?: string;
   createdAt: string;
@@ -157,8 +200,8 @@ export interface LeaveRequest {
   personId: string;
   personName: string;
   leaveType: LeaveType;
-  startDate: string;
-  endDate: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
   days: number;
   description?: string;
   status: ApprovalStatus;
@@ -177,9 +220,9 @@ export interface OvertimeRecord {
   id: string;
   personId: string;
   personName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
   totalHours: number;
   overtimeType: OvertimeType;
   description?: string;
@@ -198,7 +241,7 @@ export interface AdvanceRequest {
   personId: string;
   personName: string;
   amount: number;
-  requestDate: string;
+  requestDate: string; // YYYY-MM-DD
   description?: string;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   approvedBy?: string;
@@ -212,7 +255,7 @@ export interface AdvanceRequest {
 
 export interface PuantajRecord {
   id: string;
-  month: string;
+  month: string; // YYYY-MM
   personId: string;
   personName: string;
   title: string;
@@ -231,7 +274,7 @@ export interface PuantajRecord {
 }
 
 export interface PuantajPeriodLock {
-  period: string;
+  period: string; // YYYY-MM
   isLocked: boolean;
   lockedBy?: string;
   lockedAt?: string;
@@ -256,7 +299,7 @@ export interface AuditLog {
 
 export interface NotificationItem {
   id: string;
-  userId?: string;
+  userId?: string; // target user or all
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
@@ -278,24 +321,27 @@ export interface Receipt {
   updatedAt?: string;
 }
 
+// -------------------------------------------------------------
+// CARİ (CUSTOMERS) & ŞANTİYELER
+// -------------------------------------------------------------
 export interface Customer {
   creditLimit?: number;
   riskStatus?: "normal" | "dikkat" | "riskli";
   isEfaturaMukellefi?: boolean;
   paymentTermDays?: number;
   id: string;
-  title: string;
-  name?: string;
+  title: string; // Ünvan
+  name?: string; // alias for title
   type?: 'musteri' | 'taseron' | 'diger';
-  vknTckn?: string;
-  taxNo?: string;
-  contactName?: string;
-  authorizedPerson?: string;
+  vknTckn?: string; // VKN / TCKN
+  taxNo?: string; // alias for vknTckn
+  contactName?: string; // alias for authorizedPerson
+  authorizedPerson?: string; // Yetkili kişi
   phone: string;
   email?: string;
   address?: string;
   taxOffice?: string;
-  balance: number;
+  balance: number; // Cari Bakiye (Pozitif: Alacaklıyız, Negatif: Borçluyuz)
   notes?: string;
   createdAt: string;
   updatedAt?: string;
@@ -346,8 +392,17 @@ export interface Contract {
   createdAt: string;
 }
 
+// -------------------------------------------------------------
+// MAKBUZ (JOB RECEIPT) & FATURA (INVOICE) HATTI
+// -------------------------------------------------------------
 export type JobReceiptStatus =
-  | 'draft' | 'pending' | 'pending_approval' | 'approved' | 'onaylandi' | 'rejected' | 'invoiced';
+  | 'draft'
+  | 'pending'
+  | 'pending_approval'
+  | 'approved'
+  | 'onaylandi'
+  | 'rejected'
+  | 'invoiced';
 
 export interface JobReceiptLine {
   description: string;
@@ -358,7 +413,7 @@ export interface JobReceiptLine {
 
 export interface JobReceipt {
   id: string;
-  receiptNo: string;
+  receiptNo: string; // e.g. MB-2026-0042
   customerId: string;
   customerName: string;
   siteId?: string;
@@ -367,9 +422,9 @@ export interface JobReceipt {
   craneId?: string;
   operatorId?: string;
   operatorName: string;
-  date: string;
-  startTime?: string;
-  endTime?: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string; // HH:mm
   workingHours?: number;
   hoursWorked?: number;
   hourlyRate?: number;
@@ -393,7 +448,14 @@ export interface JobReceipt {
 }
 
 export type InvoiceStatus =
-  | 'draft' | 'issued' | 'gonderildi' | 'paid' | 'odendi' | 'partial' | 'cancelled';
+  | 'draft'
+  | 'issued'
+  | 'gonderildi'
+  | 'paid'
+  | 'odendi'
+  | 'partial'
+  | 'cancelled';
+
 
 export interface InvoiceLine {
   id?: string;
@@ -428,14 +490,14 @@ export interface Invoice {
   withholdingRate?: number;
   withholdingAmount?: number;
   id: string;
-  invoiceNo: string;
+  invoiceNo: string; // e.g. FT-2026-0015
   customerId: string;
   customerName: string;
-  receiptIds: string[];
+  receiptIds: string[]; // Bağlı makbuz ID'leri
   issueDate: string;
   dueDate: string;
   subtotal: number;
-  taxRate: number;
+  taxRate: number; // e.g. 20
   taxAmount: number;
   totalAmount: number;
   paidAmount: number;
@@ -445,6 +507,9 @@ export interface Invoice {
   updatedAt?: string;
 }
 
+// -------------------------------------------------------------
+// TAHSİLATLAR (COLLECTIONS) & ÖDEMELER (PAYMENTS)
+// -------------------------------------------------------------
 export interface Collection {
   id: string;
   customerId: string;
@@ -464,6 +529,7 @@ export type PaymentCategory =
   | 'maas' | 'avans' | 'yakit' | 'bakim' | 'kira' | 'masraf' | 'leasing' | 'kredi'
   | 'kredi_karti' | 'petrol_dbs' | 'kdv_vergi' | 'elektrik_su' | 'diger';
 
+/** Ödemenin fiilen hangi yolla yapıldığı (dekont eşleştirmesi için) */
 export type PaymentChannel =
   | 'havale_eft' | 'otomatik_odeme' | 'dbs' | 'nakit' | 'cek' | 'senet'
   | 'kredi_karti' | 'pos' | 'mahsup' | 'virman' | 'diger';
@@ -509,6 +575,7 @@ export interface Payment {
   reminderDaysBefore?: number;
   recurring?: boolean;
   createdAt: string;
+  /** 0029: gerçek ödeme detayı */
   periodMonth?: string;
   paidAmount?: number;
   paymentChannel?: PaymentChannel;
@@ -519,11 +586,15 @@ export interface Payment {
   documentPath?: string;
   currency?: string;
   receiptCount?: number;
+  /** 0035: liste fabrikası / import izleme. sourceListId doluysa bu kalem bir
+   * payment_lists kaydına (ör. "NİSAN 2026 ÖDEME PLANI") bağlıdır ve yıllık
+   * ana havuz KPI toplamına dahil edilmez (çift sayım riski). */
   title?: string;
   kind?: string;
-  externalImportKey?: string;
+  sourceListId?: string;
 }
 
+/** Ödeme yükümlülüğü: leasing sözleşmesi, kredi, abonelik, kira vb. */
 export interface PaymentObligation {
   id: string;
   title: string;
@@ -557,6 +628,7 @@ export interface PaymentObligation {
   createdAt?: string;
 }
 
+/** Dekont / fatura görseli arşivi */
 export interface PaymentReceiptDoc {
   id: string;
   paymentId: string;
@@ -588,6 +660,9 @@ export interface PaymentSettlementInput {
   file: File;
 }
 
+// -------------------------------------------------------------
+// ÜYELİK & PERSONEL EŞLEŞTİRME
+// -------------------------------------------------------------
 export type MembershipStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Membership {
@@ -610,11 +685,14 @@ export interface Membership {
   updatedAt?: string;
 }
 
+// -------------------------------------------------------------
+// MAAŞ HESAPLAMA & BORDRO (PAYROLL)
+// -------------------------------------------------------------
 export type PayrollStatus = 'draft' | 'approved' | 'paid';
 
 export interface PayrollRun {
   id: string;
-  month: string;
+  month: string; // YYYY-MM
   totalPersons?: number;
   personCount?: number;
   totalGross?: number;
@@ -704,30 +782,31 @@ export interface TelemetryPoint {
   site?: string;
 }
 
+
+// ==================== ÇEK & SENET TAKİBİ ====================
 export type CommercialPaperType = 'alinan_cek' | 'verilen_cek' | 'alinan_senet' | 'verilen_senet';
 export type CommercialPaperStatus = 'portfoyde' | 'ciro_edildi' | 'tahsile_verildi' | 'odendi_tahsil' | 'karsiliksiz_protesto' | 'iade_edildi';
 
 export interface CommercialPaper {
   id: string;
   type: CommercialPaperType;
-  documentNo: string;
+  documentNo: string; // Çek No veya Senet/Bono No
   serialNo?: string;
   amount: number;
-  issueDate: string;
-  dueDate: string;
-  debtor: string;
-  debtorTaxId?: string;
-  beneficiary: string;
-  endorser?: string;
-  bankName?: string;
-  bankBranch?: string;
-  accountNo?: string;
-  city?: string;
+  issueDate: string; // Düzenleme / Keşide Tarihi (YYYY-MM-DD)
+  dueDate: string; // Vade Tarihi (YYYY-MM-DD)
+  debtor: string; // Keşideci / Borçlu Firma veya Şahıs
+  debtorTaxId?: string; // VKN veya TCKN
+  beneficiary: string; // Lehtar (Kime Düzenlendiği)
+  endorser?: string; // Ciranta (Ciro Eden)
+  bankName?: string; // Banka Adı (Çek için)
+  bankBranch?: string; // Şube Adı veya Kodu
+  accountNo?: string; // Hesap No / IBAN
+  city?: string; // Keşide/Ödeme Yeri
   status: CommercialPaperStatus;
   notes?: string;
-  documentUrl?: string;
+  documentUrl?: string; // Evrak Görseli veya PDF
   statusDate?: string;
-  phone?: string;
   createdAt: string;
   updatedAt: string;
 }
