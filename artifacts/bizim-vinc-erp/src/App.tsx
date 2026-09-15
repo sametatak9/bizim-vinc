@@ -5,6 +5,7 @@ import { SupabaseModal } from './components/SupabaseModal';
 import { AuthModal } from './components/AuthModal';
 import { DashboardPage } from './pages/DashboardPage';
 import { PersonnelPage } from './pages/PersonnelPage';
+import { PersonnelDetailPage } from './pages/PersonnelDetailPage';
 import { PuantajPage } from './pages/PuantajPage';
 import { FleetPage } from './pages/FleetPage';
 import { OperatorPage } from './pages/OperatorPage';
@@ -173,7 +174,10 @@ function AppContent() {
         {currentPath === '/' && <DashboardPage onNavigate={navigate} />}
         {(currentPath === '/faturalar' || currentPath === '/makbuz-fatura') && <InvoiceReceiptPage />}
         {(currentPath === '/cariler' || currentPath === '/cari') && <CariPage />}
-        {currentPath === '/personel' && <PersonnelPage />}
+        {currentPath === '/personel' && <PersonnelPage onNavigateDetail={(id) => navigate(`/personel/${id}`)} />}
+        {currentPath.startsWith('/personel/') && (
+          <PersonnelDetailPage personnelId={currentPath.replace('/personel/', '')} onNavigateBack={() => navigate('/personel')} />
+        )}
         {currentPath === '/puantaj' && <PuantajPage />}
         {currentPath === '/filo' && <FleetPage />}
         {currentPath === '/operator' && <OperatorPage />}
