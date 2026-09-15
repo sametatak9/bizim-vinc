@@ -81,9 +81,16 @@ export const AdminPage: React.FC = () => {
     cranes,
   } = useERP();
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('approvals');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const saved = sessionStorage.getItem('bv_admin_initial_tab');
+    if (saved) sessionStorage.removeItem('bv_admin_initial_tab');
+    return (saved as AdminTab) || 'approvals';
+  });
   const canApproveMemberships = MEMBERSHIP_APPROVER_ROLES.includes(currentUser.role);
   const canApprove = APPROVER_ROLES.includes(currentUser.role) || currentUser.role === 'founder';
+  // Kullanıcı rolü değiştirme / pasife alma — yalnızca founder/admin. Yönetici dahi
+  // kendini veya başkasını admin'e yükseltemesin diye kasten APPROVER_ROLES'tan dar tutuldu.
+  const canManageUsers = currentUser.role === 'founder' || currentUser.role === 'admin';
 
   // ─── ONAY MERKEZİ ───────────────────────────────────────────
   const [approvalKindFilter, setApprovalKindFilter] = useState<string>('all');
@@ -689,7 +696,7 @@ export const AdminPage: React.FC = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 items-end">
-                    {r.status === 'pending_approval' && (
+                    {r.status === 'pending_approval' && canApprove && (
                       <div className="flex gap-2">
                         <button onClick={() => setShowReceiptReject((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
                           className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 flex items-center gap-1">
@@ -701,7 +708,7 @@ export const AdminPage: React.FC = () => {
                         </button>
                       </div>
                     )}
-                    {(r.status === 'approved' || r.status === 'onaylandi') && !r.invoiced && (
+                    {(r.status === 'approved' || r.status === 'onaylandi') && !r.invoiced && canApprove && (
                       <div className="flex gap-2">
                         <input
                           value={invoiceNote[r.id] || ''}
@@ -980,16 +987,20 @@ export const AdminPage: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-slate-500">{user.email}</td>
                         <td className="py-3 px-4">
-                          <select value={user.role} onChange={(e) => updateUserProfile(user.id, { role: e.target.value as AppRole })}
-                            className="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 text-xs text-emerald-600 font-bold focus:outline-none">
-                            <option value="admin">ADMIN</option>
-                            <option value="yonetici">YÖNETİCİ</option>
-                            <option value="muhasebe">MUHASEBE</option>
-                            <option value="puantor">PUANTÖR</option>
-                            <option value="operasyon">OPERASYON</option>
-                            <option value="operator">OPERATÖR</option>
-                            <option value="personel">PERSONEL</option>
-                          </select>
+                          {canManageUsers ? (
+                            <select value={user.role} onChange={(e) => updateUserProfile(user.id, { role: e.target.value as AppRole })}
+                              className="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 text-xs text-emerald-600 font-bold focus:outline-none">
+                              <option value="admin">ADMIN</option>
+                              <option value="yonetici">YÖNETİCİ</option>
+                              <option value="muhasebe">MUHASEBE</option>
+                              <option value="puantor">PUANTÖR</option>
+                              <option value="operasyon">OPERASYON</option>
+                              <option value="operator">OPERATÖR</option>
+                              <option value="personel">PERSONEL</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs font-bold text-emerald-700 uppercase">{user.role}</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${user.status === 'aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
@@ -997,10 +1008,12 @@ export const AdminPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button onClick={() => updateUserProfile(user.id, { status: user.status === 'aktif' ? 'pasif' : 'aktif' })}
-                            className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition">
-                            {user.status === 'aktif' ? 'Pasife Al' : 'Aktif Yap'}
-                          </button>
+                          {canManageUsers && (
+                            <button onClick={() => updateUserProfile(user.id, { status: user.status === 'aktif' ? 'pasif' : 'aktif' })}
+                              className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition">
+                              {user.status === 'aktif' ? 'Pasife Al' : 'Aktif Yap'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -6,7 +6,6 @@ import { AuthModal } from './components/AuthModal';
 import { DashboardPage } from './pages/DashboardPage';
 import { PersonnelPage } from './pages/PersonnelPage';
 import { PuantajPage } from './pages/PuantajPage';
-import { ApprovalPage } from './pages/ApprovalPage';
 import { FleetPage } from './pages/FleetPage';
 import { OperatorPage } from './pages/OperatorPage';
 import { DigitalCardPage } from './pages/DigitalCardPage';
@@ -56,6 +55,17 @@ function AppContent() {
       />
     );
   }
+
+  // /onay artık ayrı bir rota değil — Admin panelinin "Onay Merkezi" sekmesiyle
+  // aynı işi yapıyordu ve hiçbir UI'dan linklenmiyordu. Kim URL'i yazarsa
+  // /admin'e yönlendirilir ve Onay Merkezi sekmesi otomatik açılır.
+  useEffect(() => {
+    if (currentPath === '/onay') {
+      sessionStorage.setItem('bv_admin_initial_tab', 'approvals');
+      window.history.replaceState({}, '', '/admin');
+      setCurrentPath('/admin');
+    }
+  }, [currentPath]);
 
   // Route: /tv (Full-screen kiosk mode)
   if (currentPath === '/tv') {
@@ -117,8 +127,8 @@ function AppContent() {
     );
   }
 
-  const employeeSelfServiceOnly = false; // demo & full access
-  if (employeeSelfServiceOnly && !['/operator', '/teklifler'].includes(currentPath)) {
+  const employeeSelfServiceOnly = isEmployeeSelfServiceRole(currentUser.role);
+  if (employeeSelfServiceOnly && currentPath !== '/operator') {
     return (
       <div className="min-h-screen bg-emerald-50 text-slate-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white border border-emerald-100 rounded-2xl shadow-xl p-8 text-center">
@@ -165,7 +175,6 @@ function AppContent() {
         {(currentPath === '/cariler' || currentPath === '/cari') && <CariPage />}
         {currentPath === '/personel' && <PersonnelPage />}
         {currentPath === '/puantaj' && <PuantajPage />}
-        {currentPath === '/onay' && <ApprovalPage />}
         {currentPath === '/filo' && <FleetPage />}
         {currentPath === '/operator' && <OperatorPage />}
         {currentPath === '/finans' && <FinancePage />}
