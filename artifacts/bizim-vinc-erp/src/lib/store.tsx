@@ -5,6 +5,8 @@ import {
   CraneStatus,
   CraneDocument,
   CraneDocumentType,
+  CompanyDocument,
+  CompanyDocumentCategory,
   Approval,
   Receipt,
   Expense,
@@ -174,6 +176,9 @@ interface ERPContextType {
   deleteCrane: (id: string, soft?: boolean) => Promise<void>;
   craneDocuments: CraneDocument[];
   uploadCraneDocument: (craneId: string, type: CraneDocumentType, file: File) => Promise<void>;
+  companyDocuments: CompanyDocument[];
+  uploadCompanyDocument: (category: CompanyDocumentCategory, file: File) => Promise<void>;
+  getCompanyDocumentUrl: (documentId: string) => Promise<string>;
 
   // Onay Merkezi
   approvals: Approval[];
@@ -384,6 +389,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [craneDocuments, setCraneDocuments] = useState<CraneDocument[]>(() =>
     loadStored('bv_crane_documents', [])
+  );
+  const [companyDocuments, setCompanyDocuments] = useState<CompanyDocument[]>(() =>
+    loadStored('bv_company_documents', [])
   );
   const [approvals, setApprovals] = useState<Approval[]>(() =>
     loadStored('bv_approvals', [])
@@ -704,6 +712,22 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
         setCraneDocuments(mapped);
         saveStored('bv_crane_documents', mapped);
+      }
+
+      const { data: companyDocData, error: companyDocError } = await sb.from('company_documents').select('id, category, file_name, storage_path, document_date, is_sensitive, created_at');
+      if (companyDocError) throw companyDocError;
+      {
+        const mapped: CompanyDocument[] = (companyDocData || []).map((d: any) => ({
+          id: d.id,
+          category: d.category,
+          fileName: d.file_name,
+          storagePath: d.storage_path,
+          documentDate: d.document_date,
+          isSensitive: Boolean(d.is_sensitive),
+          createdAt: d.created_at,
+        }));
+        setCompanyDocuments(mapped);
+        saveStored('bv_company_documents', mapped);
       }
 
       // 3. Onaylar
@@ -1245,6 +1269,33 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const document: CraneDocument = { id: data.id, craneId: data.crane_id, documentType: data.document_type, fileName: data.file_name, storagePath: data.storage_path, documentDate: data.document_date, expiresAt: data.expires_at, isSensitive: Boolean(data.is_sensitive), createdAt: data.created_at };
     setCraneDocuments((prev) => { const next = [document, ...prev]; saveStored('bv_crane_documents', next); return next; });
     showToast(`✓ ${file.name} belgesi yüklendi.`);
+  };
+
+  const uploadCompanyDocument = async (category: CompanyDocumentCategory, file: File) => {
+    const sb = getSupabase();
+    if (!sb || !currentUser.id || currentUser.id === 'guest') throw new Error('Supabase bağlantısı veya oturum yok.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Belge boyutu en fazla 10 MB olabilir.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storagePath = `${category}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await sb.storage.from('company-docs').upload(storagePath, file, { upsert: false });
+    if (uploadError) throw uploadError;
+    const { data, error: insertError } = await sb.from('company_documents').insert({
+      category, file_name: file.name, storage_path: storagePath, uploaded_by: currentUser.id,
+    }).select('id, category, file_name, storage_path, document_date, is_sensitive, created_at').single();
+    if (insertError) throw insertError;
+    const document: CompanyDocument = { id: data.id, category: data.category, fileName: data.file_name, storagePath: data.storage_path, documentDate: data.document_date, isSensitive: Boolean(data.is_sensitive), createdAt: data.created_at };
+    setCompanyDocuments((prev) => { const next = [document, ...prev]; saveStored('bv_company_documents', next); return next; });
+    showToast(`✓ ${file.name} belgesi yüklendi.`);
+  };
+
+  const getCompanyDocumentUrl = async (documentId: string): Promise<string> => {
+    const sb = getSupabase();
+    if (!sb) throw new Error('Supabase bağlantısı yok.');
+    const document = companyDocuments.find((d) => d.id === documentId);
+    if (!document) throw new Error('Belge bulunamadı.');
+    const { data, error } = await sb.storage.from('company-docs').createSignedUrl(document.storagePath, 300, { download: document.fileName });
+    if (error || !data?.signedUrl) throw error || new Error('Bağlantı oluşturulamadı.');
+    return data.signedUrl;
   };
 
   const addPersonnelType = async (name: string) => {
@@ -3329,6 +3380,9 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteCrane,
         craneDocuments,
         uploadCraneDocument,
+        companyDocuments,
+        uploadCompanyDocument,
+        getCompanyDocumentUrl,
         approvals,
         addApproval,
         approveRequest,

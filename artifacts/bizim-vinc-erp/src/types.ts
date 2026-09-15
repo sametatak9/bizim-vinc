@@ -158,6 +158,18 @@ export interface CraneDocument {
   createdAt: string;
 }
 
+export type CompanyDocumentCategory = 'sirket_kimlik' | 'kiralama' | 'satin_alma' | 'yakit';
+
+export interface CompanyDocument {
+  id: string;
+  category: CompanyDocumentCategory;
+  fileName: string;
+  storagePath: string;
+  documentDate?: string | null;
+  isSensitive: boolean;
+  createdAt: string;
+}
+
 export type ApprovalKind =
   | 'yoklama'
   | 'mesai'
