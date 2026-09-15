@@ -1,34 +1,36 @@
-# V10 Ödeme planı — SİL → YENİDEN YÜKLE
+# V10 Ödeme planı — SİL → YENİDEN YÜKLE → DB SEED
 
-## Önkoşul
-1. Supabase SQL Editor'da `migrations/0035_payment_lists_and_import_keys.sql` çalıştır.
-2. `SUPABASE_SERVICE_ROLE_KEY` ortam değişkeni (Dashboard → Settings → API → service_role).
+## A) Şema + veri (Supabase SQL Editor)
+1. `migrations/0035_payment_lists_and_import_keys.sql` çalıştır
+2. `0036_seed_payment_plan_2026.sql` çalıştır (tek dosya ~220KB)
+   - veya parçalı: `0036_seed_part1of5.sql` → `part5of5.sql` sırayla
 
-## Komutlar
-```bash
-export SUPABASE_URL=https://jimywfjufmrpgnjynhkx.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=eyJ...   # service_role, ASLA frontend'e koyma
+Seed:
+- Wipe: payments, obligations, commercial_papers, payment_lists, migrated collections
+- ~400+ payments (2026 havuz + liste kalemleri)
+- 21 alinan_senet + Senet Alacakları listesi
+- 5 aylık/revizyon liste (Nisan, 09.05, 13.05, 18.05, Temmuz)
+- 3 leasing obligation (VESA, GMK150XL, GMK450-1)
+- `external_import_key` unique
 
-# 1) Mevcut sayılar
-python3 scripts/import/load_payment_plan_v10.py --counts-only
+**KORUNAN:** customers, personnel, opening_balances, kasa_hareket_log, invoices, job_receipts, #22 auth
 
-# 2) Dry-run
-python3 scripts/import/load_payment_plan_v10.py --dry-run
+## B) Beklenen sayılar (seed sonu SELECT)
+| tablo | ~adet |
+|-------|------|
+| payments | 400+ |
+| commercial_papers | 21 |
+| payment_lists | 7 |
+| payment_list_items | 400+ |
+| payment_obligations | 3 |
 
-# 3) Wipe + apply (cari/personel/kasa DOKUNULMAZ)
-python3 scripts/import/load_payment_plan_v10.py --wipe --apply
-
-# 4) İkinci apply → 0 yeni kayıt (import_key unique)
-python3 scripts/import/load_payment_plan_v10.py --apply
-```
-
-## Tarayıcı
-localStorage temizle (founder konsol):
+## C) Tarayıcı
 ```js
 ['bv_payments','bv_payment_obligations','bv_commercial_papers','bv_custom_payment_lists']
   .forEach(k => localStorage.removeItem(k));
 location.reload();
 ```
 
-## Korumalı
-customers, personnel, opening_balances, kasa_hareket_log, invoices, job_receipts, #22 auth
+## D) Dosya konumu
+- Repo / artifacts: `grok-odeme-paket-2026/`
+- CSV kaynaklar + `load_payment_plan_v10.py` (service_role alternatif)
