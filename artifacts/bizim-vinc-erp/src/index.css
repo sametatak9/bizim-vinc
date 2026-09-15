@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 CSS-first tema eşlemesi. Bu blok olmadan bg-primary,
+ * text-destructive, bg-card, border-border gibi class'lar hiçbir CSS
+ * üretmez (sessizce görünmez kalır) — @theme, aşağıdaki :root
+ * değişkenlerini gerçek Tailwind utility'lerine bağlar.
+ */
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+}
+
 @layer base {
   :root {
     --background: 45 33% 97%;
@@ -9,14 +34,16 @@
     --card: 0 0% 100%;
     --card-foreground: 163 27% 15%;
     --card-border: 42 19% 87%;
-    --primary: 157 39% 25%;
+    --primary: 163 94% 24%;
     --primary-foreground: 45 33% 97%;
     --secondary: 45 28% 92%;
     --secondary-foreground: 163 27% 20%;
     --muted: 45 24% 94%;
     --muted-foreground: 163 10% 45%;
     --accent: 36 77% 56%;
-    --destructive: 4 68% 48%;
+    --accent-foreground: 36 60% 14%;
+    --destructive: 345 83% 41%;
+    --destructive-foreground: 0 0% 100%;
     --radius: 0.75rem;
     --app-font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --app-font-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, monospace;
