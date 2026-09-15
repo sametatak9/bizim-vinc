@@ -52,6 +52,13 @@ const craneStatusLabel: Record<string, string> = {
   pasif: 'Pasif',
 };
 
+// Durum → semantik token eşlemesi (P3 kuralı): bekliyor→accent, onaylandı→primary, reddedildi→destructive.
+const statusBadgeClass = (status: 'pending' | 'approved' | 'rejected' | string) =>
+  status === 'pending' ? 'bg-accent/10 text-accent'
+    : status === 'approved' ? 'bg-primary/10 text-primary'
+    : status === 'rejected' ? 'bg-destructive/10 text-destructive'
+    : 'bg-muted text-muted-foreground';
+
 export const AdminPage: React.FC = () => {
   const {
     userProfiles,
@@ -248,6 +255,14 @@ export const AdminPage: React.FC = () => {
     bakimda: cranes.filter((c) => c.status === 'bakimda').length,
     arizali: cranes.filter((c) => c.status === 'arizali').length,
   };
+  // Filo durumu 4 halli, 3 anlamsal token'a şöyle eşleniyor: sahada (aktif/iyi)→primary,
+  // müsait (nötr)→muted, bakımda (dikkat)→accent, arızalı (kötü)→destructive.
+  const craneStatusClass = (status: string) =>
+    status === 'sahada' ? 'bg-primary/10 text-primary'
+      : status === 'musait' ? 'bg-muted text-muted-foreground'
+      : status === 'bakimda' ? 'bg-accent/10 text-accent'
+      : status === 'arizali' ? 'bg-destructive/10 text-destructive'
+      : 'bg-muted text-muted-foreground';
 
   // ─── ÜYELİK & KULLANICI ──────────────────────────────────────
   const [membershipSubTab, setMembershipSubTab] = useState<'memberships' | 'users'>('memberships');
@@ -316,21 +331,21 @@ export const AdminPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-emerald-950">Yönetim Paneli</h1>
-              <p className="text-xs text-slate-500">Tam kontrol — onaylar, personel, filo, makbuz, denetim</p>
+              <h1 className="text-xl font-bold text-foreground">Yönetim Paneli</h1>
+              <p className="text-xs text-muted-foreground">Tam kontrol — onaylar, personel, filo, makbuz, denetim</p>
             </div>
           </div>
           <button
             onClick={refreshFromDb}
             disabled={isSyncing}
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 transition flex items-center gap-2"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-muted hover:bg-muted/70 text-foreground border border-border transition flex items-center gap-2"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Yenileniyor...' : 'Yenile'}
@@ -338,21 +353,21 @@ export const AdminPage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-1 mt-5 border-b border-emerald-100 pb-0">
+        <div className="flex flex-wrap gap-1 mt-5 border-b border-border pb-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-emerald-500 text-emerald-700'
-                  : 'border-transparent text-slate-500 hover:text-emerald-950'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.icon}
               {tab.label}
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">{tab.badge}</span>
+                <span className="bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none font-mono">{tab.badge}</span>
               )}
             </button>
           ))}
@@ -366,25 +381,25 @@ export const AdminPage: React.FC = () => {
         <div className="space-y-4">
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-amber-700">{pendingApprovals.length}</div>
-              <div className="text-[11px] font-bold text-amber-600 mt-1">Bekleyen</div>
+            <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-accent font-mono">{pendingApprovals.length}</div>
+              <div className="text-[11px] font-bold text-accent mt-1">Bekleyen</div>
             </div>
-            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-emerald-700">{approvedToday.length}</div>
-              <div className="text-[11px] font-bold text-emerald-600 mt-1">Bugün Onaylanan</div>
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-primary font-mono">{approvedToday.length}</div>
+              <div className="text-[11px] font-bold text-primary mt-1">Bugün Onaylanan</div>
             </div>
-            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-rose-700">{rejectedToday.length}</div>
-              <div className="text-[11px] font-bold text-rose-600 mt-1">Bugün Reddedilen</div>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-destructive font-mono">{rejectedToday.length}</div>
+              <div className="text-[11px] font-bold text-destructive mt-1">Bugün Reddedilen</div>
             </div>
           </div>
 
           {/* Filters + Export */}
-          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-muted border border-border rounded-xl px-3 py-2">
+                <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <input
                   value={approvalSearch}
                   onChange={(e) => setApprovalSearch(e.target.value)}
@@ -395,22 +410,22 @@ export const AdminPage: React.FC = () => {
               <div className="flex flex-wrap gap-1.5">
                 {(['pending', 'approved', 'rejected', 'all'] as const).map((s) => (
                   <button key={s} onClick={() => setApprovalStatusFilter(s)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${approvalStatusFilter === s ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${approvalStatusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground border border-border'}`}>
                     {s === 'pending' ? 'Bekleyen' : s === 'approved' ? 'Onaylı' : s === 'rejected' ? 'Reddedilen' : 'Tümü'}
                   </button>
                 ))}
               </div>
               <div className="flex gap-1.5">
-                <button onClick={() => exportApprovals('excel')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white border border-emerald-200 text-emerald-700">XLS</button>
-                <button onClick={() => exportApprovals('html')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white border border-emerald-200 text-emerald-700">HTML</button>
-                <button onClick={() => exportApprovals('print')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-800 text-white">PDF</button>
+                <button onClick={() => exportApprovals('excel')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-card border border-border text-primary">XLS</button>
+                <button onClick={() => exportApprovals('html')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-card border border-border text-primary">HTML</button>
+                <button onClick={() => exportApprovals('print')} className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-primary text-primary-foreground">PDF</button>
               </div>
             </div>
             {/* Kind filter pills */}
             <div className="flex flex-wrap gap-1.5">
               {(['all', 'yoklama', 'mesai', 'avans', 'izin', 'makbuz', 'yakit', 'genel'] as const).map((k) => (
                 <button key={k} onClick={() => setApprovalKindFilter(k)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${approvalKindFilter === k ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-slate-600 hover:bg-emerald-100'}`}>
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition ${approvalKindFilter === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}>
                   {k === 'all' ? 'Tümü' : kindLabel[k] || k}
                 </button>
               ))}
@@ -420,37 +435,33 @@ export const AdminPage: React.FC = () => {
           {/* Approval List */}
           <div className="space-y-2">
             {filteredApprovals.length === 0 ? (
-              <div className="bg-white border border-emerald-100 rounded-2xl p-10 text-center text-sm text-slate-400">Filtreye uyan talep yok.</div>
+              <div className="bg-card border border-border rounded-xl p-10 text-center text-sm text-muted-foreground">Filtreye uyan talep yok.</div>
             ) : filteredApprovals.map((item) => (
-              <div key={item.id} className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+              <div key={item.id} className="bg-card border border-border rounded-xl p-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-muted border border-border text-foreground font-black flex items-center justify-center text-xs shrink-0">
                       {item.personInitials || '?'}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-emerald-950 truncate">{item.title}</span>
-                        <span className="bg-emerald-50 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">{kindLabel[item.kind] || item.kind}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          item.status === 'pending' ? 'bg-amber-50 text-amber-700'
-                          : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-rose-50 text-rose-700'
-                        }`}>
+                        <span className="text-sm font-bold text-foreground truncate">{item.title}</span>
+                        <span className="bg-muted text-muted-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">{kindLabel[item.kind] || item.kind}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadgeClass(item.status)}`}>
                           {item.status === 'pending' ? 'BEKLİYOR' : item.status === 'approved' ? 'ONAYLANDI' : 'REDDEDİLDİ'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {item.personName} · {new Date(item.createdAt).toLocaleString('tr-TR')}
-                        {item.amount ? ` · ₺${item.amount.toLocaleString('tr-TR')}` : ''}
-                        {item.hours ? ` · ${item.hours} saat` : ''}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {item.personName} · <span className="font-mono">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
+                        {item.amount ? <> · <span className="font-mono">₺{item.amount.toLocaleString('tr-TR')}</span></> : ''}
+                        {item.hours ? <> · <span className="font-mono">{item.hours}</span> saat</> : ''}
                       </p>
-                      {item.note && <p className="text-[11px] text-slate-400 italic mt-0.5">"{item.note}"</p>}
+                      {item.note && <p className="text-[11px] text-muted-foreground italic mt-0.5">"{item.note}"</p>}
                       {item.rejectionReason && (
-                        <p className="text-[11px] text-rose-600 font-semibold mt-1">Red: {item.rejectionReason}</p>
+                        <p className="text-[11px] text-destructive font-semibold mt-1">Red: {item.rejectionReason}</p>
                       )}
                       {item.status !== 'pending' && item.approvedBy && (
-                        <p className="text-[11px] text-emerald-600 mt-0.5">Onaylayan: {item.approvedBy}</p>
+                        <p className="text-[11px] text-primary mt-0.5">Onaylayan: {item.approvedBy}</p>
                       )}
                     </div>
                   </div>
@@ -460,13 +471,13 @@ export const AdminPage: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setShowRejectInput((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold border border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-1"
                         >
                           <X className="w-3.5 h-3.5" />Reddet
                         </button>
                         <button
                           onClick={() => handleApproveRequest(item.id)}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground flex items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5" />Onayla
                         </button>
@@ -477,11 +488,11 @@ export const AdminPage: React.FC = () => {
                             value={rejectComment[item.id] || ''}
                             onChange={(e) => setRejectComment((prev) => ({ ...prev, [item.id]: e.target.value }))}
                             placeholder="Red gerekçesi..."
-                            className="flex-1 rounded-xl border border-rose-200 px-3 py-1.5 text-xs outline-none"
+                            className="flex-1 rounded-xl border border-destructive/30 px-3 py-1.5 text-xs outline-none"
                           />
                           <button
                             onClick={() => handleRejectRequest(item.id)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-destructive text-destructive-foreground"
                           >
                             Gönder
                           </button>
@@ -502,83 +513,79 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'attendance' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-emerald-700">{todayYoklama.filter((a) => a.status === 'approved').length}</div>
-              <div className="text-[11px] font-bold text-emerald-600 mt-1">Onaylı</div>
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-primary font-mono">{todayYoklama.filter((a) => a.status === 'approved').length}</div>
+              <div className="text-[11px] font-bold text-primary mt-1">Onaylı</div>
             </div>
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-amber-700">{todayYoklama.filter((a) => a.status === 'pending').length}</div>
-              <div className="text-[11px] font-bold text-amber-600 mt-1">Onay Bekleyen</div>
+            <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-accent font-mono">{todayYoklama.filter((a) => a.status === 'pending').length}</div>
+              <div className="text-[11px] font-bold text-accent mt-1">Onay Bekleyen</div>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-slate-700">{activePersonnel.length - todayYoklama.length}</div>
-              <div className="text-[11px] font-bold text-slate-500 mt-1">Göndermeyen</div>
+            <div className="bg-muted border border-border rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-foreground font-mono">{activePersonnel.length - todayYoklama.length}</div>
+              <div className="text-[11px] font-bold text-muted-foreground mt-1">Göndermeyen</div>
             </div>
-            <div className="bg-white border border-emerald-100 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-emerald-950">{activePersonnel.length}</div>
-              <div className="text-[11px] font-bold text-slate-500 mt-1">Toplam Aktif</div>
+            <div className="bg-card border border-border rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-foreground font-mono">{activePersonnel.length}</div>
+              <div className="text-[11px] font-bold text-muted-foreground mt-1">Toplam Aktif</div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2 items-center justify-between">
-            <h2 className="text-sm font-bold text-emerald-950">{today} Yoklama Durumu</h2>
+            <h2 className="text-sm font-bold text-foreground"><span className="font-mono">{today}</span> Yoklama Durumu</h2>
             <div className="flex gap-2">
               <button
                 onClick={handleBulkApproveAttendance}
                 disabled={todayYoklama.filter((a) => a.status === 'pending').length === 0}
-                className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white disabled:opacity-50"
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground disabled:opacity-50"
               >
                 <CheckCircle2 className="inline w-3.5 h-3.5 mr-1" />
                 Tümünü Onayla
               </button>
-              <button onClick={() => exportAttendance('excel')} className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-700">XLS</button>
-              <button onClick={() => exportAttendance('print')} className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-800 text-white">PDF</button>
-              <a href="/puantaj" className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-emerald-200 text-emerald-700 flex items-center gap-1.5">
+              <button onClick={() => exportAttendance('excel')} className="px-3 py-2 rounded-xl text-xs font-bold bg-card border border-border text-primary">XLS</button>
+              <button onClick={() => exportAttendance('print')} className="px-3 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground">PDF</button>
+              <a href="/puantaj" className="px-3 py-2 rounded-xl text-xs font-bold bg-card border border-border text-primary flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" />Aylık Matrisi Gör
               </a>
             </div>
           </div>
 
-          <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-xs">
-              <thead className="bg-emerald-50 border-b border-emerald-100">
+              <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Personel</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Durum</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Giriş</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Onay</th>
-                  <th className="py-3 px-4 text-right font-bold text-slate-600">İşlem</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Personel</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Durum</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Giriş</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Onay</th>
+                  <th className="py-3 px-4 text-right font-bold text-muted-foreground">İşlem</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-emerald-50">
+              <tbody className="divide-y divide-border">
                 {activePersonnel.map((p) => {
                   const att = getPersonAttendanceToday(p.id);
                   return (
-                    <tr key={p.id} className="hover:bg-emerald-50/30">
-                      <td className="py-2.5 px-4 font-semibold text-emerald-950">{p.fullName}
-                        <span className="text-[10px] text-slate-400 ml-1">{p.title}</span>
+                    <tr key={p.id} className="hover:bg-muted/50">
+                      <td className="py-2.5 px-4 font-semibold text-foreground">{p.fullName}
+                        <span className="text-[10px] text-muted-foreground ml-1">{p.title}</span>
                       </td>
                       <td className="py-2.5 px-4">
                         {att ? (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                            att.title.includes('GELDI') || att.title.includes('GELDİ') ? 'bg-emerald-100 text-emerald-800'
-                            : att.title.includes('IZINLI') || att.title.includes('İZİNLİ') ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
+                            att.title.includes('GELDI') || att.title.includes('GELDİ') ? 'bg-primary/10 text-primary'
+                            : att.title.includes('IZINLI') || att.title.includes('İZİNLİ') ? 'bg-accent/10 text-accent'
+                            : 'bg-muted text-muted-foreground'
                           }`}>
                             {att.title.replace('Günlük Yoklama: ', '')}
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic text-[10px]">Gönderilmedi</span>
+                          <span className="text-muted-foreground italic text-[10px]">Gönderilmedi</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4 text-slate-500">{att?.note?.replace('Giriş: ', '') || '—'}</td>
+                      <td className="py-2.5 px-4 text-muted-foreground font-mono">{att?.note?.replace('Giriş: ', '') || '—'}</td>
                       <td className="py-2.5 px-4">
                         {att ? (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                            att.status === 'approved' ? 'bg-emerald-100 text-emerald-700'
-                            : att.status === 'rejected' ? 'bg-rose-100 text-rose-700'
-                            : 'bg-amber-100 text-amber-700'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${statusBadgeClass(att.status)}`}>
                             {att.status === 'approved' ? 'Onaylandı' : att.status === 'rejected' ? 'Reddedildi' : 'Bekliyor'}
                           </span>
                         ) : '—'}
@@ -587,11 +594,11 @@ export const AdminPage: React.FC = () => {
                         {att && att.status === 'pending' && canApprove && (
                           <div className="flex justify-end gap-1.5">
                             <button onClick={() => approveRequest(att.id, 'Yönetici onayı')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1">
+                              className="px-2.5 py-1 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1">
                               <Check className="w-3 h-3" />Onayla
                             </button>
                             <button onClick={() => rejectRequest(att.id, 'Yönetici reddi')}
-                              className="px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold">
+                              className="px-2.5 py-1 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-[11px] font-bold">
                               Reddet
                             </button>
                           </div>
@@ -612,48 +619,53 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'receipts' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Onay Bekleyen', count: jobReceipts.filter((r) => r.status === 'pending_approval').length, color: 'amber' },
-              { label: 'Onaylanan', count: jobReceipts.filter((r) => r.status === 'approved' || r.status === 'onaylandi').length, color: 'emerald' },
-              { label: 'Reddedilen', count: jobReceipts.filter((r) => r.status === 'rejected').length, color: 'rose' },
-              { label: 'Faturalanan', count: jobReceipts.filter((r) => r.invoiced).length, color: 'sky' },
-            ].map(({ label, count, color }) => (
-              <div key={label} className={`bg-${color}-50 border border-${color}-100 rounded-2xl p-4 text-center`}>
-                <div className={`text-2xl font-black text-${color}-700`}>{count}</div>
-                <div className={`text-[11px] font-bold text-${color}-600 mt-1`}>{label}</div>
-              </div>
-            ))}
+            <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-accent font-mono">{jobReceipts.filter((r) => r.status === 'pending_approval').length}</div>
+              <div className="text-[11px] font-bold text-accent mt-1">Onay Bekleyen</div>
+            </div>
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-primary font-mono">{jobReceipts.filter((r) => r.status === 'approved' || r.status === 'onaylandi').length}</div>
+              <div className="text-[11px] font-bold text-primary mt-1">Onaylanan</div>
+            </div>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-destructive font-mono">{jobReceipts.filter((r) => r.status === 'rejected').length}</div>
+              <div className="text-[11px] font-bold text-destructive mt-1">Reddedilen</div>
+            </div>
+            <div className="bg-muted border border-border rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-foreground font-mono">{jobReceipts.filter((r) => r.invoiced).length}</div>
+              <div className="text-[11px] font-bold text-muted-foreground mt-1">Faturalanan</div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-emerald-950">Hızlı Aksiyon</h2>
-            <a href="/faturalar" className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white flex items-center gap-1.5">
+            <h2 className="text-sm font-bold text-foreground">Hızlı Aksiyon</h2>
+            <a href="/faturalar" className="px-3 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5" />Tüm Makbuz &amp; Faturaları Gör
             </a>
           </div>
 
           {/* Onay bekleyen — hızlı onayla/reddet */}
-          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
-            <h3 className="text-xs font-black uppercase text-slate-500 mb-3">Onay Bekleyen ({pendingReceipts.length})</h3>
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-muted-foreground mb-3">Onay Bekleyen (<span className="font-mono">{pendingReceipts.length}</span>)</h3>
             {pendingReceipts.length === 0 ? (
-              <p className="text-xs text-slate-400">Onay bekleyen makbuz yok.</p>
+              <p className="text-xs text-muted-foreground">Onay bekleyen makbuz yok.</p>
             ) : (
               <div className="space-y-2">
                 {pendingReceipts.slice(0, 5).map((r) => (
-                  <div key={r.id} className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                  <div key={r.id} className="rounded-xl border border-border bg-muted/40 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-emerald-950 truncate">{r.customerName} · {r.siteName}</p>
-                        <p className="text-[11px] text-slate-500">{r.date} · {r.operatorName} · {r.craneCode}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{r.customerName} · {r.siteName}</p>
+                        <p className="text-[11px] text-muted-foreground"><span className="font-mono">{r.date}</span> · {r.operatorName} · <span className="font-mono">{r.craneCode}</span></p>
                       </div>
                       {canApprove && (
                         <div className="flex gap-1.5 shrink-0">
                           <button onClick={() => setShowReceiptReject((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
-                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-rose-200 bg-rose-50 text-rose-700 flex items-center gap-1">
+                            className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold border border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-1">
                             <X className="w-3 h-3" />Reddet
                           </button>
                           <button onClick={() => handleApproveReceipt(r.id)}
-                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 text-white flex items-center gap-1">
+                            className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-primary text-primary-foreground flex items-center gap-1">
                             <Check className="w-3 h-3" />Onayla
                           </button>
                         </div>
@@ -665,39 +677,42 @@ export const AdminPage: React.FC = () => {
                           value={receiptRejectComment[r.id] || ''}
                           onChange={(e) => setReceiptRejectComment((prev) => ({ ...prev, [r.id]: e.target.value }))}
                           placeholder="Red gerekçesi..."
-                          className="flex-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs outline-none"
+                          className="flex-1 rounded-xl border border-destructive/30 px-2.5 py-1.5 text-xs outline-none"
                         />
                         <button onClick={() => handleRejectReceipt(r.id)}
-                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-rose-600 text-white">Gönder</button>
+                          className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-destructive text-destructive-foreground">Gönder</button>
                       </div>
                     )}
                   </div>
                 ))}
                 {pendingReceipts.length > 5 && (
-                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-emerald-700 pt-1">+{pendingReceipts.length - 5} tane daha → /faturalar</a>
+                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-primary pt-1">+<span className="font-mono">{pendingReceipts.length - 5}</span> tane daha → /faturalar</a>
                 )}
               </div>
             )}
           </div>
 
           {/* Onaylı ama faturalanmamış — hızlı faturala */}
-          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
-            <h3 className="text-xs font-black uppercase text-slate-500 mb-3">Faturalanmayı Bekleyen ({awaitingInvoice.length})</h3>
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-muted-foreground mb-3">Faturalanmayı Bekleyen (<span className="font-mono">{awaitingInvoice.length}</span>)</h3>
             {awaitingInvoice.length === 0 ? (
-              <p className="text-xs text-slate-400">Faturalanmayı bekleyen onaylı makbuz yok.</p>
+              <p className="text-xs text-muted-foreground">Faturalanmayı bekleyen onaylı makbuz yok.</p>
             ) : (
               <div className="space-y-2">
                 {awaitingInvoice.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-100 bg-sky-50/40 p-3">
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-emerald-950 truncate">{r.customerName} · {r.siteName}</p>
-                      <p className="text-[11px] text-slate-500">{r.date} · {r.workingHours || r.hoursWorked || 0} saat{r.amount ? ` · ₺${r.amount.toLocaleString('tr-TR')}` : ''}</p>
+                      <p className="text-xs font-bold text-foreground truncate">{r.customerName} · {r.siteName}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        <span className="font-mono">{r.date}</span> · <span className="font-mono">{r.workingHours || r.hoursWorked || 0}</span> saat
+                        {r.amount ? <> · <span className="font-mono">₺{r.amount.toLocaleString('tr-TR')}</span></> : ''}
+                      </p>
                     </div>
                     {canApprove && (
                       <button
                         onClick={() => handleConvertToInvoice(r.id)}
                         disabled={convertingId === r.id}
-                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-600 text-white flex items-center gap-1 disabled:opacity-50 shrink-0"
+                        className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-primary text-primary-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
                       >
                         <FilePlus className="w-3 h-3" />Faturala
                       </button>
@@ -705,7 +720,7 @@ export const AdminPage: React.FC = () => {
                   </div>
                 ))}
                 {awaitingInvoice.length > 5 && (
-                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-sky-700 pt-1">+{awaitingInvoice.length - 5} tane daha → /faturalar</a>
+                  <a href="/faturalar" className="block text-center text-[11px] font-bold text-primary pt-1">+<span className="font-mono">{awaitingInvoice.length - 5}</span> tane daha → /faturalar</a>
                 )}
               </div>
             )}
@@ -719,22 +734,27 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'fleet' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Sahada', count: craneStatusCounts.sahada, color: 'emerald' },
-              { label: 'Müsait', count: craneStatusCounts.musait, color: 'sky' },
-              { label: 'Bakımda', count: craneStatusCounts.bakimda, color: 'amber' },
-              { label: 'Arızalı', count: craneStatusCounts.arizali, color: 'rose' },
-            ].map(({ label, count, color }) => (
-              <div key={label} className={`bg-${color}-50 border border-${color}-100 rounded-2xl p-4 text-center`}>
-                <div className={`text-2xl font-black text-${color}-700`}>{count}</div>
-                <div className={`text-[11px] font-bold text-${color}-600 mt-1`}>{label}</div>
-              </div>
-            ))}
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-primary font-mono">{craneStatusCounts.sahada}</div>
+              <div className="text-[11px] font-bold text-primary mt-1">Sahada</div>
+            </div>
+            <div className="bg-muted border border-border rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-foreground font-mono">{craneStatusCounts.musait}</div>
+              <div className="text-[11px] font-bold text-muted-foreground mt-1">Müsait</div>
+            </div>
+            <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-accent font-mono">{craneStatusCounts.bakimda}</div>
+              <div className="text-[11px] font-bold text-accent mt-1">Bakımda</div>
+            </div>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-center">
+              <div className="text-2xl font-black text-destructive font-mono">{craneStatusCounts.arizali}</div>
+              <div className="text-[11px] font-bold text-destructive mt-1">Arızalı</div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 bg-white border border-emerald-200 rounded-xl px-3 py-2">
-              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2">
+              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <input
                 value={craneSearch}
                 onChange={(e) => setCraneSearch(e.target.value)}
@@ -742,49 +762,43 @@ export const AdminPage: React.FC = () => {
                 className="bg-transparent text-xs outline-none w-full"
               />
             </div>
-            <a href="/filo" className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white flex items-center gap-1.5">
+            <a href="/filo" className="px-3 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5" />Tam Filo Ekranı
             </a>
           </div>
 
-          <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-xs">
-              <thead className="bg-emerald-50 border-b border-emerald-100">
+              <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Kod / Tür</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Operatör</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Şantiye</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Durum</th>
-                  <th className="py-3 px-4 text-left font-bold text-slate-600">Son Bakım</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Kod / Tür</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Operatör</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Şantiye</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Durum</th>
+                  <th className="py-3 px-4 text-left font-bold text-muted-foreground">Son Bakım</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-emerald-50">
+              <tbody className="divide-y divide-border">
                 {filteredCranes.map((c) => (
-                  <tr key={c.id} className="hover:bg-emerald-50/40">
+                  <tr key={c.id} className="hover:bg-muted/50">
                     <td className="py-2.5 px-4">
-                      <span className="font-black text-emerald-950">{c.code}</span>
-                      <span className="text-slate-400 text-[10px] ml-1">{c.type}</span>
+                      <span className="font-black text-foreground font-mono">{c.code}</span>
+                      <span className="text-muted-foreground text-[10px] ml-1">{c.type}</span>
                     </td>
-                    <td className="py-2.5 px-4 text-slate-600">{c.operator || '—'}</td>
-                    <td className="py-2.5 px-4 text-slate-600">{c.site || '—'}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{c.operator || '—'}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{c.site || '—'}</td>
                     <td className="py-2.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                        c.status === 'sahada' ? 'bg-emerald-100 text-emerald-800'
-                        : c.status === 'musait' ? 'bg-sky-100 text-sky-800'
-                        : c.status === 'bakimda' ? 'bg-amber-100 text-amber-800'
-                        : c.status === 'arizali' ? 'bg-rose-100 text-rose-800'
-                        : 'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${craneStatusClass(c.status)}`}>
                         {craneStatusLabel[c.status] || c.status}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-slate-400">{c.lastService ? new Date(c.lastService).toLocaleDateString('tr-TR') : '—'}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground font-mono">{c.lastService ? new Date(c.lastService).toLocaleDateString('tr-TR') : '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {filteredCranes.length === 0 && (
-              <div className="p-8 text-center text-sm text-slate-400">Araç bulunamadı.</div>
+              <div className="p-8 text-center text-sm text-muted-foreground">Araç bulunamadı.</div>
             )}
           </div>
         </div>
@@ -797,32 +811,32 @@ export const AdminPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex gap-2">
             <button onClick={() => setMembershipSubTab('memberships')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${membershipSubTab === 'memberships' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-700'}`}>
-              Üyelik Onayları ({pendingMemberships.length} bekleyen)
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${membershipSubTab === 'memberships' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-primary'}`}>
+              Üyelik Onayları (<span className="font-mono">{pendingMemberships.length}</span> bekleyen)
             </button>
             <button onClick={() => setMembershipSubTab('users')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${membershipSubTab === 'users' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-700'}`}>
-              Kullanıcı & Rol Yönetimi ({userProfiles.length})
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${membershipSubTab === 'users' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-primary'}`}>
+              Kullanıcı & Rol Yönetimi (<span className="font-mono">{userProfiles.length}</span>)
             </button>
           </div>
 
           {membershipSubTab === 'memberships' && (
             <>
               {!canApproveMemberships ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm font-bold text-amber-800">
+                <div className="rounded-xl border border-accent/20 bg-accent/10 p-6 text-sm font-bold text-accent">
                   Üyelik onaylama yetkisi kurucu, admin ve yönetici rollerine açıktır.
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { s: 'pending' as const, label: 'Bekleyen', color: 'amber' },
-                      { s: 'approved' as const, label: 'Onaylı', color: 'emerald' },
-                      { s: 'rejected' as const, label: 'Reddedilen', color: 'rose' },
-                    ].map(({ s, label, color }) => (
+                    {([
+                      { s: 'pending' as const, label: 'Bekleyen', activeCls: 'bg-accent text-accent-foreground border-accent', idleCls: 'bg-accent/10 border-accent/20 text-accent' },
+                      { s: 'approved' as const, label: 'Onaylı', activeCls: 'bg-primary text-primary-foreground border-primary', idleCls: 'bg-primary/10 border-primary/20 text-primary' },
+                      { s: 'rejected' as const, label: 'Reddedilen', activeCls: 'bg-destructive text-destructive-foreground border-destructive', idleCls: 'bg-destructive/10 border-destructive/20 text-destructive' },
+                    ]).map(({ s, label, activeCls, idleCls }) => (
                       <button key={s} onClick={() => setMembershipFilter(s)}
-                        className={`p-4 rounded-2xl border text-center transition ${membershipFilter === s ? `bg-${color}-500 border-${color}-500 text-white` : `bg-${color}-50 border-${color}-100 text-${color}-700`}`}>
-                        <div className="text-2xl font-black">{memberships.filter((m) => m.status === s).length}</div>
+                        className={`p-4 rounded-xl border text-center transition ${membershipFilter === s ? activeCls : idleCls}`}>
+                        <div className="text-2xl font-black font-mono">{memberships.filter((m) => m.status === s).length}</div>
                         <div className="text-[11px] font-bold mt-1">{label}</div>
                       </button>
                     ))}
@@ -831,7 +845,7 @@ export const AdminPage: React.FC = () => {
                   <div className="flex gap-2">
                     {(['pending', 'approved', 'rejected', 'all'] as const).map((key) => (
                       <button key={key} onClick={() => setMembershipFilter(key)}
-                        className={`rounded-xl px-3 py-2 text-xs font-bold transition ${membershipFilter === key ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-800 border border-emerald-200'}`}>
+                        className={`rounded-xl px-3 py-2 text-xs font-bold transition ${membershipFilter === key ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground border border-border'}`}>
                         {key === 'pending' ? 'Bekleyen' : key === 'approved' ? 'Onaylı' : key === 'rejected' ? 'Reddedilen' : 'Tümü'}
                       </button>
                     ))}
@@ -839,41 +853,38 @@ export const AdminPage: React.FC = () => {
 
                   <div className="space-y-3">
                     {visibleMemberships.length === 0 ? (
-                      <div className="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm text-slate-400">Bu filtrede başvuru yok.</div>
+                      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Bu filtrede başvuru yok.</div>
                     ) : visibleMemberships.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                      <div key={item.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-sm font-black text-emerald-950">{item.userFullName || item.userEmail}</h3>
-                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
-                                item.status === 'approved' ? 'bg-emerald-50 text-emerald-700'
-                                  : item.status === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
-                              }`}>
+                              <h3 className="text-sm font-black text-foreground">{item.userFullName || item.userEmail}</h3>
+                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${statusBadgeClass(item.status)}`}>
                                 {item.status === 'approved' ? 'onaylı' : item.status === 'rejected' ? 'reddedildi' : 'onay bekliyor'}
                               </span>
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              {item.userEmail} · Talep edilen rol: <b className="text-emerald-800">{roleLabel(item.requestedRole as AppRole)}</b>
+                            <div className="mt-1 text-[11px] text-muted-foreground">
+                              {item.userEmail} · Talep edilen rol: <b className="text-primary">{roleLabel(item.requestedRole as AppRole)}</b>
                             </div>
-                            <div className="mt-0.5 text-[11px] text-slate-500">
+                            <div className="mt-0.5 text-[11px] text-muted-foreground">
                               <Clock className="inline h-3 w-3 mr-1" />
-                              {new Date(item.createdAt).toLocaleString('tr-TR')}
+                              <span className="font-mono">{new Date(item.createdAt).toLocaleString('tr-TR')}</span>
                               {item.matchedPersonnelName && ` · TC eşleşmesi: `}
-                              {item.matchedPersonnelName && <b className="text-emerald-800">{item.matchedPersonnelName}</b>}
+                              {item.matchedPersonnelName && <b className="text-primary">{item.matchedPersonnelName}</b>}
                             </div>
                             {item.rejectionReason && (
-                              <div className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">Red: {item.rejectionReason}</div>
+                              <div className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-bold text-destructive">Red: {item.rejectionReason}</div>
                             )}
                           </div>
 
                           {item.status === 'pending' && (
                             <div className="flex flex-wrap items-end gap-2">
                               <div>
-                                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Atanacak rol</label>
+                                <label className="mb-1 block text-[10px] font-black uppercase text-muted-foreground">Atanacak rol</label>
                                 <select value={draftRole[item.id] || (item.requestedRole as AppRole) || 'personel'}
                                   onChange={(e) => setDraftRole((prev) => ({ ...prev, [item.id]: e.target.value as AppRole }))}
-                                  className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-bold">
+                                  className="rounded-xl border border-border px-3 py-2 text-xs font-bold bg-card">
                                   <option value="personel">Personel</option>
                                   <option value="operator">Operatör</option>
                                   <option value="puantor">Puantör</option>
@@ -884,10 +895,10 @@ export const AdminPage: React.FC = () => {
                                 </select>
                               </div>
                               <div>
-                                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Personel kaydı</label>
+                                <label className="mb-1 block text-[10px] font-black uppercase text-muted-foreground">Personel kaydı</label>
                                 <select value={draftPersonnel[item.id] || item.personnelId || ''}
                                   onChange={(e) => setDraftPersonnel((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                  className="max-w-[200px] rounded-xl border border-emerald-200 px-3 py-2 text-xs font-bold">
+                                  className="max-w-[200px] rounded-xl border border-border px-3 py-2 text-xs font-bold bg-card">
                                   <option value="">Eşleştirme yok</option>
                                   {personnel.map((p) => (
                                     <option key={p.id} value={p.id}>{p.fullName}{p.employeeNo ? ` (${p.employeeNo})` : ''}</option>
@@ -895,11 +906,11 @@ export const AdminPage: React.FC = () => {
                                 </select>
                               </div>
                               <button onClick={() => handleApproveMembership(item.id)} disabled={busyId === item.id}
-                                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+                                className="rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground disabled:opacity-50">
                                 <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />Onayla
                               </button>
                               <button onClick={() => handleRejectMembership(item.id)} disabled={busyId === item.id}
-                                className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 disabled:opacity-50">
+                                className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs font-black text-destructive disabled:opacity-50">
                                 <XCircle className="mr-1.5 inline h-3.5 w-3.5" />Reddet
                               </button>
                             </div>
@@ -914,26 +925,26 @@ export const AdminPage: React.FC = () => {
           )}
 
           {membershipSubTab === 'users' && (
-            <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-emerald-100 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-border bg-muted/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-bold text-emerald-950">Dinamik Personel Türleri</div>
-                  <div className="text-[11px] text-slate-500">Yeni türleri yalnız founder/admin ekleyebilir.</div>
+                  <div className="text-xs font-bold text-foreground">Dinamik Personel Türleri</div>
+                  <div className="text-[11px] text-muted-foreground">Yeni türleri yalnız founder/admin ekleyebilir.</div>
                 </div>
                 <div className="flex gap-2">
-                  <input value={newPersonnelType} onChange={(e) => setNewPersonnelType(e.target.value)} placeholder="Örn. İSG Uzmanı" className="px-3 py-2 border border-emerald-200 rounded-lg text-xs" />
-                  <button onClick={async () => { if (!newPersonnelType.trim()) return; await addPersonnelType(newPersonnelType); setNewPersonnelType(''); }} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Tür Ekle</button>
+                  <input value={newPersonnelType} onChange={(e) => setNewPersonnelType(e.target.value)} placeholder="Örn. İSG Uzmanı" className="px-3 py-2 border border-border rounded-xl text-xs bg-card" />
+                  <button onClick={async () => { if (!newPersonnelType.trim()) return; await addPersonnelType(newPersonnelType); setNewPersonnelType(''); }} className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold">Tür Ekle</button>
                 </div>
               </div>
-              <div className="px-4 py-2 flex flex-wrap gap-2 border-b border-emerald-50">
-                {personnelTypes.map((type) => <span key={type.id} className="px-2 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-800">{type.name}</span>)}
+              <div className="px-4 py-2 flex flex-wrap gap-2 border-b border-border">
+                {personnelTypes.map((type) => <span key={type.id} className="px-2 py-1 rounded-full bg-muted border border-border text-[11px] text-foreground">{type.name}</span>)}
               </div>
-              <div className="p-3 border-b border-emerald-100 bg-emerald-50/40 flex items-center justify-between">
-                <div className="text-xs text-slate-600">Aktif Oturum: <strong className="text-emerald-600 font-mono uppercase">{activeRole}</strong></div>
+              <div className="p-3 border-b border-border bg-muted/40 flex items-center justify-between">
+                <div className="text-xs text-muted-foreground">Aktif Oturum: <strong className="text-primary font-mono uppercase">{activeRole}</strong></div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-emerald-900">
-                  <thead className="bg-emerald-50 text-slate-600 font-semibold border-b border-emerald-100 uppercase tracking-wider text-[11px]">
+                <table className="w-full text-left text-xs text-foreground">
+                  <thead className="bg-muted text-muted-foreground font-semibold border-b border-border uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Kullanıcı</th>
                       <th className="py-3 px-4">E-Posta</th>
@@ -942,22 +953,22 @@ export const AdminPage: React.FC = () => {
                       <th className="py-3 px-4 text-right">İşlem</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-50">
+                  <tbody className="divide-y divide-border">
                     {userProfiles.map((user) => (
-                      <tr key={user.id} className="hover:bg-emerald-50/30 transition">
+                      <tr key={user.id} className="hover:bg-muted/50 transition">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold flex items-center justify-center text-xs">
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-xs">
                               {user.fullName.slice(0, 2).toUpperCase()}
                             </div>
-                            <span className="font-semibold text-emerald-950">{user.fullName}</span>
+                            <span className="font-semibold text-foreground">{user.fullName}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-slate-500">{user.email}</td>
+                        <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                         <td className="py-3 px-4">
                           {canManageUsers ? (
                             <select value={user.role} onChange={(e) => updateUserProfile(user.id, { role: e.target.value as AppRole })}
-                              className="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 text-xs text-emerald-600 font-bold focus:outline-none">
+                              className="bg-muted border border-border rounded-xl px-2.5 py-1 text-xs text-primary font-bold focus:outline-none">
                               <option value="admin">ADMIN</option>
                               <option value="yonetici">YÖNETİCİ</option>
                               <option value="muhasebe">MUHASEBE</option>
@@ -967,18 +978,18 @@ export const AdminPage: React.FC = () => {
                               <option value="personel">PERSONEL</option>
                             </select>
                           ) : (
-                            <span className="text-xs font-bold text-emerald-700 uppercase">{user.role}</span>
+                            <span className="text-xs font-bold text-primary uppercase">{user.role}</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${user.status === 'aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${user.status === 'aktif' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                             {user.status}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           {canManageUsers && (
                             <button onClick={() => updateUserProfile(user.id, { status: user.status === 'aktif' ? 'pasif' : 'aktif' })}
-                              className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition">
+                              className="text-[11px] px-2.5 py-1 rounded-xl bg-muted hover:bg-muted/70 text-foreground transition">
                               {user.status === 'aktif' ? 'Pasife Al' : 'Aktif Yap'}
                             </button>
                           )}
@@ -999,39 +1010,39 @@ export const AdminPage: React.FC = () => {
       {activeTab === 'system' && (
         <div className="space-y-4">
           {/* DB Status */}
-          <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 text-primary flex items-center justify-center">
                   <Database className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-950">Supabase PostgreSQL</h3>
-                  <p className="text-xs text-slate-500">{dbConnected ? 'Canlı bağlı · RLS aktif' : 'Yerel depolama aktif'}</p>
+                  <h3 className="text-sm font-bold text-foreground">Supabase PostgreSQL</h3>
+                  <p className="text-xs text-muted-foreground">{dbConnected ? 'Canlı bağlı · RLS aktif' : 'Yerel depolama aktif'}</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${dbConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${dbConnected ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
                 {dbConnected ? 'CANLI' : 'YERELİ'}
               </span>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
-              <div className="bg-emerald-50 rounded-xl p-3"><div className="font-bold text-emerald-950">14+ Tablo</div><div className="text-slate-400">Şema</div></div>
-              <div className="bg-emerald-50 rounded-xl p-3"><div className="font-bold text-emerald-950">RLS + RBAC</div><div className="text-slate-400">Güvenlik</div></div>
-              <div className="bg-emerald-50 rounded-xl p-3"><div className="font-bold text-emerald-950">{auditLogs.length} kayıt</div><div className="text-slate-400">Denetim günlüğü</div></div>
+              <div className="bg-muted rounded-xl p-3"><div className="font-bold text-foreground">14+ Tablo</div><div className="text-muted-foreground">Şema</div></div>
+              <div className="bg-muted rounded-xl p-3"><div className="font-bold text-foreground">RLS + RBAC</div><div className="text-muted-foreground">Güvenlik</div></div>
+              <div className="bg-muted rounded-xl p-3"><div className="font-bold text-foreground font-mono">{auditLogs.length}</div><div className="text-muted-foreground">Denetim günlüğü</div></div>
             </div>
           </div>
 
           {/* Audit Log */}
-          <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-emerald-100 flex flex-col sm:flex-row gap-3 bg-emerald-50/40">
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3 bg-muted/40">
               <div className="flex items-center gap-2 flex-1">
-                <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
                 <input value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} placeholder="İşlem, kullanıcı veya açıklama ara..."
-                  className="w-full bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-emerald-400" />
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-1.5 text-xs outline-none focus:border-primary" />
               </div>
               <div className="flex gap-2">
                 <select value={auditModuleFilter} onChange={(e) => setAuditModuleFilter(e.target.value)}
-                  className="bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                  className="bg-muted border border-border rounded-xl px-2.5 py-1.5 text-xs outline-none">
                   <option value="all">Tüm Modüller</option>
                   <option value="Auth">Auth</option>
                   <option value="Puantaj">Puantaj</option>
@@ -1042,14 +1053,14 @@ export const AdminPage: React.FC = () => {
                   <option value="Sistem">Sistem</option>
                 </select>
                 <button onClick={exportAuditJSON}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1.5">
+                  className="px-3 py-1.5 rounded-xl bg-card border border-border text-primary text-xs font-semibold flex items-center gap-1.5">
                   <Download className="w-3.5 h-3.5" />JSON
                 </button>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-emerald-50 border-b border-emerald-100 text-[11px] font-semibold text-slate-500 uppercase">
+                <thead className="bg-muted border-b border-border text-[11px] font-semibold text-muted-foreground uppercase">
                   <tr>
                     <th className="py-3 px-4">Tarih</th>
                     <th className="py-3 px-4">Kullanıcı</th>
@@ -1058,14 +1069,14 @@ export const AdminPage: React.FC = () => {
                     <th className="py-3 px-4">Açıklama</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-50">
+                <tbody className="divide-y divide-border">
                   {filteredLogs.slice(0, 100).map((log) => (
-                    <tr key={log.id} className="hover:bg-emerald-50/30">
-                      <td className="py-2.5 px-4 font-mono text-slate-500 text-[11px] whitespace-nowrap">{new Date(log.createdAt).toLocaleString('tr-TR')}</td>
-                      <td className="py-2.5 px-4 font-semibold text-emerald-950">{log.userName}<div className="text-[10px] text-slate-400 font-mono uppercase">{log.userRole}</div></td>
-                      <td className="py-2.5 px-4"><span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-100 text-[11px]">{log.module}</span></td>
+                    <tr key={log.id} className="hover:bg-muted/50">
+                      <td className="py-2.5 px-4 font-mono text-muted-foreground text-[11px] whitespace-nowrap">{new Date(log.createdAt).toLocaleString('tr-TR')}</td>
+                      <td className="py-2.5 px-4 font-semibold text-foreground">{log.userName}<div className="text-[10px] text-muted-foreground font-mono uppercase">{log.userRole}</div></td>
+                      <td className="py-2.5 px-4"><span className="px-2 py-0.5 rounded-md bg-muted text-foreground border border-border text-[11px]">{log.module}</span></td>
                       <td className="py-2.5 px-4 font-semibold font-mono text-[11px]">{log.action}</td>
-                      <td className="py-2.5 px-4 text-slate-500">{log.details || '—'}</td>
+                      <td className="py-2.5 px-4 text-muted-foreground">{log.details || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
